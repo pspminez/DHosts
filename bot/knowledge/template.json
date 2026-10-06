@@ -1,0 +1,62 @@
+{
+  "id": "SUNSET",
+  "name": "Sunset Villa",
+  "twilioNumber": "+14075550100",
+  "hostPhone": "+14075550199",
+  "secrets": [
+    {
+      "topic": "Gate code",
+      "keywords": ["gate", "gate code", "front gate", "how do i get in", "code for the gate"],
+      "reply": "Your gate code is 4821."
+    },
+    {
+      "topic": "Door lock",
+      "keywords": ["door code", "lock code", "front door code", "keypad code"],
+      "reply": "Your front door code is 9911."
+    }
+  ],
+  "answers": [
+    {
+      "topic": "Checkout",
+      "keywords": ["checkout", "check out", "check-out", "what time do we leave", "departure time"],
+      "reply": "Checkout is 10:00 AM. Late checkout is not available."
+    },
+    {
+      "topic": "WiFi",
+      "keywords": ["wifi", "wi-fi", "wireless", "internet", "password for the internet", "network name"],
+      "reply": "Network: KIDS-SWIMMING-4\nPassword: SUNSHINE2026"
+    },
+    {
+      "topic": "Trash",
+      "keywords": ["trash", "garbage", "bins", "trash day", "trash pickup", "where does trash go"],
+      "reply": "Trash pickup is Tuesday morning — bins go out Monday night."
+    },
+    {
+      "topic": "Pool",
+      "keywords": ["pool", "pool heater", "heat the pool", "pool temperature"],
+      "reply": "The pool heater is the grey panel on the lanai wall. Press HEAT, then the up arrow to 86. It takes about 4 hours to warm up."
+    },
+    {
+      "topic": "Parking",
+      "keywords": ["parking", "where to park", "street parking", "driveway"],
+      "reply": "Two cars in the driveway. No street parking — HOA rule."
+    },
+    {
+      "topic": "Pets",
+      "keywords": ["pet", "dog", "cat", "pets allowed", "can i bring my dog"],
+      "reply": "No pets, per the HOA."
+    },
+    {
+      "topic": "Quiet hours",
+      "keywords": ["quiet hours", "quiet time", "noise", "loud"],
+      "reply": "Quiet hours are 10 PM to 8 AM."
+    },
+    {
+      "topic": "Hurricane prep",
+      "keywords": ["hurricane", "storm", "shutters", "storm prep"],
+      "reply": "Storm shutters are in the garage, labeled by window."
+    }
+  ],
+  "unknownReply": "Good question — let me check with your host and get right back to you.",
+  "rateLimitReply": "Let me get the host to help you with this."
+}

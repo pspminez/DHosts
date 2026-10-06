@@ -1,0 +1,19 @@
+name = "davenport-host-co-bot"
+main = "bot/worker.ts"
+compatibility_date = "2026-10-06"
+
+[[kv_namespaces]]
+binding = "PROPERTIES" # Your KV Namespace binding name
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" # User must replace with their actual KV Namespace ID
+
+[[d1_databases]]
+binding = "DB"
+database_name = "davenport-host-co-db"
+database_id = "8dd9944d-411f-408a-bb3e-c039e4f86755"
+
+[vars]
+ANTHROPIC_API_KEY = "" # User must fill this in
+TWILIO_ACCOUNT_SID = "" # User must fill this in
+TWILIO_AUTH_TOKEN = "" # User must fill this in
+TWILIO_MESSAGING_SERVICE_SID = "" # User must fill this in
+ADMIN_PASSWORD = "" # User must fill this in

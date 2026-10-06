@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Davenport Host Co. â€” Stop Being On Call</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #e8e8ed;
+    --muted: #8b8b9a;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --green: #34d399;
+    --warn: #ff7a45;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: -20rem; left: 50%; translate: -50% 0;
+    width: 60rem; height: 60rem;
+    background: radial-gradient(circle, rgba(124, 92, 255, 0.18), transparent 60%);
+    filter: blur(40px);
+    pointer-events: none; z-index: 0;
+  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
+  .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1.75rem; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+  h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+  h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 3rem; }
+  .demo { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
+  .demo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; font-size: 0.85rem; color: var(--muted); }
+  .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #000; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
+  .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 24rem; overflow-y: auto; padding-right: 0.5rem; }
+  .msg { display: flex; gap: 0.75rem; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .msg-guest { flex-direction: row-reverse; }
+  .bubble { max-width: 75%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; }
+  .bubble-guest { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+  .msg-guest .bubble { background: var(--accent); color: #fff; border-radius: 18px; border-bottom-left-radius: 4px; }
+  .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+  .price-card { padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
+  .price-card:hover { transform: translateY(-4px); border-color: rgba(124, 92, 255, 0.4); }
+  .price-card.featured { border-color: var(--accent); background: rgba(124, 92, 255, 0.06); }
+  .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
+  .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
+  .price-card li::before { content: "âœ“"; color: var(--green); margin-right: 0.5rem; font-weight: 600; }
+  .cta { text-align: center; margin-top: 2rem; }
+  .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124, 92, 255, 0.35); }
+  .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
+  .step { text-align: center; padding: 1.5rem; }
+  .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
+  .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .step p { font-size: 0.85rem; color: var(--muted); }
+  footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
+  @media (max-width: 480px) {
+    .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
+
+  <h1>Guests text.<br><span>You stop being on call.</span></h1>
+
+  <p class="lede">
+    Every 11pm gate-code text. Every "what's the wifi" at checkout. Every trash-day question.
+    You answer them all â€” from bed, from dinner, from the kids' soccer game.
+    <strong>Davenport Host Co.</strong> puts a local text line in front of it. Guests get answers in seconds.
+    You get your evenings back.
+  </p>
+
+  <div class="demo">
+    <div class="demo-header">
+      <span>Live demo â€” text the number</span>
+      <span class="phone">+1 (407) 555-0100</span>
+    </div>
+    <div class="chat" id="chat">
+      <div class="msg msg-bot">
+        <div class="bubble bubble-bot">Hey! You're at <strong>Sunset Villa</strong>. What do you need?</div>
+      </div>
+    </div>
+    <div class="chat-input-area" style="display:flex; gap:0.5rem; margin-top:1rem;">
+      <input type="text" id="chatInput" placeholder="Type your message..." style="flex-grow:1; padding:0.65rem 0.8rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit;">
+      <button id="sendChat" style="padding:0.65rem 1rem; border-radius:10px; border:0; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer;">Send</button>
+    </div>
+  </div>
+
+  <div class="pricing">
+    <div class="price-card">
+      <div class="price-tag">$299</div>
+      <div class="price-sub">one-time setup</div>
+      <h3>Setup</h3>
+      <ul>
+        <li>Build your property's answer library</li>
+        <li>Configure your dedicated text line</li>
+        <li>Test live with you before launch</li>
+        <li>Welcome card template for guests</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="price-tag">$99</div>
+      <div class="price-sub">/month per property</div>
+      <h3>Host Package</h3>
+      <ul>
+        <li>24/7 guest text line (no bots guessing)</li>
+        <li>Escalation to you only when it matters</li>
+        <li>Monthly report: what guests actually asked</li>
+        <li>Edit answers anytime â€” no code, no redeploy</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cta">
+    <a href="mailto:hello@davenporthost.co?subject=I%20want%20my%20evenings%20back&body=Hi%2C%0A%0AI%27d%20like%20to%20set%20up%20the%20text%20line%20for%20my%20property%20in%20Davenport.%0A%0AProperty%20name%3A%20%5Bname%5D%0AAddress%3A%20%5Baddress%5D%0AMy%20phone%3A%20%5Byour%20cell%5D" class="btn btn-primary">Get my text line</a>
+    <a href="#how" class="btn btn-ghost">How it works</a>
+  </div>
+
+  <div class="email-capture" style="text-align:center; margin-top:3rem;">
+    <h2>Get updates and early access!</h2>
+    <p style="color:var(--muted); margin-top:0.5rem;">Sign up to receive news and be notified when we launch in your area.</p>
+    <div style="display:flex; justify-content:center; gap:0.5rem; margin-top:1.5rem;">
+      <input type="email" id="emailInput" placeholder="Your email address" style="padding:0.75rem 1rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); width:300px; max-width:80%;">
+      <button id="subscribeBtn" style="padding:0.75rem 1.5rem; border-radius:10px; border:0; background:var(--green); color:#fff; font:inherit; font-weight:600; cursor:pointer;">Subscribe</button>
+    </div>
+    <p class="status" id="emailStatus" style="margin-top:1rem; font-size:0.9rem; color:var(--muted);"></p>
+  </div>
+
+  <div class="how" id="how">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>We build it</h4>
+      <p>You tell us your gate code, wifi, trash day, HOA rules. We load it into your private text line.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Guests text</h4>
+      <p>They text the number on the fridge card. "SUNSET what's the gate code?" â†’ instant answer.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>You're free</h4>
+      <p>Only the weird stuff reaches you. "AC making noise" â†’ you get a text. Everything else is handled.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2026 Davenport Host Co. &middot; Davenport, Florida &middot; <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
+</footer>
+
+<script type="module">
+  import { sendMessageToAI, submitLead } from './api.js';
+
+  const chat = document.getElementById('chat');
+  const chatInput = document.getElementById('chatInput');
+  const sendChatBtn = document.getElementById('sendChat');
+
+  function addMsg(text, isGuest) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
+    wrap.innerHTML = `<div class="bubble bubble-${isGuest ? 'guest' : 'bot'}">${text}</div>`;
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Initial bot message
+  addMsg("Hey! You're at <strong>Sunset Villa</strong>. What do you need?", false);
+
+  sendChatBtn.addEventListener('click', async () => {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMsg(message, true);
+    chatInput.value = '';
+    sendChatBtn.disabled = true;
+
+    try {
+      const response = await sendMessageToAI(message);
+      addMsg(response.reply, false);
+    } catch (error) {
+      addMsg(`Error: ${error.message}`, false);
+    } finally {
+      sendChatBtn.disabled = false;
+    }
+  });
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      sendChatBtn.click();
+    }
+  });
+
+  const emailInput = document.getElementById('emailInput');
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  const emailStatus = document.getElementById('emailStatus');
+
+  subscribeBtn.addEventListener('click', async () => {
+    const email = emailInput.value.trim();
+    if (!email) {
+      emailStatus.textContent = 'Please enter your email address.';
+      emailStatus.style.color = 'var(--warn)';
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      emailStatus.textContent = 'Please enter a valid email address.';
+      emailStatus.style.color = 'var(--warn)';
+      return;
+    }
+
+    emailStatus.textContent = 'Subscribing...';
+    emailStatus.style.color = 'var(--muted)';
+    subscribeBtn.disabled = true;
+
+    try {
+      const response = await submitLead(email);
+      if (response.success) {
+        emailStatus.textContent = 'Subscribed successfully!';
+        emailStatus.style.color = 'var(--green)';
+        emailInput.value = '';
+      } else {
+        emailStatus.textContent = 'Subscription failed. Please try again.';
+        emailStatus.style.color = 'var(--warn)';
+      }
+    } catch (error) {
+      emailStatus.textContent = `Error: ${error.message}`;
+      emailStatus.style.color = 'var(--warn)';
+    } finally {
+      subscribeBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "davenport-host-co-bot",
+  "version": "0.0.0",
+  "type": "module",
+  "devDependencies": {
+    "wrangler": "^4.147.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.19.0",
+    "zod": "^3.22.4"
+  }
+}
