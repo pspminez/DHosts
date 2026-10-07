@@ -1,257 +1,951 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Davenport Host Co. â€” Stop Being On Call</title>
-<style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: rgba(255, 255, 255, 0.03);
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #e8e8ed;
-    --muted: #8b8b9a;
-    --accent: #7c5cff;
-    --accent-2: #22d3ee;
-    --green: #34d399;
-    --warn: #ff7a45;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
-    line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-    -webkit-font-smoothing: antialiased;
-  }
-  body::before {
-    content: "";
-    position: fixed;
-    top: -20rem; left: 50%; translate: -50% 0;
-    width: 60rem; height: 60rem;
-    background: radial-gradient(circle, rgba(124, 92, 255, 0.18), transparent 60%);
-    filter: blur(40px);
-    pointer-events: none; z-index: 0;
-  }
-  main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
-  .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1.75rem; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-  h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
-  h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 3rem; }
-  .demo { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
-  .demo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; font-size: 0.85rem; color: var(--muted); }
-  .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #000; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
-  .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 24rem; overflow-y: auto; padding-right: 0.5rem; }
-  .msg { display: flex; gap: 0.75rem; animation: fadeIn 0.2s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .msg-guest { flex-direction: row-reverse; }
-  .bubble { max-width: 75%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; }
-  .bubble-guest { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-  .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
-  .msg-guest .bubble { background: var(--accent); color: #fff; border-radius: 18px; border-bottom-left-radius: 4px; }
-  .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 3rem; }
-  .price-card { padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
-  .price-card:hover { transform: translateY(-4px); border-color: rgba(124, 92, 255, 0.4); }
-  .price-card.featured { border-color: var(--accent); background: rgba(124, 92, 255, 0.06); }
-  .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
-  .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
-  .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
-  .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
-  .price-card li::before { content: "âœ“"; color: var(--green); margin-right: 0.5rem; font-weight: 600; }
-  .cta { text-align: center; margin-top: 2rem; }
-  .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-  .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124, 92, 255, 0.35); }
-  .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
-  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
-  .step { text-align: center; padding: 1.5rem; }
-  .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
-  .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
-  .step p { font-size: 0.85rem; color: var(--muted); }
-  footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
-  @media (max-width: 480px) {
-    .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Davenport Host Co. — The Flood Solution</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.08);
+      --text: #e8e8ed;
+      --muted: #8b8b9a;
+      --accent: #7c5cff;
+      --accent-2: #22d3ee;
+      --green: #34d399;
+      --warn: #ff7a45;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      overflow: visible;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: -20rem; left: 50%; translate: -50% 0;
+      width: 60rem; height: 60rem;
+      background: radial-gradient(circle, rgba(124,92,255,0.18), transparent 60%);
+      filter: blur(40px);
+      pointer-events: none; z-index: 0;
+    }
+    main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1.75rem; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+    h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 3rem; }
+    .demo { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
+    .demo-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .demo-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #000; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
+    .msg-counter { font-size: 0.75rem; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 0.35rem 0.7rem; border-radius: 999px; }
+    .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 28rem; overflow-y: auto; padding-right: 0.5rem; scroll-behavior: smooth; }
+    .chat::-webkit-scrollbar { width: 6px; }
+    .chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .msg { display: flex; gap: 0.75rem; animation: fadeIn 0.2s ease; align-items: flex-end; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .msg-guest { flex-direction: row-reverse; }
+    .bubble { max-width: 78%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; }
+    .bubble-guest { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg-guest .bubble { background: var(--accent); color: #fff; border-radius: 18px; border-bottom-left-radius: 4px; }
+    .chat-input-area { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .chat-input-area input { flex: 1; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 0.95rem; }
+    .chat-input-area input:focus { outline: none; border-color: var(--accent); }
+    .chat-input-area button { padding: 0.7rem 1.4rem; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
+    .chat-input-area button:hover { transform: translateY(-1px); }
+    .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .package-prompt { display: none; margin-top: 1rem; padding: 1.25rem; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-radius: 14px; color: #fff; text-align: center; }
+    .package-prompt h3 { margin-bottom: 0.5rem; }
+    .package-prompt p { opacity: 0.9; }
+    .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+    .price-card { padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
+    .price-card:hover { transform: translateY(-4px); border-color: rgba(124,92,255,0.4); }
+    .price-card.featured { border-color: var(--accent); background: rgba(124,92,255,0.06); }
+    .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+    .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
+    .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
+    .price-card li::before { content: ""; }
+    .cta { text-align: center; margin-top: 2rem; }
+    .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,92,255,0.35); }
+    .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
+    .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
+    .step { text-align: center; padding: 1.5rem; }
+    .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
+    .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .step p { font-size: 0.85rem; color: var(--muted); }
+    footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
+    @media (max-width: 480px) {
+      .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
+    }
+
+    /* STOP THE FLOOD overlay */
+    .stop-overlay h1 {
+      font-size: clamp(2.5rem, 9vw, 5rem);
+      font-weight: 900;
+      color: #ff2d55;
+      text-shadow: 0 0 40px rgba(255,45,85,0.6), 0 0 90px rgba(255,45,85,0.35);
+      letter-spacing: -0.02em;
+      animation: stopPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes stopPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.07); }
+    }
+    .stop-bold { font-weight: 800; }
+    .stop-grow {
+      font-weight: 900;
+      display: inline-block;
+      animation: stopGrow 1s ease-out 0.3s both;
+    }
+    @keyframes stopGrow {
+      0% { font-size: 1.4rem; transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.3); }
+      100% { font-size: 2.8rem; transform: scale(1); opacity: 1; }
+    }
+
+    /* Flood animation - overwhelming message bubbles */
+    .flood-section { margin: 3rem 0; position: relative; transition: opacity 0.8s ease, transform 0.8s ease; }
+    .flood-section.fade-out { opacity: 0; transform: scale(0.98); }
+    .flood-label { text-align: center; font-size: 0.85rem; color: var(--warn); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+    .flood-container { position: relative; height: 300px; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at center, rgba(255,122,69,0.08), transparent 70%); border: 1px solid rgba(255,122,69,0.2); }
+
+    /* Pulsing center rings */
+    .flood-container::before,
+    .flood-container::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 2px solid transparent;
+      pointer-events: none;
+      z-index: 0;
+      animation: pulseRing 3s ease-out infinite;
+    }
+    .flood-container::before {
+      width: 60px;
+      height: 60px;
+      border-color: rgba(124,92,255,0.5);
+      animation-delay: 0s;
+    }
+    .flood-container::after {
+      width: 90px;
+      height: 90px;
+      border-color: rgba(34,211,238,0.4);
+      animation-delay: 1.5s;
+    }
+
+    /* Shockwave ring */
+    .flood-shockwave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+      animation: shockwave 2s ease-out infinite;
+    }
+
+    .flood-bubble {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 0.7rem 1.1rem;
+      border-radius: 22px;
+      line-height: 1.3;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      animation: floodBurst 10s ease-out infinite;
+      opacity: 0;
+      white-space: nowrap;
+      max-width: 85%;
+      font-weight: 500;
+      z-index: 2;
+    }
+    .flood-bubble.alt {
+      background: linear-gradient(135deg, var(--accent-2), #06b6d4);
+      box-shadow: 0 8px 24px rgba(34,211,238,0.5);
+    }
+    .flood-bubble.main {
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      box-shadow: 0 8px 24px rgba(124,92,255,0.5);
+    }
+    .flood-bubble.warn {
+      background: linear-gradient(135deg, var(--warn), #fb923c);
+      box-shadow: 0 8px 24px rgba(255,122,69,0.5);
+    }
+
+    @keyframes floodBurst {
+      0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
+      8% { opacity: 1; }
+      25% { transform: translate(var(--tx-1), var(--ty-1)) scale(var(--scale-1)) rotate(var(--rot-1)); }
+      50% { transform: translate(var(--tx-2), var(--ty-2)) scale(var(--scale-2)) rotate(var(--rot-2)); }
+      75% { transform: translate(var(--tx-3), var(--ty-3)) scale(var(--scale-3)) rotate(var(--rot-3)); }
+      90% { opacity: 1; }
+      100% { transform: translate(var(--tx-4), var(--ty-4)) scale(0.6) rotate(var(--rot-4)); opacity: 0; }
+    }
+
+    @keyframes pulseRing {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+    }
+
+    @keyframes shockwave {
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.8; border-color: var(--accent); }
+      50% { border-color: var(--accent-2); }
+      100% { transform: translate(-50%, -50%) scale(15); opacity: 0; border-color: var(--warn); }
+    }
+
+    .flood-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 30%, var(--bg) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .flood-cta { text-align: center; margin-top: 1.5rem; }
+
+    @media (max-width: 640px) {
+      .flood-container { height: 220px; }
+      .flood-bubble { font-size: 0.75rem; padding: 0.5rem 0.8rem; max-width: 90%; }
+      .flood-container::before { width: 40px; height: 40px; }
+      .flood-container::after { width: 60px; height: 60px; }
+    }
+
+    /* Transition visualization - problem becomes solution */
+    .transition-section { margin: 3rem 0; position: relative; }
+    .transition-label { text-align: center; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+    .transition-container {
+      position: relative;
+      height: 380px;
+      overflow-y: auto;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(124,92,255,0.05), transparent);
+      border: 1px solid rgba(124,92,255,0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1rem;
+      gap: 0.5rem;
+      scroll-behavior: smooth;
+    }
+    .transition-bubble {
+      padding: 0.75rem 1rem;
+      border-radius: 18px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      max-width: 75%;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      word-wrap: break-word;
+      white-space: normal;
+      z-index: 2;
+    }
+    .transition-bubble.guest {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+      box-shadow: 0 4px 12px rgba(124,92,255,0.3);
+    }
+    .transition-bubble.bot {
+      background: var(--green);
+      color: #0a0a0f;
+      border-bottom-right-radius: 4px;
+      align-self: flex-end;
+      box-shadow: 0 4px 12px rgba(52,211,153,0.3);
+    }
+    .transition-bubble.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .transition-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, var(--bg) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .transition-cta { text-align: center; margin-top: 1.5rem; }
+    .phase-label {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 10;
+    }
+    .phase-label.visible {
+      opacity: 1;
+    }
+    .phase-label.guest {
+      color: var(--accent);
+      top: 1rem;
+      left: 2rem;
+      transform: none;
+    }
+    .phase-label.bot {
+      color: var(--green);
+      top: 1rem;
+      right: 2rem;
+      left: auto;
+      transform: none;
+    }
+    .phase-label.visible {
+      opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+      .transition-container {
+        height: 280px;
+        padding: 0.75rem;
+        gap: 0.4rem;
+      }
+      .transition-bubble {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.85rem;
+        max-width: 80%;
+      }
+      .phase-label.guest { left: 1rem; }
+      .phase-label.bot { right: 1rem; }
+    }
+  </style>
 </head>
 <body>
-<main>
-  <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
+  <main>
+    <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
 
-  <h1>Guests text.<br><span>You stop being on call.</span></h1>
+    <h1>Guests text.<br><span>You stop being on call.</span></h1>
 
-  <p class="lede">
-    Every 11pm gate-code text. Every "what's the wifi" at checkout. Every trash-day question.
-    You answer them all â€” from bed, from dinner, from the kids' soccer game.
-    <strong>Davenport Host Co.</strong> puts a local text line in front of it. Guests get answers in seconds.
-    You get your evenings back.
-  </p>
+    <!-- Lede removed for better fit -->
 
-  <div class="demo">
-    <div class="demo-header">
-      <span>Live demo â€” text the number</span>
-      <span class="phone">+1 (407) 555-0100</span>
-    </div>
-    <div class="chat" id="chat">
-      <div class="msg msg-bot">
-        <div class="bubble bubble-bot">Hey! You're at <strong>Sunset Villa</strong>. What do you need?</div>
+    <!-- Flood visualization - the problem -->
+    <section class="flood-section" aria-label="The problem: message overload">
+      <div class="flood-label">Is this what your phone looks like all times of the day?</div>
+      <div class="flood-container" id="floodContainer">
+        <div class="flood-overlay"></div>
+        <div class="flood-shockwave"></div>
+      </div>
+      <div class="flood-cta">
+        <a href="#pricing" class="btn btn-ghost" style="margin-left: 0.75rem;">See the plans</a>
+      </div>
+    </section>
+
+    <div class="pricing" id="pricing">
+      <div class="price-card">
+        <div class="price-tag">$299</div>
+        <div class="price-sub">one-time setup</div>
+        <h3>Setup</h3>
+        <ul>
+          <li>Build your property's answer library</li>
+          <li>Configure your dedicated text line</li>
+          <li>Test live with you before launch</li>
+          <li>Welcome card template for guests</li>
+        </ul>
+      </div>
+      <div class="price-card featured">
+        <div class="price-tag">$99</div>
+        <div class="price-sub">/month per property</div>
+        <h3>Host Package</h3>
+        <ul>
+          <li>24/7 guest text line (no bots guessing)</li>
+          <li>Escalation to you only when it matters</li>
+          <li>Monthly report: what guests actually asked</li>
+          <li>Edit answers anytime — no code, no redeploy</li>
+        </ul>
       </div>
     </div>
-    <div class="chat-input-area" style="display:flex; gap:0.5rem; margin-top:1rem;">
-      <input type="text" id="chatInput" placeholder="Type your message..." style="flex-grow:1; padding:0.65rem 0.8rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font:inherit;">
-      <button id="sendChat" style="padding:0.65rem 1rem; border-radius:10px; border:0; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer;">Send</button>
+
+    <div class="premium-services" id="premium" style="margin-top:4rem;">
+      <h2 style="text-align:center; margin-bottom:0.5rem;">Premium Concierge Add-ons</h2>
+      <p style="text-align:center; color:var(--muted); margin-bottom:2rem; max-width:40rem; margin-left:auto; margin-right:auto;">
+        Upgrade your guests' experience with AI-powered services that go beyond basic property info.
+      </p>
+      <div class="premium-grid" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem;">
+        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🌤️</div>
+          <h3>Live Weather & Alerts</h3>
+          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Real-time weather, storm alerts, hurricane tracking for your property</p>
+          <div style="font-weight:700; color:var(--accent);">$15/mo</div>
+        </div>
+        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎭</div>
+          <h3>Local Events & Dining</h3>
+          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Curated events, restaurant reservations, attraction tickets for guests</p>
+          <div style="font-weight:700; color:var(--accent);">$20/mo</div>
+        </div>
+        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🛒</div>
+          <h3>Grocery & Essentials Delivery</h3>
+          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Pre-stock fridge, toiletries, beach gear before guests arrive</p>
+          <div style="font-weight:700; color:var(--accent);">$25/mo</div>
+        </div>
+        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+          <div style="font-size:2.5rem; margin-bottom:0.5rem;">⭐</div>
+          <h3>Full Concierge</h3>
+          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">All of the above + 24/7 host backup, maintenance coordination</p>
+          <div style="font-weight:700; color:var(--accent);">$49/mo</div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="pricing">
-    <div class="price-card">
-      <div class="price-tag">$299</div>
-      <div class="price-sub">one-time setup</div>
-      <h3>Setup</h3>
-      <ul>
-        <li>Build your property's answer library</li>
-        <li>Configure your dedicated text line</li>
-        <li>Test live with you before launch</li>
-        <li>Welcome card template for guests</li>
-      </ul>
+    <!-- Transition visualization - problem becomes solution -->
+    <section class="transition-section" aria-label="The solution: automatic replies" id="solution">
+      <div class="transition-label">Watch the flood become automatic replies</div>
+      <div class="transition-container" id="transitionContainer">
+        <div class="phase-label guest" id="guestPhase">Guest questions</div>
+        <div class="phase-label bot" id="botPhase">Auto-replies</div>
+        <div class="transition-overlay"></div>
+        <!-- Animated chat flow -->
+        <div class="transition-bubble guest">Pool's on the lanai — press HEAT, set to 86. Takes ~1 hour.</div>
+        <div class="transition-bubble bot">Pool heater's on the lanai wall — press HEAT, set to 86. Takes ~1 hour to warm up. Reply STOP to opt out.</div>
+        <div class="transition-bubble guest">What's the WiFi password?</div>
+        <div class="transition-bubble bot">WiFi is "BeachBreeze2024". Reply HELP for help or STOP to opt out.</div>
+        <div class="transition-bubble guest">Trash day?</div>
+        <div class="transition-bubble bot">Trash pickup is Tuesday AM. Put bins out Monday night. Reply HELP for help.</div>
+        <div class="transition-bubble guest">Checkout time?</div>
+        <div class="transition-bubble bot">Checkout is 10 AM. Keys go back in the box by the front door.</div>
+      </div>
+      <div class="transition-cta">
+        <a href="#pricing" class="btn btn-primary">Get your text line →</a>
+        <a href="#demoChat" class="btn btn-ghost" style="margin-left: 0.75rem;">Try free chat</a>
+      </div>
+    </section>
+
+    <!-- Demo Chat Section -->
+    <div class="demo" id="demoChat">
+      <div class="demo-header">
+        <div>
+          <span class="demo-label">Live demo</span>
+          <span class="phone">+1 (407) 555-0100</span>
+        </div>
+        <span id="msgCounter" class="msg-counter">5 messages free</span>
+      </div>
+      <div class="chat" id="chat"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="Type your message…">
+        <button id="sendChat">Send</button>
+      </div>
+      <div id="packagePrompt" class="package-prompt">
+        <h3>Love the demo? Get your own property text line! 🎉</h3>
+        <p style="margin:0.5rem 0 1rem; opacity:0.9;">Unlimited messages, your own property KB, and premium add-ons available.</p>
+        <a href="#pricing" class="btn btn-primary" style="background:#fff; color:var(--accent);">View Packages</a>
+      </div>
     </div>
-    <div class="price-card featured">
-      <div class="price-tag">$99</div>
-      <div class="price-sub">/month per property</div>
-      <h3>Host Package</h3>
-      <ul>
-        <li>24/7 guest text line (no bots guessing)</li>
-        <li>Escalation to you only when it matters</li>
-        <li>Monthly report: what guests actually asked</li>
-        <li>Edit answers anytime â€” no code, no redeploy</li>
-      </ul>
+
+    <div class="cta">
+      <a href="#pricing" class="btn btn-primary">Start your setup</a>
+      <a href="mailto:hello@davenporthost.co" class="btn btn-ghost">Contact us</a>
     </div>
-  </div>
 
-  <div class="cta">
-    <a href="mailto:hello@davenporthost.co?subject=I%20want%20my%20evenings%20back&body=Hi%2C%0A%0AI%27d%20like%20to%20set%20up%20the%20text%20line%20for%20my%20property%20in%20Davenport.%0A%0AProperty%20name%3A%20%5Bname%5D%0AAddress%3A%20%5Baddress%5D%0AMy%20phone%3A%20%5Byour%20cell%5D" class="btn btn-primary">Get my text line</a>
-    <a href="#how" class="btn btn-ghost">How it works</a>
-  </div>
-
-  <div class="email-capture" style="text-align:center; margin-top:3rem;">
-    <h2>Get updates and early access!</h2>
-    <p style="color:var(--muted); margin-top:0.5rem;">Sign up to receive news and be notified when we launch in your area.</p>
-    <div style="display:flex; justify-content:center; gap:0.5rem; margin-top:1.5rem;">
-      <input type="email" id="emailInput" placeholder="Your email address" style="padding:0.75rem 1rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); width:300px; max-width:80%;">
-      <button id="subscribeBtn" style="padding:0.75rem 1.5rem; border-radius:10px; border:0; background:var(--green); color:#fff; font:inherit; font-weight:600; cursor:pointer;">Subscribe</button>
+    <div class="how">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>You onboard</h4>
+        <p>We build your property's KB — gate codes, WiFi, checkout, pool, trash, quiet hours.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Guests text</h4>
+        <p>They text the number on the fridge card. "SUNSET what's the gate code?" → instant answer.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>You're free</h4>
+        <p>Only the weird stuff reaches you. "AC making noise" → you get a text. Everything else is handled.</p>
+      </div>
     </div>
-    <p class="status" id="emailStatus" style="margin-top:1rem; font-size:0.9rem; color:var(--muted);"></p>
-  </div>
+  </main>
 
-  <div class="how" id="how">
-    <div class="step">
-      <div class="step-num">1</div>
-      <h4>We build it</h4>
-      <p>You tell us your gate code, wifi, trash day, HOA rules. We load it into your private text line.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <h4>Guests text</h4>
-      <p>They text the number on the fridge card. "SUNSET what's the gate code?" â†’ instant answer.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <h4>You're free</h4>
-      <p>Only the weird stuff reaches you. "AC making noise" â†’ you get a text. Everything else is handled.</p>
-    </div>
-  </div>
-</main>
+  <footer>
+    &copy; 2026 Davenport Host Co. · Davenport, Florida · <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
+    <br style="margin-top:1rem;">
+    <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
+    <span style="color:var(--border);">|</span>
+    <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
+  </footer>
 
-<footer>
-  &copy; 2026 Davenport Host Co. &middot; Davenport, Florida &middot; <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
-</footer>
+  <!-- Flood animation (runs independently, no module deps) -->
+  <script>
+    // Flood animation - create overwhelming message bubbles
+    const floodContainer = document.getElementById('floodContainer');
+    const floodMessages = [
+      "What's the gate code?",
+      "WiFi password?",
+      "Checkout time?",
+      "Where's the pool?",
+      "Trash day?",
+      "AC not working",
+      "Extra towels?",
+      "Beach chairs?",
+      "Restaurant recs?",
+      "Grocery delivery?",
+      "Hurricane shutters?",
+      "Parking rules?",
+      "Quiet hours?",
+      "Pet policy?",
+      "Late checkout?",
+      "Lost key?",
+      "TV not working?",
+      "Grill propane?",
+      "Ice machine?",
+      "Washer dryer?",
+      "What's the gate code??",
+      "WIFI PASSWORD PLEASE",
+      "CHECKOUT TIME???",
+      "Pool heater broken!",
+      "Trash pickup missed",
+    ];
 
-<script type="module">
-  import { sendMessageToAI, submitLead } from './api.js';
+    function createFloodBubble() {
+      if (!floodContainer) return;
+      const msg = floodMessages[Math.floor(Math.random() * floodMessages.length)];
+      const bubble = document.createElement('div');
 
-  const chat = document.getElementById('chat');
-  const chatInput = document.getElementById('chatInput');
-  const sendChatBtn = document.getElementById('sendChat');
+      // Three colors: main (purple), alt (cyan), warn (orange)
+      const colorRoll = Math.random();
+      const colorClass = colorRoll > 0.66 ? 'warn' : (colorRoll > 0.33 ? 'alt' : 'main');
+      bubble.className = 'flood-bubble ' + colorClass;
 
-  function addMsg(text, isGuest) {
-    const wrap = document.createElement('div');
-    wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
-    wrap.innerHTML = `<div class="bubble bubble-${isGuest ? 'guest' : 'bot'}">${text}</div>`;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-  }
+      bubble.textContent = msg;
 
-  // Initial bot message
-  addMsg("Hey! You're at <strong>Sunset Villa</strong>. What do you need?", false);
+      // Random base scale for size variation (0.6 to 1.3)
+      const baseScale = 0.6 + Math.random() * 0.7;
 
-  sendChatBtn.addEventListener('click', async () => {
-    const message = chatInput.value.trim();
-    if (!message) return;
+      // Radial burst: random angle and distance for each keyframe
+      const angle1 = Math.random() * Math.PI * 2;
+      const dist1 = 20 + Math.random() * 40;
+      const angle2 = angle1 + (Math.random() - 0.5) * Math.PI * 0.6;
+      const dist2 = 70 + Math.random() * 90;
+      const angle3 = angle2 + (Math.random() - 0.5) * Math.PI * 0.6;
+      const dist3 = 140 + Math.random() * 110;
+      const angle4 = angle3 + (Math.random() - 0.5) * Math.PI * 0.4;
+      const dist4 = 200 + Math.random() * 120;
 
-    addMsg(message, true);
-    chatInput.value = '';
-    sendChatBtn.disabled = true;
+      bubble.style.setProperty('--tx-1', Math.cos(angle1) * dist1 + 'px');
+      bubble.style.setProperty('--ty-1', Math.sin(angle1) * dist1 + 'px');
+      bubble.style.setProperty('--tx-2', Math.cos(angle2) * dist2 + 'px');
+      bubble.style.setProperty('--ty-2', Math.sin(angle2) * dist2 + 'px');
+      bubble.style.setProperty('--tx-3', Math.cos(angle3) * dist3 + 'px');
+      bubble.style.setProperty('--ty-3', Math.sin(angle3) * dist3 + 'px');
+      bubble.style.setProperty('--tx-4', Math.cos(angle4) * dist4 + 'px');
+      bubble.style.setProperty('--ty-4', Math.sin(angle4) * dist4 + 'px');
 
-    try {
-      const response = await sendMessageToAI(message);
-      addMsg(response.reply, false);
-    } catch (error) {
-      addMsg(`Error: ${error.message}`, false);
-    } finally {
-      sendChatBtn.disabled = false;
+      // Random rotation at each keyframe
+      bubble.style.setProperty('--rot-1', (Math.random() - 0.5) * 60 + 'deg');
+      bubble.style.setProperty('--rot-2', (Math.random() - 0.5) * 120 + 'deg');
+      bubble.style.setProperty('--rot-3', (Math.random() - 0.5) * 180 + 'deg');
+      bubble.style.setProperty('--rot-4', (Math.random() - 0.5) * 240 + 'deg');
+
+      // Scale variation per keyframe
+      bubble.style.setProperty('--scale-1', (baseScale * 0.8).toFixed(2));
+      bubble.style.setProperty('--scale-2', baseScale.toFixed(2));
+      bubble.style.setProperty('--scale-3', (baseScale * 1.1).toFixed(2));
+
+      // No initial delay - burst immediately
+      bubble.style.animationDelay = '0s';
+      // Vary animation duration (7-11s)
+      bubble.style.animationDuration = (7 + Math.random() * 4) + 's';
+
+      floodContainer.appendChild(bubble);
+      // Remove after animation
+      setTimeout(() => bubble.remove(), 12000);
     }
-  });
 
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      sendChatBtn.click();
-    }
-  });
-
-  const emailInput = document.getElementById('emailInput');
-  const subscribeBtn = document.getElementById('subscribeBtn');
-  const emailStatus = document.getElementById('emailStatus');
-
-  subscribeBtn.addEventListener('click', async () => {
-    const email = emailInput.value.trim();
-    if (!email) {
-      emailStatus.textContent = 'Please enter your email address.';
-      emailStatus.style.color = 'var(--warn)';
-      return;
+    // Immediate flood burst - no delay
+    for (let i = 0; i < 12; i++) {
+      setTimeout(createFloodBubble, i * 60);
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      emailStatus.textContent = 'Please enter a valid email address.';
-      emailStatus.style.color = 'var(--warn)';
-      return;
+    // Then steady stream
+    setInterval(createFloodBubble, 350);
+  </script>
+
+  <!-- Email capture & demo chat (module) -->
+  <script type="module">
+    import { sendMessageToAI, submitLead, PREMIUM_SERVICES } from './api.js';
+
+    // Email capture (exists on this page)
+    const emailInput = document.getElementById('emailInput');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+    const emailStatus = document.getElementById('emailStatus');
+
+    if (subscribeBtn && emailInput && emailStatus) {
+      subscribeBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+          emailStatus.textContent = 'Please enter your email address.';
+          emailStatus.style.color = 'var(--warn)';
+          return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          emailStatus.textContent = 'Please enter a valid email address.';
+          emailStatus.style.color = 'var(--warn)';
+          return;
+        }
+
+        emailStatus.textContent = 'Subscribing...';
+        emailStatus.style.color = 'var(--muted)';
+        subscribeBtn.disabled = true;
+
+        try {
+          const response = await submitLead(email);
+          if (response.success) {
+            emailStatus.textContent = 'Subscribed successfully!'
+            emailStatus.style.color = 'var(--green)';
+            emailInput.value = '';
+          } else {
+            emailStatus.textContent = 'Subscription failed. Please try again.';
+            emailStatus.style.color = 'var(--warn)';
+          }
+        } catch (error) {
+          emailStatus.textContent = `Error: ${error.message}`;
+          emailStatus.style.color = 'var(--warn)';
+        } finally {
+          subscribeBtn.disabled = false;
+        }
+      });
     }
 
-    emailStatus.textContent = 'Subscribing...';
-    emailStatus.style.color = 'var(--muted)';
-    subscribeBtn.disabled = true;
+    // Demo chat (only on solution page)
+    const chat = document.getElementById('chat');
+    if (chat) {
+      const chatInput = document.getElementById('chatInput');
+      const sendChatBtn = document.getElementById('sendChat');
+      const msgCounter = document.getElementById('msgCounter');
+      const packagePrompt = document.getElementById('packagePrompt');
 
-    try {
-      const response = await submitLead(email);
-      if (response.success) {
-        emailStatus.textContent = 'Subscribed successfully!';
-        emailStatus.style.color = 'var(--green)';
-        emailInput.value = '';
-      } else {
-        emailStatus.textContent = 'Subscription failed. Please try again.';
-        emailStatus.style.color = 'var(--warn)';
+      function addMsg(text, isGuest) {
+        const wrap = document.createElement('div');
+        wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble' + (isGuest ? ' bubble-guest' : ' bubble-bot');
+        bubble.textContent = text;
+        wrap.appendChild(bubble);
+        chat.appendChild(wrap);
+        chat.scrollTop = chat.scrollHeight;
       }
-    } catch (error) {
-      emailStatus.textContent = `Error: ${error.message}`;
-      emailStatus.style.color = 'var(--warn)';
-    } finally {
-      subscribeBtn.disabled = false;
+
+      // Initial bot message
+      addMsg("Hey there! Welcome to Sunset Villa! 👋 Happy to help with any questions about the property, WiFi, pool, parking, or anything else during your stay. What can I help you with?", false);
+      updateCounter(5);
+
+      function updateCounter(remaining) {
+        if (msgCounter) {
+          msgCounter.textContent = remaining + ' message' + (remaining === 1 ? '' : 's') + ' left';
+        }
+      }
+
+      function showPackageUpsell() {
+        if (packagePrompt) packagePrompt.style.display = 'block';
+        if (chatInput) chatInput.disabled = true;
+        if (sendChatBtn) sendChatBtn.disabled = true;
+      }
+
+      function showPremiumUpsell(name, price) {
+        const existing = document.getElementById('premiumUpsell');
+        if (existing) existing.remove();
+        const box = document.createElement('div');
+        box.id = 'premiumUpsell';
+        box.className = 'package-prompt';
+        box.innerHTML = `
+          <h3>⭐ ${name} — ${price}</h3>
+          <p style="margin:0.5rem 0 1rem; opacity:0.9;">This is a premium add-on. It's not live in the demo — the answers here are examples only. Once purchased it turns on real alerts, up-to-date weather, and live reservations.</p>
+          <a href="#premium" class="btn btn-primary" style="background:#fff; color:var(--accent);">See all add-ons</a>
+        `;
+        chat.appendChild(box);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      sendChatBtn.addEventListener('click', async () => {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        addMsg(message, true);
+        chatInput.value = '';
+        sendChatBtn.disabled = true;
+
+        try {
+          const response = await sendMessageToAI(message);
+
+          if (response.showPackage) {
+            addMsg(response.reply, false);
+            showPackageUpsell();
+          } else if (response.premium) {
+            addMsg(response.reply, false);
+            showPremiumUpsell(response.premium.name, response.premium.price);
+          } else {
+            addMsg(response.reply, false);
+            if (response.remaining !== undefined) {
+              updateCounter(response.remaining);
+            }
+          }
+        } catch (error) {
+          addMsg(`Error: ${error.message}`, false);
+        } finally {
+          sendChatBtn.disabled = false;
+        }
+      });
+
+      chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          sendChatBtn.click();
+        }
+      });
+
+      const emailInput = document.getElementById('emailInput');
+      const subscribeBtn = document.getElementById('subscribeBtn');
+      const emailStatus = document.getElementById('emailStatus');
+
+      if (subscribeBtn && emailInput && emailStatus) {
+        subscribeBtn.addEventListener('click', async () => {
+          const email = emailInput.value.trim();
+          if (!email) {
+            emailStatus.textContent = 'Please enter your email address.';
+            emailStatus.style.color = 'var(--warn)';
+            return;
+          }
+
+          const emailRegex = /^[^\s@]+@[^\s@]+[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            emailStatus.textContent = 'Please enter a valid email address.';
+            emailStatus.style.color = 'var(--warn)';
+            return;
+          }
+
+          emailStatus.textContent = 'Subscribing...';
+          emailStatus.style.color = 'var(--muted)';
+          subscribeBtn.disabled = true;
+
+          try {
+            const response = await submitLead(email);
+            if (response.success) {
+              emailStatus.textContent = 'Subscribed successfully!';
+              emailStatus.style.color = 'var(--green)';
+              emailInput.value = '';
+            } else {
+              emailStatus.textContent = 'Subscription failed. Please try again.';
+              emailStatus.style.color = 'var(--warn)';
+            }
+          } catch (error) {
+            emailStatus.textContent = `Error: ${error.message}`;
+            emailStatus.style.color = 'var(--warn)';
+          } finally {
+            subscribeBtn.disabled = false;
+          }
+        });
+      }
     }
-  });
-</script>
+  </script>
+
+  <!-- Combined page transition script -->
+  <script>
+    // Orchestrate flood → STOP → solution transition (FULLY AUTOMATIC - no clicking required)
+    const floodSection = document.querySelector('.flood-section');
+    const transitionSection = document.querySelector('.transition-section');
+    const pricingSection = document.getElementById('pricing');
+    const premiumSection = document.getElementById('premium');
+    const solutionSection = document.getElementById('solution');
+    const demoChatSection = document.getElementById('demoChat');
+    const ctaSection = document.querySelector('.cta');
+    const howSection = document.querySelector('.how');
+
+    // Hide all sections except flood initially
+    transitionSection.style.display = 'none';
+    pricingSection.style.display = 'none';
+    premiumSection.style.display = 'none';
+    solutionSection.style.display = 'none';
+    demoChatSection.style.display = 'none';
+    ctaSection.style.display = 'none';
+    howSection.style.display = 'none';
+
+    // Show flood section immediately
+    floodSection.style.display = 'block';
+
+    // After flood duration, show STOP THE FLOOD (automatic, no button needed)
+    setTimeout(() => {
+      // Fade out flood section smoothly
+      floodSection.classList.add('fade-out');
+
+      // Create and show STOP THE FLOOD overlay with typewriter body text
+      const stopOverlay = document.createElement('div');
+      stopOverlay.style.position = 'fixed';
+      stopOverlay.style.top = '0';
+      stopOverlay.style.left = '0';
+      stopOverlay.style.width = '100%';
+      stopOverlay.style.height = '100%';
+      stopOverlay.style.background = 'rgba(10,10,15,0.95)';
+      stopOverlay.style.display = 'flex';
+      stopOverlay.style.flexDirection = 'column';
+      stopOverlay.style.alignItems = 'center';
+      stopOverlay.style.justifyContent = 'center';
+      stopOverlay.style.zIndex = '1000';
+      stopOverlay.style.textAlign = 'center';
+      stopOverlay.className = 'stop-overlay';
+      stopOverlay.innerHTML = `
+        <div>
+          <h1>STOP THE FLOOD!!</h1>
+          <p id="stopTextContainer" style="font-size: 1.5rem; color: var(--text); max-width: 80%; line-height: 1.4; margin: 0 auto;">
+            <span id="stopTypewriter"></span>
+            <span id="stopCursor">|</span>
+          </p>
+        </div>
+      `;
+      document.body.appendChild(stopOverlay);
+
+      const stopText = 'Davenport Host Co. puts a local text line in front of the flood. You get your <span class="stop-grow">evenings back</span> — answers in <b class="stop-bold">seconds</b>.';
+      let stopIndex = 0;
+      const stopTypewriter = document.getElementById('stopTypewriter');
+      const stopCursor = document.getElementById('stopCursor');
+      stopCursor.style.display = 'none';
+      function typeStop() {
+        if (stopIndex < stopText.length) {
+          // Handle HTML tags - if we hit a <, skip to the closing >
+          if (stopText[stopIndex] === '<') {
+            const closeIdx = stopText.indexOf('>', stopIndex);
+            if (closeIdx !== -1) {
+              stopTypewriter.innerHTML += stopText.slice(stopIndex, closeIdx + 1);
+              stopIndex = closeIdx + 1;
+            }
+          } else {
+            stopTypewriter.innerHTML += stopText[stopIndex];
+            stopIndex++;
+          }
+          setTimeout(typeStop, Math.random() * 40 + 40); // real typing pace
+        } else {
+          stopTypewriter.innerHTML += ' ';
+          stopCursor.style.display = 'inline-block';
+          setTimeout(() => { stopTypewriter.innerHTML = stopTypewriter.innerHTML.slice(0, -1); stopCursor.style.display = 'none'; }, 800);
+        }
+      }
+      typeStop();
+
+      // Wait for typing to finish, then add read time before removing overlay
+      function waitForStopTypingFinish() {
+        return new Promise(resolve => {
+          const check = () => {
+            if (stopIndex >= stopText.length) {
+              resolve();
+            } else {
+              setTimeout(check, 100);
+            }
+          };
+          check();
+        });
+      }
+
+      waitForStopTypingFinish().then(() => {
+        // Give user time to read the finished message
+        setTimeout(() => {
+          // Remove overlay and show solution sections (FULLY AUTOMATIC)
+          stopOverlay.remove();
+
+          // Show all solution sections
+          transitionSection.style.display = 'block';
+          pricingSection.style.display = 'block';
+          premiumSection.style.display = 'block';
+          solutionSection.style.display = 'block';
+          demoChatSection.style.display = 'block';
+          ctaSection.style.display = 'block';
+          howSection.style.display = 'block';
+
+          // Scroll to solution section
+          solutionSection.scrollIntoView({ behavior: 'smooth' });
+
+          // Human-style chat flow: type guest question, wait, then show bot reply
+          const conversation = [
+            { sender: 'guest', text: "Hey, quick question — is the pool heated today?" },
+            { sender: 'bot', text: "Yes! The pool heater's on the lanai wall — press HEAT, set to 86. Takes about an hour to warm up. Reply STOP to opt out." },
+            { sender: 'guest', text: "Oh nice, thanks!" },
+            { sender: 'bot', text: "Anytime! WiFi is 'BeachBreeze2024' if you need it. Reply HELP for help." },
+            { sender: 'guest', text: "One more thing — what time is checkout?" },
+            { sender: 'bot', text: "Checkout is 10 AM. Just drop the keys back in the box by the front door." },
+            { sender: 'guest', text: "Got it, thanks so much!" },
+            { sender: 'bot', text: "Enjoy your stay! 🌴" }
+          ];
+
+          const container = document.getElementById('transitionContainer');
+          const guestPhase = document.getElementById('guestPhase');
+          const botPhase = document.getElementById('botPhase');
+          if (guestPhase) guestPhase.classList.add('visible');
+          if (botPhase) botPhase.classList.add('visible');
+
+          // Remove pre-written bubbles so we build the typed flow
+          const oldBubbles = container.querySelectorAll('.transition-bubble');
+          oldBubbles.forEach(b => b.remove());
+
+          // Play the conversation sequentially — wait for each bubble to finish typing
+          // before starting the next, so it reads like a real text thread.
+          let i = 0;
+
+          // Type a bubble character by character; returns a promise that resolves when typing is done
+          function typeBubble(bubble, text, sender) {
+            return new Promise(resolve => {
+              let charIndex = 0;
+              const typeChar = () => {
+                if (charIndex < text.length) {
+                  bubble.textContent += text[charIndex];
+                  charIndex++;
+                  const speed = sender === 'guest' ? Math.random() * 40 + 35 : Math.random() * 30 + 25;
+                  setTimeout(typeChar, speed);
+                } else {
+                  resolve();
+                }
+              };
+              typeChar();
+            });
+          }
+
+          function nextBubble() {
+            if (i >= conversation.length) return;
+            const pair = conversation[i];
+            const bubble = document.createElement('div');
+            bubble.className = 'transition-bubble ' + pair.sender + ' visible';
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+            i++;
+
+            typeBubble(bubble, pair.text, pair.sender).then(() => {
+              container.scrollTop = container.scrollHeight;
+              // Human pause before the next message — longer after a question, shorter after a reply
+              const pause = pair.sender === 'guest' ? 1800 : 1100;
+              setTimeout(nextBubble, pause);
+            });
+          }
+          nextBubble();
+        }, 3000); // 3 seconds to read the finished STOP message
+      });
+    }, 11000); // Flood duration: 11 seconds
+  </script>
 </body>
 </html>
