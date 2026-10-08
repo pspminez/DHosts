@@ -850,45 +850,81 @@ const ADMIN_HTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Davenport Host Co. — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0a0a0f; --surface:rgba(255,255,255,.03); --border:rgba(255,255,255,.08);
-          --text:#e8e8ed; --muted:#8b8b9a; --accent:#7c5cff; --warn:#ff7a45; }
+  :root { --bg:#0a1526; --card:#0f1e36; --surface:rgba(148,180,255,.05);
+          --border:rgba(148,180,255,.14); --text:#f2f6ff; --muted:#93a5c9;
+          --sun:#ff9e4a; --pool:#38e1c6; --pink:#ff5e8a; --gold:#ffd166;
+          --sunset:linear-gradient(96deg,#ffd166,#ff9e4a 45%,#ff5e8a); }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font:15px/1.6 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
-         max-width:60rem; margin:0 auto; padding:3rem 1.5rem 6rem; }
-  h1 { font-size:1.6rem; letter-spacing:-.02em; margin-bottom:.35rem; }
+  body { background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+         font:15px/1.6 "Bricolage Grotesque",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+         max-width:46rem; margin:0 auto; padding:2.5rem 1.5rem 7rem; }
+  body::before { content:""; position:fixed; top:-18rem; left:50%; translate:-50% 0;
+         width:46rem; height:46rem; pointer-events:none;
+         background:radial-gradient(circle,rgba(255,94,138,.12),transparent 60%); filter:blur(40px); }
+  .badge { display:inline-flex; align-items:center; gap:.5rem; padding:.3rem .8rem; margin-bottom:1rem;
+         border:1px solid var(--border); border-radius:999px; background:var(--surface);
+         font-size:.75rem; color:var(--muted); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--pool); box-shadow:0 0 10px var(--pool); }
+  h1 { font-size:1.7rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.3rem; }
   .sub { color:var(--muted); font-size:.9rem; margin-bottom:2rem; }
-  label { display:block; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em;
-          color:var(--muted); margin:1.25rem 0 .4rem; }
-  input, select, textarea { width:100%; padding:.65rem .8rem; border-radius:10px;
-          border:1px solid var(--border); background:var(--surface); color:var(--text);
-          font:inherit; }
-  input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:1px; }
-  textarea { min-height:5rem; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; }
-  button { margin-top:1.5rem; padding:.75rem 1.4rem; border-radius:10px; border:0;
-           background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
-  button.ghost { background:var(--surface); border:1px solid var(--border); color:var(--text); }
-  button.live { background:#4CAF50; /* Green */ }
+  label { display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin:1rem 0 .4rem; }
+  input, select, textarea { width:100%; padding:.6rem .8rem; border-radius:12px;
+         border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--pool); outline-offset:1px; }
+  textarea { min-height:4.5rem; resize:vertical; }
+  .card { border:1px solid var(--border); background:var(--card); border-radius:18px;
+         padding:1.4rem; margin-top:1.25rem; }
+  .card h2 { font-size:1.05rem; font-weight:700; }
+  .hint { font-size:.78rem; color:var(--muted); margin:.3rem 0 .2rem; }
+  .secret { border-color:rgba(255,158,74,.4); }
+  .secret h2 { color:var(--sun); }
   .row { display:flex; gap:.75rem; align-items:flex-end; }
   .row > * { flex:1; }
-  .card { border:1px solid var(--border); background:var(--surface); border-radius:14px;
-          padding:1.5rem; margin-top:1.5rem; }
-  .secret { border-color:rgba(255,122,69,.35); }
-  .secret label { color:var(--warn); }
-  .status { margin-top:1rem; font-size:.9rem; color:var(--muted); }
-  .hint { font-size:.8rem; color:var(--muted); margin-top:.4rem; }
+  .row button { flex:none; }
+  .entry { border:1px solid var(--border); border-radius:14px; padding:1rem;
+         margin-top:.9rem; background:var(--surface); }
+  .entry .top { display:grid; grid-template-columns:1fr 1fr auto; gap:.75rem; }
+  .entry textarea { margin-top:.75rem; }
+  .remove { width:2.1rem; height:2.1rem; padding:0; border-radius:10px; border:1px solid var(--border);
+         background:transparent; color:var(--muted); font:inherit; font-size:1rem; line-height:1;
+         cursor:pointer; }
+  .remove:hover { color:var(--pink); border-color:var(--pink); }
+  .add { width:100%; margin-top:.9rem; padding:.7rem; border-radius:12px; border:1px dashed var(--pool);
+         background:rgba(56,225,198,.05); color:var(--pool); font:inherit; font-weight:700; cursor:pointer; }
+  .add:hover { background:rgba(56,225,198,.12); }
+  button.primary { margin-top:1.5rem; padding:.75rem 1.4rem; border-radius:12px; border:0;
+         background:var(--sunset); color:#1c0b06; font:inherit; font-weight:700; cursor:pointer; }
+  button.primary.live { background:var(--pool); }
+  button.ghost { margin-top:1.5rem; padding:.75rem 1.3rem; border-radius:12px; border:1px solid var(--border);
+         background:transparent; color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
+  .status { margin-top:1rem; font-size:.85rem; color:var(--muted); min-height:1.2em; }
+  .savebar { position:fixed; bottom:0; left:0; right:0; border-top:1px solid var(--border);
+         background:rgba(10,21,38,.94); padding:.9rem 1.5rem; }
+  .savebar .inner { max-width:46rem; margin:0 auto; display:flex; gap:.75rem; align-items:center; }
+  .savebar button { margin-top:0; flex:none; }
+  .savebar .status { margin-top:0; flex:1; text-align:right; }
   .hidden { display:none; }
+  @media (max-width:560px) {
+    .entry .top { grid-template-columns:1fr; }
+    .savebar .inner { flex-wrap:wrap; }
+    .savebar .status { text-align:left; }
+  }
 </style>
 </head>
 <body>
-  <h1>Davenport Host Co.</h1>
-  <p class="sub">Property answer editor — changes go live immediately, no redeploy.</p>
+  <div class="badge"><span class="dot"></span> Davenport Host Co. admin</div>
+  <h1>Property editor</h1>
+  <p class="sub">Changes go live immediately — no redeploy, no code.</p>
 
-  <div id="login">
+  <div id="login" class="card">
     <label for="pw">Admin password</label>
     <div class="row">
-      <input id="pw" type="password" autocomplete="current-password">
-      <button onclick="unlock()">Unlock</button>
+      <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
+      <button class="primary" onclick="unlock()">Unlock</button>
     </div>
     <p class="status" id="loginStatus"></p>
   </div>
@@ -899,6 +935,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <p class="hint" id="propHint"></p>
 
     <div class="card">
+      <h2>Settings</h2>
       <label for="name">Property name</label>
       <input id="name">
       <label for="twilioNumber">Text line number (the guest-facing number, E.164)</label>
@@ -912,26 +949,31 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
 
     <div class="card secret">
-      <label for="secrets">Secrets — gate &amp; door codes</label>
-      <textarea id="secrets" spellcheck="false"></textarea>
-      <p class="hint">JSON. Never sent to the AI, never logged. Only released on an exact keyword match.</p>
+      <h2>Gate&amp; door codes</h2>
+      <p class="hint">Released only on an exact keyword match — never sent to the AI, never logged. Empty rows are skipped on save.</p>
+      <div id="secretsList"></div>
+      <button class="add" onclick="addSecret()">+ Add a code</button>
     </div>
 
     <div class="card">
-      <label for="answers">Answers</label>
-      <textarea id="answers" spellcheck="false" style="min-height:16rem"></textarea>
-      <p class="hint">JSON. One object per topic: <code>{"topic":"Trash","keywords":["trash"],"reply":"..."}</code></p>
+      <h2>Answers</h2>
+      <p class="hint">Canned replies matched by keyword — instant, and free. One row per topic. Empty rows are skipped on save.</p>
+      <div id="answersList"></div>
+      <button class="add" onclick="addAnswer()">+ Add an answer</button>
     </div>
 
-    <button id="saveButton" onclick="save()">Save &amp; go live</button>
-    <button class="ghost" onclick="loadSelected()">Reload</button>
-    <p class="status" id="saveStatus"></p>
+    <div class="savebar" id="savebar">
+      <div class="inner">
+        <button id="saveButton" class="primary" onclick="save()">Save&amp; go live</button>
+        <button class="ghost" onclick="loadSelected()">Reload</button>
+        <p class="status" id="saveStatus"></p>
+      </div>
+    </div>
   </div>
 
 <script>
 let password = "";
 let current = null;
-let dirty = false; // New flag to track unsaved changes
 
 const $ = (id) => document.getElementById(id);
 
@@ -944,13 +986,68 @@ function setButtonState(isDirty) {
     saveButton.textContent = "LIVE!";
     saveButton.classList.add("live");
   }
-  dirty = isDirty;
 }
 
-// Function to mark inputs as dirty
 function markDirty() {
   setButtonState(true);
-  $("saveStatus").textContent = ""; // Clear status when changes are made
+  $("saveStatus").textContent = "";
+}
+
+// Any typing anywhere in the editor marks the page dirty (rows included)
+$("editor").addEventListener("input", markDirty);
+
+function parseKeywords(str) {
+  return str.split(",").map((k) => k.trim()).filter((k) => k.length);
+}
+
+function removeButton(row) {
+  const rm = document.createElement("button");
+  rm.className = "remove";
+  rm.type = "button";
+  rm.title = "Remove";
+  rm.textContent = "×";
+  rm.onclick = () => { row.remove(); markDirty(); };
+  return rm;
+}
+
+function addSecret(keywords, reply) {
+  const row = document.createElement("div");
+  row.className = "entry";
+  const top = document.createElement("div");
+  top.className = "top";
+  const kw = document.createElement("input");
+  kw.className = "kw";
+  kw.placeholder = "Trigger words — gate, gate code";
+  kw.value = keywords || "";
+  const rp = document.createElement("input");
+  rp.className = "rp";
+  rp.placeholder = "Reply — Gate code is 4321, then press #";
+  rp.value = reply || "";
+  top.append(kw, rp, removeButton(row));
+  row.append(top);
+  $("secretsList").append(row);
+}
+
+function addAnswer(topic, keywords, reply) {
+  const row = document.createElement("div");
+  row.className = "entry";
+  const top = document.createElement("div");
+  top.className = "top";
+  const tp = document.createElement("input");
+  tp.className = "tp";
+  tp.placeholder = "Topic — Trash day";
+  tp.value = topic || "";
+  const kw = document.createElement("input");
+  kw.className = "kw";
+  kw.placeholder = "Keywords, comma separated — trash, garbage, bins";
+  kw.value = keywords || "";
+  top.append(tp, kw, removeButton(row));
+  const rp = document.createElement("textarea");
+  rp.className = "rp";
+  rp.placeholder = "Reply sent to the guest…";
+  rp.value = reply || "";
+  row.append(top, rp);
+  $("answersList").append(row);
 }
 
 async function api(path, options = {}) {
@@ -969,8 +1066,13 @@ async function unlock() {
     $("login").classList.add("hidden");
     $("editor").classList.remove("hidden");
     const select = $("prop");
-    select.innerHTML = data.properties.map((p) =>
-      \`<option value="\${p.id}">\${p.name || p.twilioNumber} (\${p.id})</option>\`).join("");
+    select.textContent = "";
+    data.properties.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = (p.name || p.twilioNumber) + " (" + p.id + ")";
+      select.append(opt);
+    });
     if (!data.properties.length) {
       $("propHint").textContent = "No properties yet. Import one with the command in bot/README.md.";
     }
@@ -990,33 +1092,39 @@ async function loadSelected() {
     $("hostPhone").value = current.hostPhone || "";
     $("rateLimitReply").value = current.rate_limit_reply || "";
     $("unknownReply").value = current.unknown_reply || "";
-    $("secrets").value = JSON.stringify(current.secrets || [], null, 2);
-    $("answers").value = JSON.stringify(current.answers || [], null, 2);
+
+    $("secretsList").textContent = "";
+    (current.secrets || []).forEach((s) => addSecret((s.keywords || []).join(", "), s.reply || ""));
+    if (!(current.secrets || []).length) addSecret();
+
+    $("answersList").textContent = "";
+    (current.answers || []).forEach((a) => addAnswer(a.topic || "", (a.keywords || []).join(", "), a.reply || ""));
+    if (!(current.answers || []).length) addAnswer();
+
     $("saveStatus").textContent = "";
-    setButtonState(false); // Reset button state on load
-
-    // Add change listeners to all relevant inputs
-    const inputs = document.querySelectorAll("#editor input, #editor textarea");
-    inputs.forEach(input => {
-      input.removeEventListener("input", markDirty); // Avoid duplicate listeners
-      input.addEventListener("input", markDirty);
-    });
-
+    setButtonState(false);
   } catch (err) {
     $("saveStatus").textContent = err.message;
   }
 }
 
+function collect(selector, mapRow) {
+  return Array.from(document.querySelectorAll(selector)).map(mapRow)
+    .filter((r) => r.keywords.length && r.reply);
+}
+
 async function save() {
   const id = $("prop").value;
-  let secrets, answers;
-  try {
-    secrets = JSON.parse($("secrets").value || "[]");
-    answers = JSON.parse($("answers").value || "[]");
-  } catch (err) {
-    $("saveStatus").textContent = "JSON error: " + err.message;
-    return;
-  }
+  if (!id) return;
+  const secrets = collect("#secretsList .entry", (row) => ({
+    keywords: parseKeywords(row.querySelector(".kw").value),
+    reply: row.querySelector(".rp").value.trim(),
+  }));
+  const answers = collect("#answersList .entry", (row) => ({
+    topic: row.querySelector(".tp").value.trim(),
+    keywords: parseKeywords(row.querySelector(".kw").value),
+    reply: row.querySelector(".rp").value.trim(),
+  }));
   try {
     await api("/admin/api/property?id=" + encodeURIComponent(id), {
       method: "PUT",
@@ -1031,11 +1139,13 @@ async function save() {
       }),
     });
     $("saveStatus").textContent = "Saved. Live now.";
-    setButtonState(false); // Mark as clean after successful save
+    setButtonState(false);
   } catch (err) {
     $("saveStatus").textContent = err.message;
   }
 }
+
+$("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
 </script>
 </body>
 </html>`;
