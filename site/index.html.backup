@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Davenport Host Co. — Stop Being On Call</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #e8e8ed;
+    --muted: #8b8b9a;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --green: #34d399;
+    --warn: #ff7a45;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: -20rem; left: 50%; translate: -50% 0;
+    width: 60rem; height: 60rem;
+    background: radial-gradient(circle, rgba(124, 92, 255, 0.18), transparent 60%);
+    filter: blur(40px);
+    pointer-events: none; z-index: 0;
+  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
+  .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1.75rem; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+  h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+  h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 3rem; }
+  .demo { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
+  .demo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; font-size: 0.85rem; color: var(--muted); }
+  .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #000; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
+  .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 24rem; overflow-y: auto; padding-right: 0.5rem; }
+  .msg { display: flex; gap: 0.75rem; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .msg-guest { flex-direction: row-reverse; }
+  .bubble { max-width: 75%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; }
+  .bubble-guest { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+  .msg-guest .bubble { background: var(--accent); color: #fff; border-radius: 18px; border-bottom-left-radius: 4px; }
+  .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+  .price-card { padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
+  .price-card:hover { transform: translateY(-4px); border-color: rgba(124, 92, 255, 0.4); }
+  .price-card.featured { border-color: var(--accent); background: rgba(124, 92, 255, 0.06); }
+  .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
+  .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
+  .price-card li::before { content: ""; }
+  .cta { text-align: center; margin-top: 2rem; }
+  .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124, 92, 255, 0.35); }
+  .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
+
+  /* Flood animation - overwhelming message bubbles */
+  .flood-section { margin: 3rem 0; position: relative; }
+  .flood-label { text-align: center; font-size: 0.85rem; color: var(--warn); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  .flood-container { position: relative; height: 300px; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at center, rgba(255,122,69,0.08), transparent 70%); border: 1px solid rgba(255,122,69,0.2); }
+
+  /* Pulsing center rings */
+  .flood-container::before,
+  .flood-container::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid transparent; pointer-events: none; z-index: 0; animation: pulseRing 3s ease-out infinite; }
+  .flood-container::before { width: 60px; height: 60px; border-color: rgba(124,92,255,0.5); animation-delay: 0s; }
+  .flood-container::after { width: 90px; height: 90px; border-color: rgba(34,211,238,0.4); animation-delay: 1.5s; }
+
+  /* Shockwave ring */
+  .flood-shockwave { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; pointer-events: none; z-index: 1; animation: shockwave 2s ease-out infinite; }
+
+  .flood-bubble { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 0.7rem 1.1rem; border-radius: 22px; line-height: 1.3; color: #fff; border-bottom-right-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); animation: floodBurst 10s ease-out infinite; opacity: 0; white-space: nowrap; max-width: 85%; font-weight: 500; z-index: 2; }
+  .flood-bubble.alt { background: linear-gradient(135deg, var(--accent-2), #06b6d4); box-shadow: 0 8px 24px rgba(34,211,238,0.5); }
+  .flood-bubble.main { background: linear-gradient(135deg, var(--accent), #a855f7); box-shadow: 0 8px 24px rgba(124,92,255,0.5); }
+  .flood-bubble.warn { background: linear-gradient(135deg, var(--warn), #fb923c); box-shadow: 0 8px 24px rgba(255,122,69,0.5); }
+
+  @keyframes floodBurst {
+    0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
+    8% { opacity: 1; }
+    25% { transform: translate(var(--tx-1), var(--ty-1)) scale(var(--scale-1)) rotate(var(--rot-1)); }
+    50% { transform: translate(var(--tx-2), var(--ty-2)) scale(var(--scale-2)) rotate(var(--rot-2)); }
+    75% { transform: translate(var(--tx-3), var(--ty-3)) scale(var(--scale-3)) rotate(var(--rot-3)); }
+    90% { opacity: 1; }
+    100% { transform: translate(var(--tx-4), var(--ty-4)) scale(0.6) rotate(var(--rot-4)); opacity: 0; }
+  }
+
+  @keyframes pulseRing {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+  }
+
+  @keyframes shockwave {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.8; border-color: var(--accent); }
+    50% { border-color: var(--accent-2); }
+    100% { transform: translate(-50%, -50%) scale(15); opacity: 0; border-color: var(--warn); }
+  }
+
+  .flood-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 30%, var(--bg) 100%); pointer-events: none; z-index: 1; }
+  .flood-cta { text-align: center; margin-top: 1.5rem; }
+
+  @media (max-width: 640px) {
+    .flood-container { height: 220px; }
+    .flood-bubble { font-size: 0.75rem; padding: 0.5rem 0.8rem; max-width: 90%; }
+    .flood-container::before { width: 40px; height: 40px; }
+    .flood-container::after { width: 60px; height: 60px; }
+  }
+  .step { text-align: center; padding: 1.5rem; }
+  .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
+  .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .step p { font-size: 0.85rem; color: var(--muted); }
+  footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
+  @media (max-width: 480px) {
+    .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
+
+  <h1>Guests text.<br><span>You stop being on call.</span></h1>
+
+  <p class="lede">
+    Every 11pm gate-code text. Every "what's the wifi" at check-in. Every trash-day question.
+    You answer them all — from bed, from dinner, from the kids' soccer game.
+    <strong>Davenport Host Co.</strong> puts a local text line in front of it. Guests get answers in seconds.
+    You get your evenings back.
+  </p>
+
+  <!-- Flood visualization - the problem -->
+  <section class="flood-section" aria-label="The problem: message overload">
+    <div class="flood-label">Is this what your phone looks like all times of the day?</div>
+    <div class="flood-container" id="floodContainer">
+      <div class="flood-overlay"></div>
+    </div>
+    <div class="flood-cta">
+      <a href="/index-solution.html" class="btn btn-primary">Stop the flood →</a>
+      <a href="#pricing" class="btn btn-ghost" style="margin-left: 0.75rem;">See the plans</a>
+    </div>
+  </section>
+
+  <div class="pricing" id="pricing">
+    <div class="price-card">
+      <div class="price-tag">$299</div>
+      <div class="price-sub">one-time setup</div>
+      <h3>Setup</h3>
+      <ul>
+        <li>Build your property's answer library</li>
+        <li>Configure your dedicated text line</li>
+        <li>Test live with you before launch</li>
+        <li>Welcome card template for guests</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="price-tag">$99</div>
+      <div class="price-sub">/month per property</div>
+      <h3>Host Package</h3>
+      <ul>
+        <li>24/7 guest text line (no bots guessing)</li>
+        <li>Escalation to you only when it matters</li>
+        <li>Monthly report: what guests actually asked</li>
+        <li>Edit answers anytime — no code, no redeploy</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="premium-services" id="premium" style="margin-top:4rem;">
+    <h2 style="text-align:center; margin-bottom:0.5rem;">Premium Concierge Add-ons</h2>
+    <p style="text-align:center; color:var(--muted); margin-bottom:2rem; max-width:40rem; margin-left:auto; margin-right:auto;">
+      Upgrade your guests' experience with AI-powered services that go beyond basic property info.
+    </p>
+    <div class="premium-grid" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem;">
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🌤️</div>
+        <h3>Live Weather & Alerts</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Real-time weather, storm alerts, hurricane tracking for your property</p>
+        <div style="font-weight:700; color:var(--accent);">$15/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎭</div>
+        <h3>Local Events & Dining</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Curated events, restaurant reservations, attraction tickets for guests</p>
+        <div style="font-weight:700; color:var(--accent);">$20/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🛒</div>
+        <h3>Grocery & Essentials Delivery</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Pre-stock fridge, toiletries, beach gear before guests arrive</p>
+        <div style="font-weight:700; color:var(--accent);">$25/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--accent); border-radius:16px; background:rgba(124,92,255,0.08); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">⭐</div>
+        <h3>Full Concierge</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">All of the above + 24/7 host backup, maintenance coordination</p>
+        <div style="font-weight:700; color:var(--accent);">$49/mo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta">
+    <a href="mailto:hello@davenporthost.co?subject=I%20want%20my%20evenings%20back&body=Hi%2C%0A%0AI%27d%20like%20to%20set%20up%20the%20text%20line%20for%20my%20property%20in%20Davenport.%0A%0AProperty%20name%3A%20%5Bname%5D%0AAddress%3A%20%5Baddress%5D%0AMy%20phone%3A%20%5Byour%20cell%5D" class="btn btn-primary">Get my text line</a>
+    <a href="#how" class="btn btn-ghost">How it works</a>
+  </div>
+
+  <div class="email-capture" style="text-align:center; margin-top:3rem;">
+    <h2>Get updates and early access!</h2>
+    <p style="color:var(--muted); margin-top:0.5rem;">Sign up to receive news and be notified when we launch in your area.</p>
+    <div style="display:flex; justify-content:center; gap:0.5rem; margin-top:1.5rem;">
+      <input type="email" id="emailInput" placeholder="Your email address" style="padding:0.75rem 1rem; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); width:300px; max-width:80%;">
+      <button id="subscribeBtn" style="padding:0.75rem 1.5rem; border-radius:10px; border:0; background:var(--green); color:#fff; font:inherit; font-weight:600; cursor:pointer;">Subscribe</button>
+    </div>
+    <p class="status" id="emailStatus" style="margin-top:1rem; font-size:0.9rem; color:var(--muted);"></p>
+  </div>
+
+  <div class="how" id="how">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>We build it</h4>
+      <p>You tell us your gate code, wifi, trash day, HOA rules. We load it into your private text line.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Guests text</h4>
+      <p>They text the number on the fridge card. "SUNSET what’s the gate code?" &rarr; instant answer.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>You're free</h4>
+      <p>Only the weird stuff reaches you. "AC making noise" &rarr; you get a text. Everything else is handled.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2026 Davenport Host Co. &middot; Davenport, Florida &middot; <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
+  <br style="margin-top:1rem;">
+  <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
+  <span style="color:var(--border);">|</span>
+  <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
+</footer>
+
+<!-- Flood animation (runs independently, no module deps) -->
+<script>
+  // Flood animation - create overwhelming message bubbles
+  const floodContainer = document.getElementById('floodContainer');
+  const floodMessages = [
+    "What's the gate code?",
+    "WiFi password?",
+    "Checkout time?",
+    "Where's the pool?",
+    "Trash day?",
+    "AC not working",
+    "Extra towels?",
+    "Beach chairs?",
+    "Restaurant recs?",
+    "Grocery delivery?",
+    "Hurricane shutters?",
+    "Parking rules?",
+    "Quiet hours?",
+    "Pet policy?",
+    "Late checkout?",
+    "Lost key?",
+    "TV not working?",
+    "Grill propane?",
+    "Ice machine?",
+    "Washer dryer?",
+    "What's the gate code??",
+    "WIFI PASSWORD PLEASE",
+    "CHECKOUT TIME???",
+    "Pool heater broken!",
+    "Trash pickup missed",
+  ];
+
+  function createFloodBubble() {
+    if (!floodContainer) return;
+    const msg = floodMessages[Math.floor(Math.random() * floodMessages.length)];
+    const bubble = document.createElement('div');
+
+    // Three colors: main (purple), alt (cyan), warn (orange)
+    const colorRoll = Math.random();
+    const colorClass = colorRoll > 0.66 ? 'warn' : (colorRoll > 0.33 ? 'alt' : 'main');
+    bubble.className = 'flood-bubble ' + colorClass;
+
+    bubble.textContent = msg;
+
+    // Random base scale for size variation (0.6 to 1.3)
+    const baseScale = 0.6 + Math.random() * 0.7;
+
+    // Radial burst: random angle and distance for each keyframe
+    const angle1 = Math.random() * Math.PI * 2;
+    const dist1 = 20 + Math.random() * 40;
+    const angle2 = angle1 + (Math.random() - 0.5) * Math.PI * 0.6;
+    const dist2 = 70 + Math.random() * 90;
+    const angle3 = angle2 + (Math.random() - 0.5) * Math.PI * 0.6;
+    const dist3 = 140 + Math.random() * 110;
+    const angle4 = angle3 + (Math.random() - 0.5) * Math.PI * 0.4;
+    const dist4 = 200 + Math.random() * 120;
+
+    bubble.style.setProperty('--tx-1', Math.cos(angle1) * dist1 + 'px');
+    bubble.style.setProperty('--ty-1', Math.sin(angle1) * dist1 + 'px');
+    bubble.style.setProperty('--tx-2', Math.cos(angle2) * dist2 + 'px');
+    bubble.style.setProperty('--ty-2', Math.sin(angle2) * dist2 + 'px');
+    bubble.style.setProperty('--tx-3', Math.cos(angle3) * dist3 + 'px');
+    bubble.style.setProperty('--ty-3', Math.sin(angle3) * dist3 + 'px');
+    bubble.style.setProperty('--tx-4', Math.cos(angle4) * dist4 + 'px');
+    bubble.style.setProperty('--ty-4', Math.sin(angle4) * dist4 + 'px');
+
+    // Random rotation at each keyframe
+    bubble.style.setProperty('--rot-1', (Math.random() - 0.5) * 60 + 'deg');
+    bubble.style.setProperty('--rot-2', (Math.random() - 0.5) * 120 + 'deg');
+    bubble.style.setProperty('--rot-3', (Math.random() - 0.5) * 180 + 'deg');
+    bubble.style.setProperty('--rot-4', (Math.random() - 0.5) * 240 + 'deg');
+
+    // Scale variation per keyframe
+    bubble.style.setProperty('--scale-1', (baseScale * 0.8).toFixed(2));
+    bubble.style.setProperty('--scale-2', baseScale.toFixed(2));
+    bubble.style.setProperty('--scale-3', (baseScale * 1.1).toFixed(2));
+
+    // No initial delay - burst immediately
+    bubble.style.animationDelay = '0s';
+    // Vary animation duration (7-11s)
+    bubble.style.animationDuration = (7 + Math.random() * 4) + 's';
+
+    floodContainer.appendChild(bubble);
+    // Remove after animation
+    setTimeout(() => bubble.remove(), 12000);
+  }
+
+  // Immediate flood burst - no delay
+  for (let i = 0; i < 12; i++) {
+    setTimeout(createFloodBubble, i * 80);
+  }
+
+  // Then steady stream
+  setInterval(createFloodBubble, 400);
+</script>
+
+<!-- Email capture & demo chat (module) -->
+<script type="module">
+  import { sendMessageToAI, submitLead, PREMIUM_SERVICES } from './api.js';
+
+  // Email capture (exists on this page)
+  const emailInput = document.getElementById('emailInput');
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  const emailStatus = document.getElementById('emailStatus');
+
+  if (subscribeBtn && emailInput && emailStatus) {
+    subscribeBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        emailStatus.textContent = 'Please enter your email address.';
+        emailStatus.style.color = 'var(--warn)';
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        emailStatus.textContent = 'Please enter a valid email address.';
+        emailStatus.style.color = 'var(--warn)';
+        return;
+      }
+
+      emailStatus.textContent = 'Subscribing...';
+      emailStatus.style.color = 'var(--muted)';
+      subscribeBtn.disabled = true;
+
+      try {
+        const response = await submitLead(email);
+        if (response.success) {
+          emailStatus.textContent = 'Subscribed successfully!';
+          emailStatus.style.color = 'var(--green)';
+          emailInput.value = '';
+        } else {
+          emailStatus.textContent = 'Subscription failed. Please try again.';
+          emailStatus.style.color = 'var(--warn)';
+        }
+      } catch (error) {
+        emailStatus.textContent = `Error: ${error.message}`;
+        emailStatus.style.color = 'var(--warn)';
+      } finally {
+        subscribeBtn.disabled = false;
+      }
+    });
+  }
+
+  // Demo chat (only on solution page)
+  const chat = document.getElementById('chat');
+  if (chat) {
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChat');
+    const msgCounter = document.getElementById('msgCounter');
+    const packagePrompt = document.getElementById('packagePrompt');
+
+    function addMsg(text, isGuest) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
+      wrap.innerHTML = `<div class="bubble bubble-${isGuest ? 'guest' : 'bot'}">${text}</div>`;
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Initial bot message
+    addMsg("Hey! You're at <strong>Sunset Villa</strong>. What do you need?", false);
+
+    function updateCounter(remaining) {
+      if (msgCounter) {
+        msgCounter.textContent = remaining > 0 ? `${remaining} messages left` : 'Demo limit reached';
+      }
+    }
+
+    function showPackageUpsell() {
+      if (packagePrompt) {
+        packagePrompt.style.display = 'block';
+        packagePrompt.scrollIntoView({ behavior: 'smooth' });
+      }
+      if (msgCounter) msgCounter.style.display = 'none';
+    }
+
+    sendChatBtn.addEventListener('click', async () => {
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      addMsg(message, true);
+      chatInput.value = '';
+      sendChatBtn.disabled = true;
+
+      try {
+        const response = await sendMessageToAI(message);
+
+        if (response.showPackage) {
+          addMsg(response.reply, false);
+          showPackageUpsell();
+        } else {
+          addMsg(response.reply, false);
+          if (response.remaining !== undefined) {
+            updateCounter(response.remaining);
+          }
+        }
+      } catch (error) {
+        addMsg(`Error: ${error.message}`, false);
+      } finally {
+        sendChatBtn.disabled = false;
+      }
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        sendChatBtn.click();
+      }
+    });
+  }
+</script>
+</body>
+</html>

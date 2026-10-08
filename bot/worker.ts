@@ -61,7 +61,7 @@ interface LogEntry {
   cost_estimate?: number;
 }
 
-const MODEL = "claude-3-haiku"; // Using a Haiku model for OpenRouter
+const MODEL = "anthropic/claude-haiku-4.5"; // Using Haiku 4.5 for OpenRouter
 
 // The AI must return a decision, not free prose. `escalate: true` means
 // "I don't know" — which is always an acceptable answer, and always better
@@ -80,6 +80,9 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/api/leads") {
       return handleLeadCapture(request, env);
+    }
+    if ((request.method === "POST" || request.method === "OPTIONS") && url.pathname === "/api/chat") {
+      return handleDemoChat(request, env);
     }
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       return handleAdmin(request, env, url);
@@ -102,11 +105,23 @@ async function handleInbound(request, env) {
 
   const from = String(form.get("From") || "");
   const to = String(form.get("To") || "");
+  const messagingServiceSid = String(form.get("MessagingServiceSid") || "");
   const body = String(form.get("Body") || "").trim();
+
+  // DEBUG: Log incoming fields
+  console.log("Inbound SMS - From:", from, "To:", to, "MessagingServiceSid:", messagingServiceSid, "Body:", body);
 
   if (!from || !to) return twimlError("Missing sender or recipient.");
 
-  const property = await loadProperty(env, to);
+  // Try lookup by MessagingServiceSid first (what Twilio actually sends when using Messaging Service)
+  let property = null;
+  if (messagingServiceSid) {
+    property = await loadProperty(env, messagingServiceSid);
+  }
+  // Fallback to "To" field
+  if (!property) {
+    property = await loadProperty(env, to);
+  }
   if (!property) {
     // A number nobody has been onboarded for. Don't guess; tell them to call.
     return twiml("This number isn't set up yet. Please contact your host directly.");
@@ -242,6 +257,172 @@ async function askClaude(env, property, guestText) {
 }
 
 /**
+ * Demo chat endpoint for landing page.
+ * Uses AI with a system prompt that allows friendly chat but steers back to rental tasks.
+ */
+async function handleDemoChat(request, env) {
+  // CORS headers for cross-origin requests from Pages
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Content-Type": "application/json"
+  };
+
+  // Handle preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting: 5 messages per IP per day
+  const clientIp = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "unknown";
+  const rateLimitKey = `demo_chat_rate:${clientIp}`;
+  const MAX_MESSAGES = 5;
+
+  let currentCount = 0;
+  try {
+    currentCount = Number((await env.PROPERTIES.get(rateLimitKey)) || 0);
+  } catch {
+    currentCount = 0;
+  }
+
+  if (currentCount >= MAX_MESSAGES) {
+    return new Response(JSON.stringify({
+      error: "Demo limit reached",
+      reply: "You've tried the demo! 🎉 To unlock unlimited access and get your own property text line, check out our packages below.",
+      showPackage: true
+    }), { headers: corsHeaders });
+  }
+
+  let messages;
+  try {
+    const body = await request.json();
+    messages = body.messages;
+    if (!messages || !Array.isArray(messages)) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400, headers: corsHeaders });
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400, headers: corsHeaders });
+  }
+
+  // Demo property context (SUNSET)
+  const demoProperty = {
+    name: "Sunset Villa",
+    answers: [
+      { topic: "Gate Code", reply: "Your gate code is 4821." },
+      { topic: "WiFi", reply: "Network: KIDS-SWIMMING-4\nPassword: SUNSHINE2026" },
+      { topic: "Checkout", reply: "Checkout is 10:00 AM. Late checkout is not available." },
+      { topic: "Trash", reply: "Trash pickup is Tuesday morning — bins go out Monday night." },
+      { topic: "Pool", reply: "The pool heater is the grey panel on the lanai wall. Press HEAT, then the up arrow to 86. It takes about 4 hours to warm up." },
+      { topic: "Parking", reply: "Two cars in the driveway. No street parking — HOA rule." },
+      { topic: "Pets", reply: "No pets, per the HOA." },
+      { topic: "Quiet Hours", reply: "Quiet hours are 10 PM to 8 AM." },
+      { topic: "Hurricane Prep", reply: "Storm shutters are in the garage, labeled by window." },
+    ],
+    unknownReply: "Good question — let me check with your host and get right back to you."
+  };
+
+  // Premium concierge add-ons. In the demo these are NOT live — the guest gets
+  // a clear explanation instead of a made-up answer. Once purchased they enable
+  // real alerts, live weather, reservations, etc.
+  const PREMIUM_SERVICES = [
+    { keywords: ["weather", "storm", "hurricane", "forecast", "rain", "temperature", "alerts", "wind"], name: "Live Weather & Alerts", price: "$15/mo" },
+    { keywords: ["events", "dining", "restaurant", "reservations", "things to do", "attraction", "tickets", "shows", "concerts"], name: "Local Events & Dining", price: "$20/mo" },
+    { keywords: ["grocery", "groceries", "essentials", "stock", "fridge", "delivery", "supplies", "beach gear"], name: "Grocery & Essentials Delivery", price: "$25/mo" },
+    { keywords: ["concierge", "24/7", "host backup", "maintenance", "personal assistant"], name: "Full Concierge", price: "$49/mo" },
+  ];
+
+  function detectPremium(message) {
+    const lower = message.toLowerCase();
+    for (const svc of PREMIUM_SERVICES) {
+      if (svc.keywords.some(k => lower.includes(k))) {
+        return svc;
+      }
+    }
+    return null;
+  }
+
+  // Check the latest user message for premium-service questions BEFORE calling AI
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+  if (lastUserMsg) {
+    const premium = detectPremium(lastUserMsg.content);
+    if (premium) {
+      const reply =
+        `That's a premium feature! ${premium.name} is a ${premium.price} add-on. ` +
+        `The answers in this demo are examples only — not real-time or accurate. ` +
+        `Once the add-on is purchased, it turns on live alerts, up-to-date weather, ` +
+        `and real reservations.`;
+      return new Response(JSON.stringify({
+        reply,
+        remaining: Math.max(0, MAX_MESSAGES - currentCount),
+        premium: { name: premium.name, price: premium.price }
+      }), { headers: corsHeaders });
+    }
+  }
+
+  const systemPrompt = [
+    `You are the friendly guest assistant for "${demoProperty.name}", a vacation rental in Davenport, Florida.`,
+    `Guests text you questions. Answer warmly and helpfully.`,
+    ``,
+    `RULES:`,
+    `- For questions about gate codes, WiFi, checkout, trash, pool, parking, pets, quiet hours, hurricane prep: answer from the property info below.`,
+    `- For general chat (how are you, local small talk, etc.): respond briefly and naturally, then gently steer back to what you can help with (rental amenities).`,
+    `- NEVER give out real-time weather, forecasts, storm alerts, restaurant reservations, event tickets, grocery deliveries, or 24/7 concierge help. These are premium paid add-ons and are not available in the demo. If a guest asks about them, say so plainly — this is a demo and those answers would be examples only, not real. Once purchased they turn on live alerts, up-to-date weather, and real reservations.`,
+    `- Never invent codes, passwords, or rules. If unsure, say you'll check with the host.`,
+    `- Keep responses under 300 characters. No markdown, no emoji unless the guest uses them first.`,
+    `- You represent the host (Richard Harrell / Davenport Host Co.).`,
+    ``,
+    `PROPERTY INFORMATION:`,
+    JSON.stringify(demoProperty.answers, null, 2),
+  ].join("\n");
+
+  const apiMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages.slice(-8) // Keep last 8 messages for context
+  ];
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://davenporthost.co",
+        "X-Title": "Davenport Host Co. Demo Chat",
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-haiku-4.5",
+        messages: apiMessages,
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenRouter API error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: `AI error: ${response.status} - ${errorText}` }), { status: 503, headers: corsHeaders });
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+
+    const newCount = currentCount + 1;
+    await env.PROPERTIES.put(rateLimitKey, String(newCount), { expirationTtl: 86400 }); // 24 hours
+
+    return new Response(JSON.stringify({
+      reply: aiResponse,
+      remaining: Math.max(0, MAX_MESSAGES - newCount)
+    }), {
+      headers: corsHeaders
+    });
+  } catch (err) {
+    console.error("Demo chat error:", err?.message || err);
+    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: corsHeaders });
+  }
+}
+
+/**
  * THE SECURITY BOUNDARY. Everything the model is allowed to see.
  * Secrets are dropped entirely — not masked, dropped, so there is nothing to
  * leak and nothing to talk the model out of.
@@ -362,7 +543,7 @@ async function loadProperty(env: Env, twilioNumber: string) {
       const { results: hostResults } = await env.DB.prepare(
         "SELECT * FROM hosts WHERE id = ?1"
       )
-        .bind(property.host_id)
+        .bind(property.hostId)
         .all();
       if (hostResults && hostResults.length > 0) {
         property.hostPhone = hostResults[0].phone;
@@ -448,145 +629,146 @@ async function verifyTwilioSignature(request, form, env) {
   return diff === 0;
 }
 
-/* ------------------------------------------------------------------ *\n * Public API\n * ------------------------------------------------------------------ */\n\nasync function handleLeadCapture(request: Request, env: Env) {\n  let body;\n  try {\n    body = await request.json();\n  } catch {\n    return json({ error: \"Invalid JSON.\" }, 400);\n  }\n\n  const email = body.email;\n\n  if (!email || typeof email !== \'string\' || !/^[^\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n    return json({ error: \"Valid email is required.\" }, 400);\n  }\n\n  try {\n    await env.DB.prepare(\n      \"INSERT INTO leads (email) VALUES (?1)\"\n    ).bind(email).run();\n    return json({ success: true }, 201);\n  } catch (err) {\n    if (err.message && err.message.includes(\"UNIQUE constraint failed\")) {\n      return json({ error: \"Email already subscribed.\" }, 409);\n    }\n    console.error(\"Lead capture failed:\", err?.message || err);\n    return json({ error: \"Internal server error.\" }, 500);\n  }\n}\n\n/* ------------------------------------------------------------------ *\n * Admin API — lets the owner edit answers without touching code\n * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * Public API
+ * ------------------------------------------------------------------ */
+async function handleLeadCapture(request: Request, env: Env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid JSON." }, 400);
+  }
+
+  const email = body.email;
+
+  if (!email || typeof email !== 'string' || !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+    return json({ error: "Valid email is required." }, 400);
+  }
+
+  try {
+    await env.DB.prepare(
+      "INSERT INTO leads (email) VALUES (?1)"
+    ).bind(email).run();
+    return json({ success: true }, 201);
+  } catch (err) {
+    if (err.message && err.message.includes("UNIQUE constraint failed")) {
+      return json({ error: "Email already subscribed." }, 409);
+    }
+    console.error("Lead capture failed:", err?.message || err);
+    return json({ error: "Internal server error." }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Admin page + API
+ * ------------------------------------------------------------------ */
 
 async function handleAdmin(request, env, url) {
-  const adminPassword = env.ADMIN_PASSWORD || "TempAdmin123!"; // TEMPORARY: Hardcoded password to bypass secret issue
-  if (!env.ADMIN_PASSWORD) {
-    console.warn("ADMIN_PASSWORD is using hardcoded temporary value. Please set the secret properly when possible!");
+  // Helper for JSON responses with CORS
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Content-Type": "application/json"
+  };
+
+  // Handle preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
-  if (url.pathname === "/admin") {
-    return new Response(ADMIN_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  // Serve the admin HTML page
+  if (url.pathname === "/admin" || url.pathname === "/admin/") {
+    // Check password for admin page access
+    const auth = request.headers.get("Authorization");
+    const expectedPassword = env.ADMIN_PASSWORD;
+
+    if (expectedPassword) {
+      // For browser access, check cookie or basic auth
+      const cookie = request.headers.get("Cookie") || "";
+      const hasValidCookie = cookie.includes(`admin_auth=${btoa(expectedPassword)}`);
+      const hasValidBasicAuth = auth && auth.startsWith("Basic ") && atob(auth.slice(6)) === `admin:${expectedPassword}`;
+
+      if (!hasValidCookie && !hasValidBasicAuth) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: { "WWW-Authenticate": "Basic realm=\"Admin\"" }
+        });
+      }
+    }
+
+    return new Response(ADMIN_HTML, {
+      headers: { "Content-Type": "text/html; charset=utf-8" }
+    });
   }
 
-  const supplied = request.headers.get("x-admin-password") || url.searchParams.get("pw") || "";
-
-  if (!timingSafeEqual(supplied, adminPassword)) {
-    return json({ error: "Wrong password." }, 401);
-  }
-
-  const id = url.searchParams.get("id");
-
+  // Admin API: List properties
   if (url.pathname === "/admin/api/properties" && request.method === "GET") {
-    const { results } = await env.DB.prepare(
-      "SELECT p.id, p.display_name as name, p.twilio_number, h.phone as hostPhone FROM properties p JOIN hosts h ON p.host_id = h.id"
-    ).all();
-    const properties = results.map((r) => ({
-      id: r.id,
-      name: r.name,
-      twilioNumber: r.twilio_number,
-      hostPhone: r.hostPhone,
-    }));
-    return json({ properties });
-  }
-
-  if (url.pathname === "/admin/api/property" && request.method === "GET") {
-    if (!id) return json({ error: "Missing id." }, 400);
-
-    const { results } = await env.DB.prepare(
-      "SELECT p.id, p.display_name as name, p.twilio_number as twilioNumber, p.rate_limit_reply as rateLimitReply, p.unknown_reply as unknownReply, h.phone as hostPhone FROM properties p JOIN hosts h ON p.host_id = h.id WHERE p.id = ?1"
-    )
-      .bind(id)
-      .all();
-    const property = results && results.length > 0 ? results[0] : null;
-    return property ? json(property) : json({ error: "Not found." }, 404);
-  }
-
-  if (url.pathname === "/admin/api/escalations" && request.method === "GET") {
-    const { results } = await env.DB.prepare("SELECT * FROM escalations ORDER BY created_at DESC").all();
-    return json({ escalations: results });
-  }
-
-  if (url.pathname === "/admin/api/hosts" && request.method === "GET") {
-    const { results } = await env.DB.prepare("SELECT * FROM hosts").all();
-    return json({ hosts: results });
-  }
-
-  if (url.pathname === "/admin/api/property" && request.method === "PUT") {
-    if (!id) return json({ error: "Missing id." }, 400);
-    let body;
     try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Invalid JSON." }, 400);
+      const { results } = await env.DB.prepare(
+        "SELECT id, display_name as name, host_id as hostId, twilio_number as twilioNumber, active FROM properties WHERE active = 1 ORDER BY id"
+      ).all();
+      return new Response(JSON.stringify({ properties: results || [] }), { headers: corsHeaders });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err?.message || "Failed to load properties" }), { status: 500, headers: corsHeaders });
     }
-    if (!body.twilioNumber) return json({ error: "twilioNumber is required." }, 400);
-
-    const { results: existingPropertyResults } = await env.DB.prepare(
-      "SELECT * FROM properties WHERE id = ?1"
-    )
-      .bind(id)
-      .all();
-    const existingProperty = existingPropertyResults && existingPropertyResults.length > 0 ? existingPropertyResults[0] : null;
-
-    if (!existingProperty) return json({ error: "Not found." }, 404);
-
-    // Update the properties table
-    await env.DB.prepare(
-      "UPDATE properties SET name = ?1, twilio_number = ?2, rate_limit_reply = ?3, unknown_reply = ?4 WHERE id = ?5"
-    ).bind(
-      body.name || existingProperty.name,
-      body.twilioNumber,
-      body.rateLimitReply || existingProperty.rate_limit_reply,
-      body.unknownReply || existingProperty.unknown_reply,
-      id
-    ).run();
-
-    // Update the host's phone number if provided
-    if (body.hostPhone) {
-      await env.DB.prepare(
-        "UPDATE hosts SET phone = ?1 WHERE id = ?2"
-      ).bind(
-        body.hostPhone,
-        existingProperty.host_id
-      ).run();
-    }
-
-    // KV will still store secrets and answers for now, as per the plan
-    // Load secrets and answers from KV for now (can be moved to D1 later if structured)
-    const kvProperty = await env.PROPERTIES.get(`prop:${id}`, "json");
-    if (kvProperty) {
-      kvProperty.secrets = Array.isArray(body.secrets) ? body.secrets : kvProperty.secrets;
-      kvProperty.answers = Array.isArray(body.answers) ? body.answers : kvProperty.answers;
-      await env.PROPERTIES.put(`prop:${id}`, JSON.stringify(kvProperty));
-    } else {
-        // If no existing KV entry, create one
-        await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({
-            id: id,
-            secrets: Array.isArray(body.secrets) ? body.secrets : [],
-            answers: Array.isArray(body.answers) ? body.answers : [],
-        }));
-    }
-
-    // Refetch the updated property to return the latest state
-    const { results: updatedPropertyResults } = await env.DB.prepare(
-      "SELECT p.id, p.name, p.twilio_number as twilioNumber, p.rate_limit_reply as rateLimitReply, p.unknown_reply as unknownReply, h.phone as hostPhone FROM properties p JOIN hosts h ON p.host_id = h.id WHERE p.id = ?1"
-    )
-      .bind(id)
-      .all();
-    const updatedProperty = updatedPropertyResults && updatedPropertyResults.length > 0 ? updatedPropertyResults[0] : null;
-
-
-    return json({ ok: true, property: updatedProperty });
   }
 
-  return json({ error: "Not found." }, 404);
-}
+  // Admin API: Get single property
+  if (url.pathname === "/admin/api/property" && request.method === "GET") {
+    const id = url.searchParams.get("id");
+    if (!id) return new Response(JSON.stringify({ error: "Property ID required" }), { status: 400, headers: corsHeaders });
 
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj, null, 2), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+    try {
+      const { results } = await env.DB.prepare(
+        "SELECT * FROM properties WHERE id = ?1"
+      ).bind(id).all();
 
-function timingSafeEqual(a, b) {
-  if (typeof a !== "string" || typeof b !== "string") return false;
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+      if (!results || results.length === 0) {
+        return new Response(JSON.stringify({ error: "Property not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      const property = results[0];
+
+      // Load secrets/answers from KV
+      const kvProperty = await env.PROPERTIES.get(`prop:${property.id}`, "json");
+      if (kvProperty) {
+        property.secrets = kvProperty.secrets;
+        property.answers = kvProperty.answers;
+      }
+
+      return new Response(JSON.stringify(property), { headers: corsHeaders });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err?.message || "Failed to load property" }), { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // Admin API: Save property
+  if (url.pathname === "/admin/api/property" && request.method === "PUT") {
+    try {
+      const body = await request.json();
+      const { id, name, twilioNumber, hostPhone, rateLimitReply, unknownReply, secrets, answers } = body;
+
+      if (!id) return new Response(JSON.stringify({ error: "Property ID required" }), { status: 400, headers: corsHeaders });
+
+      // Update D1
+      await env.DB.prepare(
+        "UPDATE properties SET display_name = ?1, twilio_number = ?2, host_phone = ?3, rate_limit_reply = ?4, unknown_reply = ?5, updated_at = datetime('now') WHERE id = ?6"
+      ).bind(name, twilioNumber, hostPhone, rateLimitReply, unknownReply, id).run();
+
+      // Update KV
+      if (secrets || answers) {
+        await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({ secrets: secrets || [], answers: answers || [] }));
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err?.message || "Failed to save property" }), { status: 500, headers: corsHeaders });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: corsHeaders });
 }
 
 /* ------------------------------------------------------------------ *

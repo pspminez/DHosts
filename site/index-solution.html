@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Davenport Host Co. — Stop Being On Call</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(255, 255, 255, 0.03);
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #e8e8ed;
+    --muted: #8b8b9a;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --green: #34d399;
+    --warn: #ff7a45;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: -20rem; left: 50%; translate: -50% 0;
+    width: 60rem; height: 60rem;
+    background: radial-gradient(circle, rgba(124, 92, 255, 0.18), transparent 60%);
+    filter: blur(40px);
+    pointer-events: none; z-index: 0;
+  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 5rem 1.5rem 4rem; }
+  .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1.75rem; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+  h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+  h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 1.25rem; }
+  .pricing { display: flex; gap: 1.5rem; margin-bottom: 3rem; width: 100%; }
+.price-card { flex: 1 1 0; min-width: 0; }
+.pricing .price-card ul { min-width: 0; word-break: break-word; }
+  .price-card { padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
+  .price-card:hover { transform: translateY(-4px); border-color: rgba(124, 92, 255, 0.4); }
+  .price-card.featured { border-color: var(--accent); background: rgba(124, 92, 255, 0.06); }
+  .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
+  .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
+  .price-card li::before { content: ""; }
+  .cta { text-align: center; margin-top: 2rem; }
+.demo { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 1.5rem; }
+.demo-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.demo-header .phone { color: var(--accent); font-weight: 600; }
+.chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 28rem; overflow-y: auto; }
+.msg { display: flex; }
+.msg-guest { justify-content: flex-end; }
+.msg-bot { justify-content: flex-start; }
+.bubble { max-width: 80%; padding: 0.7rem 0.95rem; border-radius: 16px; font-size: 0.95rem; line-height: 1.45; }
+.bubble-guest { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; border-bottom-right-radius: 4px; }
+.bubble-bot { background: rgba(255,255,255,0.06); color: var(--text); border-bottom-left-radius: 4px; }
+.chat-input-area { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.chat-input-area input { flex: 1; min-width: 0; padding: 0.65rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text); font: inherit; }
+.chat-input-area input:focus { outline: none; border-color: var(--accent); }
+.chat-input-area button { padding: 0.65rem 1.25rem; border-radius: 10px; border: 0; background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; font: inherit; font-weight: 600; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.chat-input-area button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,92,255,0.35); }
+.chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124, 92, 255, 0.35); }
+  .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
+  .step { text-align: center; padding: 1.5rem; }
+  .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
+  .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .step p { font-size: 0.85rem; color: var(--muted); }
+  footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
+  @media (max-width: 480px) {
+    .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
+  }
+
+  /* Transition animation - chat-style conversation flow */
+  .transition-section { margin: 3rem 0; position: relative; }
+  .transition-label { text-align: center; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  .transition-container { position: relative; height: 380px; overflow: hidden; border-radius: 16px; background: linear-gradient(180deg, rgba(124,92,255,0.05), transparent); border: 1px solid rgba(124,92,255,0.2); display: flex; flex-direction: column; justify-content: flex-end; padding: 1rem; gap: 0.5rem; }
+  .transition-bubble { padding: 0.75rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; max-width: 75%; font-weight: 500; opacity: 0; transform: translateY(20px); transition: opacity 0.4s ease, transform 0.4s ease; word-wrap: break-word; white-space: normal; z-index: 2; }
+  .transition-bubble.guest { background: var(--accent); color: #fff; border-bottom-left-radius: 4px; align-self: flex-start; box-shadow: 0 4px 12px rgba(124,92,255,0.3); }
+  .transition-bubble.bot { background: var(--green); color: #0a0a0f; border-bottom-right-radius: 4px; align-self: flex-end; box-shadow: 0 4px 12px rgba(52,211,153,0.3); }
+  .transition-bubble.visible { opacity: 1; transform: translateY(0); }
+  .transition-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, var(--bg) 100%); pointer-events: none; z-index: 1; }
+  .transition-cta { text-align: center; margin-top: 1.5rem; }
+  .phase-label { position: absolute; left: 50%; transform: translateX(-50%); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0; transition: opacity 0.5s; z-index: 10; }
+  .phase-label.guest { color: var(--accent); top: 1rem; left: 2rem; transform: none; }
+  .phase-label.bot { color: var(--green); top: 1rem; right: 2rem; left: auto; transform: none; }
+  .phase-label.visible { opacity: 1; }
+  @media (max-width: 640px) {
+    .transition-container { height: 280px; padding: 0.75rem; gap: 0.4rem; }
+    .transition-bubble { font-size: 0.8rem; padding: 0.6rem 0.85rem; max-width: 80%; }
+    .phase-label.guest { left: 1rem; }
+    .phase-label.bot { right: 1rem; }
+    .pricing { flex-wrap: wrap; }
+    .premium-grid { flex-wrap: wrap; }
+.premium-card { min-width: 0; }
+.premium-grid > .premium-card { flex: 1 1 0; }
+.premium-card h3 { font-size: 1rem; }
+.premium-card p { font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
+
+  <h1>Guests text.<br><span>You stop being on call.</span></h1>
+
+  <p class="lede">
+    Every 11pm gate-code text. Every "what's the wifi" at check-in. Every trash-day question.
+    You answer them all — from bed, from dinner, from the kids' soccer game.
+    <strong>Davenport Host Co.</strong> puts a local text line in front of it. Guests get answers in seconds.
+    You get your evenings back.
+  </p>
+
+  <!-- Transition visualization - problem becomes solution -->
+  <section class="transition-section" aria-label="The solution: automatic replies">
+    <div class="transition-label">Watch the flood become automatic replies</div>
+    <div class="transition-container" id="transitionContainer">
+      <div class="phase-label guest" id="guestPhase">Guest questions</div>
+      <div class="phase-label bot" id="botPhase">Auto-replies</div>
+      <div class="transition-overlay"></div>
+    </div>
+    <div class="transition-cta">
+      <a href="#pricing" class="btn btn-primary">Get your text line →</a>
+      <a href="#demoChat" class="btn btn-ghost" style="margin-left: 0.75rem;">Try free chat</a>
+    </div>
+  </section>
+
+  <div class="pricing" id="pricing">
+    <div class="price-card">
+      <div class="price-tag">$299</div>
+      <div class="price-sub">one-time setup</div>
+      <h3>Setup</h3>
+      <ul>
+        <li>Build your property's answer library</li>
+        <li>Configure your dedicated text line</li>
+        <li>Test live with you before launch</li>
+        <li>Welcome card template for guests</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="price-tag">$99</div>
+      <div class="price-sub">/month per property</div>
+      <h3>Host Package</h3>
+      <ul>
+        <li>24/7 guest text line (no bots guessing)</li>
+        <li>Escalation to you only when it matters</li>
+        <li>Monthly report: what guests actually asked</li>
+        <li>Edit answers anytime — no code, no redeploy</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="premium-services" id="premium" style="margin-top:4rem;">
+    <h2 style="text-align:center; margin-bottom:0.5rem;">Premium Concierge Add-ons</h2>
+    <p style="text-align:center; color:var(--muted); margin-bottom:2rem; max-width:40rem; margin-left:auto; margin-right:auto;">
+      Upgrade your guests' experience with AI-powered services that go beyond basic property info.
+    </p>
+    <div class="premium-grid" style="display:flex; gap:1rem; width:100%;">
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🌤️</div>
+        <h3>Live Weather & Alerts</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Real-time weather, storm alerts, hurricane tracking for your property</p>
+        <div style="font-weight:700; color:var(--accent);">$15/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎭</div>
+        <h3>Local Events & Dining</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Curated events, restaurant reservations, attraction tickets for guests</p>
+        <div style="font-weight:700; color:var(--accent);">$20/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">🛒</div>
+        <h3>Grocery & Essentials Delivery</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Pre-stock fridge, toiletries, beach gear before guests arrive</p>
+        <div style="font-weight:700; color:var(--accent);">$25/mo</div>
+      </div>
+      <div class="premium-card" style="padding:1.5rem; border:1px solid var(--accent); border-radius:16px; background:rgba(124,92,255,0.08); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">⭐</div>
+        <h3>Full Concierge</h3>
+        <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">All of the above + 24/7 host backup, maintenance coordination</p>
+        <div style="font-weight:700; color:var(--accent);">$49/mo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo Chat Section -->
+  <div class="demo" id="demoChat" style="margin-top:6rem;">
+    <div class="demo-header">
+      <span>Live demo — text the number</span>
+      <span class="phone">+1 (407) 555-0100</span>
+      <span id="msgCounter" class="msg-counter" style="font-size:0.75rem; color:var(--muted);">5 messages free</span>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="chat-input-area">
+      <input type="text" id="chatInput" placeholder="Type your message...">
+      <button id="sendChat">Send</button>
+    </div>
+    <div id="packagePrompt" class="package-prompt" style="display:none; margin-top:1rem; padding:1rem; background:linear-gradient(135deg, var(--accent), var(--accent-2)); border-radius:12px; color:#fff; text-align:center;">
+      <h3>Love the demo? Get your own property text line! 🎉</h3>
+      <p style="margin:0.5rem 0 1rem; opacity:0.9;">Unlimited messages, your own property KB, and premium add-ons available.</p>
+      <a href="#pricing" class="btn btn-primary" style="background:#fff; color:var(--accent);">View Packages</a>
+    </div>
+  </div>
+
+  <div class="cta">
+    <a href="#pricing" class="btn btn-primary">Start your setup</a>
+    <a href="mailto:hello@davenporthost.co" class="btn btn-ghost">Contact us</a>
+  </div>
+
+  <div class="how">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>You onboard</h4>
+      <p>We build your property's KB — gate codes, WiFi, checkout, pool, trash, quiet hours.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Guests text</h4>
+      <p>They text the number on the fridge card. "SUNSET what's the gate code?" &rarr; instant answer.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>You're free</h4>
+      <p>Only the weird stuff reaches you. "AC making noise" &rarr; you get a text. Everything else is handled.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2026 Davenport Host Co. &middot; Davenport, Florida &middot; <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
+  <br style="margin-top:1rem;">
+  <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
+  <span style="color:var(--border);">|</span>
+  <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
+</footer>
+
+<script>
+  // Chat-style flow animation - bubbles appear at bottom, push up like real chat
+  const transitionContainer = document.getElementById('transitionContainer');
+
+  const conversation = [
+    // Bot welcome (like live demo)
+    { text: "Hey there! Welcome to Sunset Villa! 👋 Happy to help with anything — gate code, WiFi, pool, parking, you name it. What can I help you with?", isBot: true },
+    // Guest question 1
+    { text: "Hey! What's the gate code to get in?", isBot: false },
+    // Bot reply 1
+    { text: "It's 4821 — just tap it in at the keypad. Let me know if it gives you any trouble!", isBot: true },
+    // Guest question 2
+    { text: "Awesome, thanks! Also, what's the WiFi password?", isBot: false },
+    // Bot reply 2
+    { text: "Network is KIDS-SWIMMING-4, password SUNSHINE2026. Should connect right away.", isBot: true },
+    // Guest question 3
+    { text: "Perfect. What time do we need to check out on Sunday?", isBot: false },
+    // Bot reply 3
+    { text: "Checkout is 10:00 AM. If you need a later departure just let me know and I'll check with the host.", isBot: true },
+    // Guest question 4
+    { text: "Got it. Where's the pool — is it heated?", isBot: false },
+    // Bot reply 4
+    { text: "Pool's on the lanai — heater control is on the wall, press HEAT and set to 86. Takes about an hour to warm up.", isBot: true },
+    // Guest question 5
+    { text: "Great! What day is trash pickup?", isBot: false },
+    // Bot reply 5
+    { text: "Trash is Tuesday morning — just put bins out Monday night and I'll remind you.", isBot: true },
+    // Guest question 6
+    { text: "The AC seems loud — is that normal?", isBot: false },
+    // Bot reply 6
+    { text: "It's a bit older but should cool fine. If it's not keeping up I'll alert the host for maintenance right away.", isBot: true },
+  ];
+
+  let msgIndex = 0;
+  const MAX_BUBBLES = 12;
+  let activeBubbles = [];
+
+  function createBubble(text, isBot) {
+    const bubble = document.createElement('div');
+    bubble.className = 'transition-bubble' + (isBot ? ' bot' : ' guest');
+    transitionContainer.appendChild(bubble);
+
+    // Force reflow then animate in via class (CSS handles initial state)
+    requestAnimationFrame(() => {
+      bubble.classList.add('visible');
+    });
+
+    if (!isBot) {
+      // Guest message: type out character by character
+      bubble.textContent = '';
+      let charIndex = 0;
+      const typingSpeed = 30 + Math.random() * 40; // 30-70ms per char (human variance)
+
+      function typeChar() {
+        if (charIndex < text.length) {
+          bubble.textContent += text[charIndex];
+          charIndex++;
+          setTimeout(typeChar, typingSpeed);
+        } else {
+          // Typing complete - bubble stays visible
+        }
+      }
+
+      // Small delay before starting to type (like thinking)
+      setTimeout(typeChar, 400);
+    } else {
+      // Bot message: show full text immediately
+      bubble.textContent = text;
+    }
+
+    activeBubbles.push(bubble);
+
+    // Remove oldest if over limit
+    if (activeBubbles.length > MAX_BUBBLES) {
+      const old = activeBubbles.shift();
+      old.classList.remove('visible');
+      setTimeout(() => old.remove(), 400);
+    }
+  }
+
+  function runChatFlow() {
+    if (msgIndex >= conversation.length) {
+      // Conversation complete - fade all out and restart
+      activeBubbles.forEach((b, i) => {
+        setTimeout(() => {
+          b.classList.remove('visible');
+        }, i * 80);
+      });
+      setTimeout(() => {
+        activeBubbles = [];
+        msgIndex = 0;
+        setTimeout(runChatFlow, 4000);
+      }, activeBubbles.length * 80 + 500);
+      return;
+    }
+
+    const msg = conversation[msgIndex];
+
+    if (msg.isBot) {
+      // Bot response: small "thinking" delay before bubble appears
+      setTimeout(() => {
+        createBubble(msg.text, true);
+        msgIndex++;
+        setTimeout(runChatFlow, 2800);
+      }, 600);
+    } else {
+      // Guest question: typing animation handles its own timing
+      createBubble(msg.text, false);
+      msgIndex++;
+      // Wait for typing to complete + reading time
+      const typingTime = msg.text.length * 50; // ~50ms per char average
+      setTimeout(runChatFlow, typingTime + 1200);
+    }
+  }
+
+  // Start with bot welcome after a brief pause
+  setTimeout(runChatFlow, 2000);
+</script>
+
+<script type="module">
+  // Demo chat functionality
+  import { sendMessageToAI, submitLead, PREMIUM_SERVICES } from './api.js';
+
+  const chat = document.getElementById('chat');
+  const chatInput = document.getElementById('chatInput');
+  const sendChatBtn = document.getElementById('sendChat');
+  const msgCounter = document.getElementById('msgCounter');
+  const packagePrompt = document.getElementById('packagePrompt');
+
+  function addMsg(text, isGuest) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble' + (isGuest ? ' bubble-guest' : ' bubble-bot');
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function updateCounter(remaining) {
+    if (msgCounter) {
+      msgCounter.textContent = remaining + ' message' + (remaining === 1 ? '' : 's') + ' left';
+    }
+  }
+
+  function showPackageUpsell() {
+    if (packagePrompt) packagePrompt.style.display = 'block';
+    if (chatInput) chatInput.disabled = true;
+    if (sendChatBtn) sendChatBtn.disabled = true;
+  }
+
+  // Load initial welcome message
+  addMsg("Hey there! Welcome to Sunset Villa! 👋 Happy to help with any questions about the property, WiFi, pool, parking, or anything else during your stay. What can I help you with?", false);
+  updateCounter(5);
+
+  sendChatBtn.addEventListener('click', async () => {
+    const message = chatInput.value.trim();
+    if (!message) return;
+    addMsg(message, true);
+    chatInput.value = '';
+    sendChatBtn.disabled = true;
+
+    try {
+      const response = await sendMessageToAI(message);
+
+      if (response.showPackage) {
+        addMsg(response.reply, false);
+        showPackageUpsell();
+      } else {
+        addMsg(response.reply, false);
+        if (response.remaining !== undefined) {
+          updateCounter(response.remaining);
+        }
+      }
+    } catch (error) {
+      addMsg(`Error: ${error.message}`, false);
+    } finally {
+      sendChatBtn.disabled = false;
+    }
+  });
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      sendChatBtn.click();
+    }
+  });
+
+  const emailInput = document.getElementById('emailInput');
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  const emailStatus = document.getElementById('emailStatus');
+
+  if (subscribeBtn && emailInput && emailStatus) {
+    subscribeBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        emailStatus.textContent = 'Please enter your email address.';
+        emailStatus.style.color = 'var(--warn)';
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        emailStatus.textContent = 'Please enter a valid email address.';
+        emailStatus.style.color = 'var(--warn)';
+        return;
+      }
+
+      emailStatus.textContent = 'Subscribing...';
+      emailStatus.style.color = 'var(--muted)';
+      subscribeBtn.disabled = true;
+
+      try {
+        const response = await submitLead(email);
+        if (response.success) {
+          emailStatus.textContent = 'Subscribed successfully!';
+          emailStatus.style.color = 'var(--green)';
+          emailInput.value = '';
+        } else {
+          emailStatus.textContent = 'Subscription failed. Please try again.';
+          emailStatus.style.color = 'var(--warn)';
+        }
+      } catch (error) {
+        emailStatus.textContent = `Error: ${error.message}`;
+        emailStatus.style.color = 'var(--warn)';
+      } finally {
+        subscribeBtn.disabled = false;
+      }
+    });
+  }
+</script>
+</body>
+</html>

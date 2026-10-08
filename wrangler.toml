@@ -3,8 +3,8 @@ main = "bot/worker.ts"
 compatibility_date = "2026-10-06"
 
 [[kv_namespaces]]
-binding = "PROPERTIES" # Your KV Namespace binding name
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" # User must replace with their actual KV Namespace ID
+binding = "PROPERTIES"
+id = "5883beaefd6f4833bd480b31a117c9c3"
 
 [[d1_databases]]
 binding = "DB"
@@ -12,8 +12,10 @@ database_name = "davenport-host-co-db"
 database_id = "8dd9944d-411f-408a-bb3e-c039e4f86755"
 
 [vars]
-ANTHROPIC_API_KEY = "" # User must fill this in
-TWILIO_ACCOUNT_SID = "" # User must fill this in
-TWILIO_AUTH_TOKEN = "" # User must fill this in
-TWILIO_MESSAGING_SERVICE_SID = "" # User must fill this in
-ADMIN_PASSWORD = "" # User must fill this in
+# Secrets must be set via: npx wrangler secret put <NAME>
+# OPENROUTER_API_KEY
+# TWILIO_ACCOUNT_SID
+# TWILIO_AUTH_TOKEN
+# TWILIO_MESSAGING_SERVICE_SID
+# VAULT_KEY
+# ADMIN_PASSWORD

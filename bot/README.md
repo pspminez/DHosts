@@ -8,7 +8,7 @@ This Worker runs the guest text line. One deploy, one URL, zero servers to maint
 
 1. **Cloudflare account** → enable **2FA** (this is the real security boundary for gate codes)
 2. **Domain** → buy `davenporthost.co` (or similar) at Cloudflare Registrar (~$10/yr)
-3. **Twilio account** → upgrade to paid, buy a **407 area code** number (~$1.15/mo)
+3. **Twilio account** → upgrade to paid, buy a **Toll-Free number** (recommended) OR a **local 407 area code number** (~$1.15/mo). Toll-Free numbers are preferred: faster approval (1-2 days), lower cost, no complex A2P 10DLC registration.
 4. **Anthropic API key** → `console.anthropic.com` → API Keys → create
 
 ---
