@@ -756,13 +756,25 @@ async function handleAdmin(request, env, url) {
     });
   }
 
-  // Admin API: List properties
+  // Admin API: List properties (with dashboard stats)
   if (url.pathname === "/admin/api/properties" && request.method === "GET") {
     try {
       const { results } = await env.DB.prepare(
-        "SELECT id, display_name as name, host_id as hostId, twilio_number as twilioNumber, active FROM properties WHERE active = 1 ORDER BY id"
+        `SELECT p.id, p.display_name as name, p.twilio_number as twilioNumber, p.active,
+           (SELECT COUNT(*) FROM messages m WHERE m.property_id = p.id AND m.direction = 'in') AS asked,
+           (SELECT COUNT(*) FROM messages m WHERE m.property_id = p.id AND m.resolution IN ('escalate','escalated')) AS escalated,
+           (SELECT COUNT(*) FROM escalations e WHERE e.property_id = p.id AND e.status = 'open') AS openEscalations,
+           (SELECT MAX(m.created_at) FROM messages m WHERE m.property_id = p.id) AS lastActivity
+         FROM properties p ORDER BY p.display_name, p.id`
       ).all();
-      return new Response(JSON.stringify({ properties: results || [] }), { headers: corsHeaders });
+      const properties = (results || []) as any[];
+      // Enrich from KV: configured answers (setup status) + premium add-ons
+      for (const p of properties) {
+        const kv = (await env.PROPERTIES.get(`prop:${p.id}`, "json")) as any;
+        p.answerCount = (kv?.answers || []).length;
+        p.addons = kv?.addons || [];
+      }
+      return new Response(JSON.stringify({ properties }), { headers: corsHeaders });
     } catch (err) {
       return new Response(JSON.stringify({ error: err?.message || "Failed to load properties" }), { status: 500, headers: corsHeaders });
     }
@@ -782,13 +794,30 @@ async function handleAdmin(request, env, url) {
         return new Response(JSON.stringify({ error: "Property not found" }), { status: 404, headers: corsHeaders });
       }
 
-      const property = results[0];
+      const property = results[0] as any;
 
-      // Load secrets/answers from KV
-      const kvProperty = await env.PROPERTIES.get(`prop:${property.id}`, "json");
+      // Load secrets/answers/addons from KV
+      const kvProperty = (await env.PROPERTIES.get(`prop:${property.id}`, "json")) as any;
       if (kvProperty) {
-        property.secrets = kvProperty.secrets;
-        property.answers = kvProperty.answers;
+        property.secrets = kvProperty.secrets || [];
+        property.answers = kvProperty.answers || [];
+        property.addons = kvProperty.addons || [];
+      }
+      property.answerCount = (property.answers || []).length;
+
+      // Dashboard stats
+      const stat = await env.DB.prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM messages WHERE property_id = ?1 AND direction = 'in') AS asked,
+           (SELECT COUNT(*) FROM messages WHERE property_id = ?1 AND resolution IN ('escalate','escalated')) AS escalated,
+           (SELECT COUNT(*) FROM escalations WHERE property_id = ?1 AND status = 'open') AS openEscalations,
+           (SELECT MAX(created_at) FROM messages WHERE property_id = ?1) AS lastActivity`
+      ).bind(property.id).first();
+      if (stat) {
+        property.asked = stat.asked;
+        property.escalated = stat.escalated;
+        property.openEscalations = stat.openEscalations;
+        property.lastActivity = stat.lastActivity;
       }
 
       // Host escalation phone lives in the hosts table
@@ -809,7 +838,10 @@ async function handleAdmin(request, env, url) {
   if (url.pathname === "/admin/api/property" && request.method === "PUT") {
     try {
       const body = await request.json();
-      const { id, name, twilioNumber, hostPhone, rateLimitReply, unknownReply, secrets, answers } = body;
+      // The editor sends the id as the ?id= query param (same as GET); accept
+      // body.id too so API callers can pass it either way.
+      const id = url.searchParams.get("id") || body.id;
+      const { name, twilioNumber, hostPhone, rateLimitReply, unknownReply, secrets, answers, addons, active } = body;
 
       if (!id) return new Response(JSON.stringify({ error: "Property ID required" }), { status: 400, headers: corsHeaders });
 
@@ -818,6 +850,12 @@ async function handleAdmin(request, env, url) {
         "UPDATE properties SET display_name = ?1, twilio_number = ?2, rate_limit_reply = ?3, unknown_reply = ?4, updated_at = datetime('now') WHERE id = ?5"
       ).bind(name, twilioNumber, rateLimitReply, unknownReply, id).run();
 
+      if (active !== undefined) {
+        await env.DB.prepare(
+          "UPDATE properties SET active = ?1 WHERE id = ?2"
+        ).bind(active ? 1 : 0, id).run();
+      }
+
       if (hostPhone !== undefined) {
         await env.DB.prepare(
           "UPDATE hosts SET phone = ?1 WHERE id = (SELECT host_id FROM properties WHERE id = ?2)"
@@ -825,15 +863,67 @@ async function handleAdmin(request, env, url) {
       }
 
       // Update KV — merge so a partial save never wipes what it didn't send
-      const existing = (await env.PROPERTIES.get(`prop:${id}`, "json")) || {};
+      const existing = ((await env.PROPERTIES.get(`prop:${id}`, "json")) || {}) as any;
       await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({
         secrets: secrets !== undefined ? secrets : (existing.secrets || []),
         answers: answers !== undefined ? answers : (existing.answers || []),
+        addons: addons !== undefined ? addons : (existing.addons || []),
       }));
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     } catch (err) {
       return new Response(JSON.stringify({ error: err?.message || "Failed to save property" }), { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // Admin API: Create property
+  if (url.pathname === "/admin/api/property" && request.method === "POST") {
+    try {
+      const body = await request.json();
+      const id = (body.id || "").trim().toUpperCase();
+      if (!/^[A-Z0-9_-]{2,20}$/.test(id)) {
+        return new Response(JSON.stringify({ error: "House code must be 2–20 letters, numbers or dashes" }), { status: 400, headers: corsHeaders });
+      }
+      const name = (body.name || "").trim();
+      if (!name) {
+        return new Response(JSON.stringify({ error: "Property name required" }), { status: 400, headers: corsHeaders });
+      }
+
+      // Auto-create a host row so escalation has a phone to reach
+      const hostId = `host_${id}`;
+      await env.DB.prepare(
+        "INSERT INTO hosts (id, name, phone, active) VALUES (?1, ?2, ?3, 1)"
+      ).bind(hostId, name, (body.hostPhone || "").trim() || null).run();
+
+      await env.DB.prepare(
+        "INSERT INTO properties (id, house_code, display_name, host_id, twilio_number, active) VALUES (?1, ?1, ?2, ?3, ?4, 1)"
+      ).bind(id, name, hostId, (body.twilioNumber || "").trim() || null).run();
+
+      await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({ secrets: [], answers: [], addons: [] }));
+
+      return new Response(JSON.stringify({ success: true, id }), { headers: corsHeaders });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err?.message || "Failed to create property" }), { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // Admin API: Delete property
+  if (url.pathname === "/admin/api/property" && request.method === "DELETE") {
+    const id = url.searchParams.get("id");
+    if (!id) return new Response(JSON.stringify({ error: "Property ID required" }), { status: 400, headers: corsHeaders });
+
+    try {
+      await env.DB.prepare("DELETE FROM messages WHERE property_id = ?1").bind(id).run();
+      await env.DB.prepare("DELETE FROM escalations WHERE property_id = ?1").bind(id).run();
+      await env.DB.prepare("DELETE FROM properties WHERE id = ?1").bind(id).run();
+      // Only touches the auto-created host from the create flow; hosts shared
+      // or created by hand have other id shapes and are left alone.
+      await env.DB.prepare("DELETE FROM hosts WHERE id = ?1").bind(`host_${id}`).run();
+      await env.PROPERTIES.delete(`prop:${id}`);
+
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err?.message || "Failed to delete property" }), { status: 500, headers: corsHeaders });
     }
   }
 
@@ -908,6 +998,40 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .savebar button { margin-top:0; flex:none; }
   .savebar .status { margin-top:0; flex:1; text-align:right; }
   .hidden { display:none; }
+  .list-head { display:flex; align-items:center; justify-content:space-between; margin-top:1.5rem; }
+  .list-head h2 { font-size:1.15rem; font-weight:700; margin:0; }
+  .list-head button { margin-top:0; flex:none; }
+  .propcard { position:relative; border:1px solid var(--border); background:var(--card);
+         border-radius:16px; padding:1.1rem 1.3rem; margin-top:.9rem; cursor:pointer;
+         transition:border-color .15s ease; }
+  .propcard:hover { border-color:var(--pool); }
+  .pc-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding-right:2.4rem; }
+  .pc-head .name { font-weight:700; font-size:1.05rem; }
+  .propcard .meta { color:var(--muted); font-size:.8rem; margin-top:.15rem; }
+  .propcard .statline { margin-top:.55rem; font-size:.82rem; color:var(--muted); }
+  .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .pill.live { background:rgba(56,225,198,.15); color:var(--pool); border:1px solid rgba(56,225,198,.4); }
+  .pill.pending { background:rgba(255,209,102,.12); color:var(--gold); border:1px solid rgba(255,209,102,.35); }
+  .pill.paused { background:var(--surface); color:var(--muted); border:1px solid var(--border); }
+  .pill.open-esc { background:rgba(255,94,138,.12); color:var(--pink); border:1px solid rgba(255,94,138,.4); }
+  .del { position:absolute; top:1rem; right:1rem; width:2.1rem; height:2.1rem; padding:0;
+         border-radius:10px; border:1px solid var(--border); background:transparent;
+         color:var(--muted); font:inherit; font-size:1rem; line-height:1; cursor:pointer; }
+  .del:hover { color:var(--pink); border-color:var(--pink); }
+  .stats { display:flex; gap:1.75rem; flex-wrap:wrap; margin-top:.9rem; }
+  .stat { color:var(--muted); font-size:.8rem; }
+  .stat b { color:var(--text); font-size:1.05rem; margin-right:.3rem; }
+  .chips { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.8rem; }
+  .chip { padding:.4rem .95rem; border-radius:999px; border:1px solid var(--border);
+         background:transparent; color:var(--muted); font:inherit; font-size:.8rem;
+         font-weight:600; cursor:pointer; }
+  .chip.on { background:rgba(56,225,198,.14); border-color:var(--pool); color:var(--pool); }
+  .back { margin-top:1.5rem; padding:.45rem 1rem; font-size:.85rem; }
+  .prop-head { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-top:.5rem; }
+  .prop-head h2 { font-size:1.4rem; font-weight:800; letter-spacing:-.01em; margin:0; }
+  .check { display:flex; align-items:center; gap:.6rem; margin-top:1.2rem; }
+  .check input { width:auto; }
+  .check span { font-size:.9rem; color:var(--text); }
   @media (max-width:560px) {
     .entry .top { grid-template-columns:1fr; }
     .savebar .inner { flex-wrap:wrap; }
@@ -917,8 +1041,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
 </head>
 <body>
   <div class="badge"><span class="dot"></span> Davenport Host Co. admin</div>
-  <h1>Property editor</h1>
-  <p class="sub">Changes go live immediately — no redeploy, no code.</p>
+  <h1>Property manager</h1>
+  <p class="sub">Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
 
   <div id="login" class="card">
     <label for="pw">Admin password</label>
@@ -929,10 +1053,45 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <p class="status" id="loginStatus"></p>
   </div>
 
-  <div id="editor" class="hidden">
-    <label for="prop">Property</label>
-    <select id="prop" onchange="loadSelected()"></select>
-    <p class="hint" id="propHint"></p>
+  <div id="listView" class="hidden">
+    <div class="list-head">
+      <h2>Properties</h2>
+      <button class="ghost" onclick="showAdd()">+ New property</button>
+    </div>
+    <div id="propList"></div>
+    <p class="status" id="listStatus"></p>
+
+    <div id="addForm" class="card hidden">
+      <h2>New property</h2>
+      <label for="newId">House code</label>
+      <input id="newId" placeholder="SUNSET" spellcheck="false" autocomplete="off">
+      <p class="hint">Short uppercase code — letters, numbers, dashes.</p>
+      <label for="newName">Property name</label>
+      <input id="newName" placeholder="Sunset Villa" autocomplete="off">
+      <label for="newNumber">Text line number (E.164)</label>
+      <input id="newNumber" placeholder="+18005551234" autocomplete="off">
+      <label for="newHostPhone">Escalate to this phone</label>
+      <input id="newHostPhone" placeholder="+18635551234" autocomplete="off">
+      <button class="primary" onclick="createProperty()">Create property</button>
+      <button class="ghost" onclick="hideAdd()">Cancel</button>
+      <p class="status" id="addStatus"></p>
+    </div>
+  </div>
+
+  <div id="propView" class="hidden">
+    <button class="ghost back" onclick="showList()">← Back to properties</button>
+    <div class="prop-head">
+      <h2 id="propName"></h2>
+      <span class="pill" id="propPill"></span>
+      <span class="pill hidden" id="propEsc"></span>
+    </div>
+    <div class="stats" id="propStats"></div>
+
+    <div class="card">
+      <h2>Services</h2>
+      <p class="hint">Premium add-ons enabled for this property. Tap to toggle, then save.</p>
+      <div class="chips" id="addonChips"></div>
+    </div>
 
     <div class="card">
       <h2>Settings</h2>
@@ -946,10 +1105,14 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <input id="rateLimitReply" placeholder="Let me get the host to help you with this.">
       <label for="unknownReply">Unknown question reply</label>
       <input id="unknownReply" placeholder="Good question — let me check with your host and get right back to you.">
+      <div class="check">
+        <input type="checkbox" id="active">
+        <span>Property is live — the text line answers guests</span>
+      </div>
     </div>
 
     <div class="card secret">
-      <h2>Gate&amp; door codes</h2>
+      <h2>Gate &amp; door codes</h2>
       <p class="hint">Released only on an exact keyword match — never sent to the AI, never logged. Empty rows are skipped on save.</p>
       <div id="secretsList"></div>
       <button class="add" onclick="addSecret()">+ Add a code</button>
@@ -964,8 +1127,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
     <div class="savebar" id="savebar">
       <div class="inner">
-        <button id="saveButton" class="primary" onclick="save()">Save&amp; go live</button>
-        <button class="ghost" onclick="loadSelected()">Reload</button>
+        <button id="saveButton" class="primary" onclick="save()">Save &amp; go live</button>
+        <button class="ghost" onclick="openProperty(current.id)">Reload</button>
         <p class="status" id="saveStatus"></p>
       </div>
     </div>
@@ -973,7 +1136,15 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
 <script>
 let password = "";
+let properties = [];
 let current = null;
+
+const ADDONS = [
+  ["weather", "Live Weather & Alerts"],
+  ["events", "Local Events & Dining"],
+  ["grocery", "Grocery & Essentials"],
+  ["concierge", "24/7 Host Backup"],
+];
 
 const $ = (id) => document.getElementById(id);
 
@@ -993,8 +1164,9 @@ function markDirty() {
   $("saveStatus").textContent = "";
 }
 
-// Any typing anywhere in the editor marks the page dirty (rows included)
-$("editor").addEventListener("input", markDirty);
+// Any typing or change anywhere in the dashboard marks it dirty (rows included)
+document.body.addEventListener("input", markDirty);
+document.body.addEventListener("change", markDirty);
 
 function parseKeywords(str) {
   return str.split(",").map((k) => k.trim()).filter((k) => k.length);
@@ -1062,37 +1234,179 @@ async function api(path, options = {}) {
 async function unlock() {
   password = $("pw").value;
   try {
-    const data = await api("/admin/api/properties");
+    await api("/admin/api/properties");
     $("login").classList.add("hidden");
-    $("editor").classList.remove("hidden");
-    const select = $("prop");
-    select.textContent = "";
-    data.properties.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = (p.name || p.twilioNumber) + " (" + p.id + ")";
-      select.append(opt);
-    });
-    if (!data.properties.length) {
-      $("propHint").textContent = "No properties yet. Import one with the command in bot/README.md.";
-    }
-    loadSelected();
+    showList();
   } catch (err) {
     $("loginStatus").textContent = err.message;
   }
 }
 
-async function loadSelected() {
-  const id = $("prop").value;
-  if (!id) return;
+function pillFor(p) {
+  if (!p.active) return ["Paused", "paused"];
+  if (!p.answerCount) return ["Awaiting setup", "pending"];
+  return ["Live", "live"];
+}
+
+function escLabel(n) {
+  return n + " open escalation" + (n === 1 ? "" : "s");
+}
+
+async function showList() {
+  $("propView").classList.add("hidden");
+  $("listView").classList.remove("hidden");
+  hideAdd();
+  try {
+    const data = await api("/admin/api/properties");
+    properties = data.properties || [];
+    renderList();
+  } catch (err) {
+    $("listStatus").textContent = err.message;
+  }
+}
+
+function renderList() {
+  const list = $("propList");
+  list.textContent = "";
+  $("listStatus").textContent = properties.length ? "" : "No properties yet. Create your first one.";
+  properties.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = "propcard";
+    card.onclick = () => openProperty(p.id);
+
+    const head = document.createElement("div");
+    head.className = "pc-head";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = p.name || p.id;
+    head.append(name);
+    const pill = document.createElement("span");
+    const status = pillFor(p);
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
+    head.append(pill);
+    if (p.openEscalations > 0) {
+      const esc = document.createElement("span");
+      esc.className = "pill open-esc";
+      esc.textContent = escLabel(p.openEscalations);
+      head.append(esc);
+    }
+    card.append(head);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = p.id + (p.twilioNumber ? " · " + p.twilioNumber : "");
+    card.append(meta);
+
+    const statline = document.createElement("div");
+    statline.className = "statline";
+    statline.textContent = p.asked + " questions · " + p.escalated + " escalated · " +
+      p.answerCount + " answers saved · " +
+      (p.lastActivity ? "last activity " + p.lastActivity.slice(0, 10) : "no activity yet");
+    card.append(statline);
+
+    const del = document.createElement("button");
+    del.className = "del";
+    del.type = "button";
+    del.title = "Delete property";
+    del.textContent = "×";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      deleteProperty(p.id, p.name || p.id);
+    };
+    card.append(del);
+
+    list.append(card);
+  });
+}
+
+function showAdd() {
+  $("addForm").classList.remove("hidden");
+  $("addStatus").textContent = "";
+  $("newId").focus();
+}
+
+function hideAdd() {
+  $("addForm").classList.add("hidden");
+}
+
+async function createProperty() {
+  try {
+    const data = await api("/admin/api/property", {
+      method: "POST",
+      body: JSON.stringify({
+        id: $("newId").value,
+        name: $("newName").value,
+        twilioNumber: $("newNumber").value,
+        hostPhone: $("newHostPhone").value,
+      }),
+    });
+    showList();
+    openProperty(data.id);
+  } catch (err) {
+    $("addStatus").textContent = err.message;
+  }
+}
+
+async function deleteProperty(id, name) {
+  if (!confirm("Delete " + name + "? Messages and escalation history go with it.")) return;
+  try {
+    await api("/admin/api/property?id=" + encodeURIComponent(id), { method: "DELETE" });
+    showList();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function openProperty(id) {
   try {
     current = await api("/admin/api/property?id=" + encodeURIComponent(id));
+
+    $("propName").textContent = current.name || current.id;
+    const status = pillFor(current);
+    const pill = $("propPill");
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
+    const esc = $("propEsc");
+    if (current.openEscalations > 0) {
+      esc.className = "pill open-esc";
+      esc.textContent = escLabel(current.openEscalations);
+    } else {
+      esc.className = "pill hidden";
+      esc.textContent = "";
+    }
+
+    const stats = $("propStats");
+    stats.textContent = "";
+    const items = [
+      [current.asked || 0, "questions asked"],
+      [current.escalated || 0, "escalated"],
+      [current.answerCount || 0, "answers saved"],
+      [(current.addons || []).length, "add-ons on"],
+    ];
+    items.forEach((item) => {
+      const el = document.createElement("div");
+      el.className = "stat";
+      const b = document.createElement("b");
+      b.textContent = item[0];
+      el.append(b, item[1]);
+      stats.append(el);
+    });
+    if (current.lastActivity) {
+      const el = document.createElement("div");
+      el.className = "stat";
+      el.textContent = "last activity " + current.lastActivity.slice(0, 10);
+      stats.append(el);
+    }
+
+    $("active").checked = current.active != 0;
     $("name").value = current.name || "";
     $("twilioNumber").value = current.twilioNumber || "";
     $("hostPhone").value = current.hostPhone || "";
     $("rateLimitReply").value = current.rate_limit_reply || "";
     $("unknownReply").value = current.unknown_reply || "";
 
+    renderAddons();
     $("secretsList").textContent = "";
     (current.secrets || []).forEach((s) => addSecret((s.keywords || []).join(", "), s.reply || ""));
     if (!(current.secrets || []).length) addSecret();
@@ -1101,11 +1415,31 @@ async function loadSelected() {
     (current.answers || []).forEach((a) => addAnswer(a.topic || "", (a.keywords || []).join(", "), a.reply || ""));
     if (!(current.answers || []).length) addAnswer();
 
+    $("listView").classList.add("hidden");
+    $("propView").classList.remove("hidden");
     $("saveStatus").textContent = "";
     setButtonState(false);
   } catch (err) {
-    $("saveStatus").textContent = err.message;
+    alert(err.message);
   }
+}
+
+function renderAddons() {
+  const box = $("addonChips");
+  box.textContent = "";
+  const on = current.addons || [];
+  ADDONS.forEach(([key, label]) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (on.indexOf(key) >= 0 ? " on" : "");
+    chip.textContent = label;
+    chip.dataset.key = key;
+    chip.onclick = () => {
+      chip.classList.toggle("on");
+      markDirty();
+    };
+    box.append(chip);
+  });
 }
 
 function collect(selector, mapRow) {
@@ -1114,8 +1448,7 @@ function collect(selector, mapRow) {
 }
 
 async function save() {
-  const id = $("prop").value;
-  if (!id) return;
+  if (!current || !current.id) return;
   const secrets = collect("#secretsList .entry", (row) => ({
     keywords: parseKeywords(row.querySelector(".kw").value),
     reply: row.querySelector(".rp").value.trim(),
@@ -1125,8 +1458,10 @@ async function save() {
     keywords: parseKeywords(row.querySelector(".kw").value),
     reply: row.querySelector(".rp").value.trim(),
   }));
+  const addons = Array.from(document.querySelectorAll("#addonChips .chip.on"))
+    .map((c) => c.dataset.key);
   try {
-    await api("/admin/api/property?id=" + encodeURIComponent(id), {
+    await api("/admin/api/property?id=" + encodeURIComponent(current.id), {
       method: "PUT",
       body: JSON.stringify({
         name: $("name").value,
@@ -1134,10 +1469,17 @@ async function save() {
         hostPhone: $("hostPhone").value,
         rateLimitReply: $("rateLimitReply").value,
         unknownReply: $("unknownReply").value,
+        active: $("active").checked ? 1 : 0,
         secrets,
         answers,
+        addons,
       }),
     });
+    current.active = $("active").checked ? 1 : 0;
+    const status = pillFor({ active: current.active, answerCount: answers.length });
+    const pill = $("propPill");
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
     $("saveStatus").textContent = "Saved. Live now.";
     setButtonState(false);
   } catch (err) {
