@@ -1,0 +1,5 @@
+# Pages config for the marketing site. The SMS bot Worker's config lives at the
+# repo root (wrangler.toml) — this one is read only when deploying from site/.
+# Deploy (from this directory): npx wrangler pages deploy --branch main
+name = "davenport-host-co"
+pages_build_output_dir = "."
