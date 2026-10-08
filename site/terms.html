@@ -1,47 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terms of Service — Davenport Host Co.</title>
-<style>
-  body { max-width: 600px; margin: 3rem auto; font-family: system-ui, sans-serif; padding: 0 1rem; line-height: 1.6; color: #1a1a2e; }
-  h1 { margin-bottom: 1.5rem; }
-  a { color: #7c5cff; }
-  h2 { margin-top: 2rem; margin-bottom: 0.5rem; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service — Davenport Host Co.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a1526;
+      --card: #0f1e36;
+      --surface: rgba(148, 180, 255, 0.05);
+      --border: rgba(148, 180, 255, 0.14);
+      --text: #f2f6ff;
+      --muted: #93a5c9;
+      --soft: #c9d6f0;
+      --pool: #38e1c6;
+      --sunset: linear-gradient(96deg, #ffd166 0%, #ff9e4a 45%, #ff5e8a 100%);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Bricolage Grotesque", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: -22rem; left: 50%; translate: -50% 0;
+      width: 64rem; height: 64rem;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(255, 94, 138, 0.12), transparent 60%);
+      filter: blur(40px);
+      z-index: -1;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .3rem .8rem;
+      border: 1px solid var(--border); border-radius: 999px;
+      background: var(--surface);
+      font-size: .75rem; color: var(--muted); text-decoration: none;
+    }
+    .badge:hover { border-color: var(--pool); color: var(--pool); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pool); box-shadow: 0 0 10px var(--pool); }
+    h1 {
+      font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em;
+      margin: 1.4rem 0 .6rem;
+      background: var(--sunset);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      width: fit-content;
+    }
+    .card {
+      border: 1px solid var(--border); border-radius: 18px;
+      background: var(--card);
+      padding: 1.4rem 1.5rem; margin: 1.5rem 0 2.5rem;
+      font-size: .9rem; color: var(--soft);
+    }
+    .card strong { color: var(--text); }
+    .card a { color: var(--pool); }
+    h2 { font-size: 1.05rem; font-weight: 700; margin-top: 2.4rem; }
+    p { color: var(--soft); margin-top: .6rem; }
+    p strong, li strong { color: var(--text); }
+    a { color: var(--pool); }
+    ul { margin: .6rem 0 .2rem 1.2rem; }
+    li { color: var(--soft); margin: .35rem 0; }
+    li::marker { color: var(--pool); }
+    .callout {
+      border: 1px solid rgba(56, 225, 198, 0.4); border-radius: 18px;
+      background: rgba(56, 225, 198, 0.06);
+      padding: 1.3rem 1.5rem; margin-top: .8rem;
+    }
+    .callout p { color: var(--soft); }
+    .callout p strong { color: var(--pool); }
+  </style>
 </head>
 <body>
-<h1>Terms of Service</h1>
-<p><strong>Effective:</strong> October 2026</p>
-<p><strong>Business:</strong> Davenport Host Co. (registered brand: Richard Harrell, Sole Proprietor)</p>
-<p><strong>Contact:</strong> <a href="mailto:hello@davenporthost.co">hello@davenporthost.co</a> | +1 863‑400‑0424</p>
+  <a class="badge" href="/"><span class="dot"></span> Davenport Host Co.</a>
+  <h1>Terms of Service</h1>
 
-<h2>Service Description</h2>
-<p>Davenport Host Co. provides a guest-support SMS line for vacation rental properties in Davenport, FL. Guests text a property code (e.g., "SUNSET") to receive gate codes, WiFi credentials, checkout times, and property information.</p>
+  <div class="card">
+    <strong>Effective:</strong> October 2026<br>
+    <strong>Business:</strong> Davenport Host Co. (registered brand: Richard Harrell, Sole Proprietor)<br>
+    <strong>Contact:</strong> <a href="mailto:hello@davenporthost.co">hello@davenporthost.co</a> | +1 863‑400‑0424
+  </div>
 
-<h2>Your Consent</h2>
-<p>By texting us, you consent to receive transactional replies related to your active reservation. This is a guest-initiated service — we do not send unsolicited messages.</p>
+  <h2>Service Description</h2>
+  <p>Davenport Host Co. provides a guest-support SMS line for vacation rental properties in Davenport, FL. Guests text the property's dedicated guest line with a question and receive gate codes, WiFi credentials, checkout times, and property information in reply.</p>
 
-<h2>SMS Program Terms</h2>
-<ul>
-<li><strong>Message frequency:</strong> Variable — only when you text in (typically 1–5 messages per stay)</li>
-<li><strong>Msg & data rates may apply</strong> per your carrier plan</li>
-<li><strong>Carriers supported:</strong> All major US carriers</li>
-<li><strong>Number format:</strong> +1 863‑400‑0424 (10DLC registered)</li>
-</ul>
+  <h2>Your Consent</h2>
+  <p>By texting us, you consent to receive transactional replies related to your active reservation. This is a guest-initiated service — we do not send unsolicited messages.</p>
 
-<h2>Commands</h2>
-<ul>
-<li><strong>STOP</strong> — Opt out of all future messages (immediate). No further messages will be sent.</li>
-<li><strong>HELP</strong> — Receive support contact info: hello@davenporthost.co | +1 863‑400‑0424</li>
-</ul>
-<p>After STOP, no further messages will be sent. To resume, text your property code again.</p>
+  <h2>SMS Program Terms</h2>
+  <ul>
+    <li><strong>Message frequency:</strong> Variable — only when you text in (typically 1–5 messages per stay)</li>
+    <li><strong>Msg & data rates may apply</strong> per your carrier plan</li>
+    <li><strong>Carriers supported:</strong> All major US carriers</li>
+    <li><strong>Contact number:</strong> +1 863‑400‑0424</li>
+  </ul>
 
-<h2>Limitations</h2>
-<p>This service provides property information only. It does not replace emergency services. For urgent safety issues, call 911 or your host directly.</p>
+  <h2>Commands</h2>
+  <div class="callout">
+    <p><strong>STOP</strong> — Opt out of all future messages (immediate). No further messages will be sent.</p>
+    <p><strong>HELP</strong> — Receive support contact info: hello@davenporthost.co | +1 863‑400‑0424</p>
+    <p>After <strong>STOP</strong>, no further messages will be sent. To resume, text <strong>START</strong>.</p>
+  </div>
 
-<h2>Changes</h2>
-<p>We may update these terms. Continued use after changes constitutes acceptance.</p>
+  <h2>Limitations</h2>
+  <p>This service provides property information only. It does not replace emergency services. For urgent safety issues, call 911 or your host directly.</p>
+
+  <h2>Changes</h2>
+  <p>We may update these terms. Continued use after changes constitutes acceptance.</p>
 </body>
 </html>
