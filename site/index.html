@@ -108,6 +108,10 @@
         var(--sunset) border-box;
     }
     .most-loved { position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%); background: var(--sunset); color: #1c0b06; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.85rem; border-radius: 999px; letter-spacing: 0.02em; }
+    .portfolio { flex: 1 1 100%; border: 1px dashed var(--pool); border-radius: 16px; background: rgba(56, 225, 198, 0.06); padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .portfolio p { margin: 0; color: #cfdaf0; font-size: 0.95rem; }
+    .portfolio strong { color: var(--pool); font-weight: 700; }
+    .portfolio .btn-ghost { margin-left: 0; white-space: nowrap; }
     .price-tag { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.15rem; }
     .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
     .price-card h3 { font-size: 1.05rem; margin-bottom: 1rem; font-weight: 700; }
@@ -306,7 +310,7 @@
     .phase-label.visible { opacity: 1; }
 
     /* Premium add-ons */
-    .premium-list { display: flex; gap: 1rem; width: 100%; flex-wrap: wrap; }
+    .premium-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; width: 100%; }
     .premium-card { flex: 1 1 15rem; max-width: 100%; padding: 1.5rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); border-top: 3px solid var(--chip, var(--pool)); transition: transform 0.2s, box-shadow 0.2s; }
     .premium-card:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
     .premium-card .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
@@ -428,6 +432,10 @@
           <li>24/7 host backup & maintenance coordination</li>
           <li>Your rental, fully hands-off</li>
         </ul>
+      </div>
+      <div class="portfolio">
+        <p>Running more than one property? Discounts stack: 2–4 properties <strong>10% off each</strong> · 5–9 properties <strong>15% off each</strong> · 10+ properties <strong>custom pricing</strong>.</p>
+        <a href="mailto:hello@davenporthost.co?subject=Portfolio%20pricing" class="btn btn-ghost">Get a portfolio quote</a>
       </div>
     </div>
 
