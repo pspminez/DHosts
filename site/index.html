@@ -98,7 +98,7 @@
 
     /* Pricing */
     .pricing { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 3rem; width: 100%; }
-    .price-card { position: relative; flex: 1 1 0; min-width: 0; padding: 1.75rem 1.5rem; border-radius: 20px; background: var(--card); border-top: 4px solid var(--gold); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    .price-card { position: relative; flex: 1 1 20rem; max-width: 100%; padding: 1.75rem 1.5rem; border-radius: 20px; background: var(--card); border-top: 4px solid var(--gold); transition: transform 0.25s ease, box-shadow 0.25s ease; }
     .price-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); }
     .price-card.featured {
       border: 2px solid transparent;
@@ -307,7 +307,7 @@
 
     /* Premium add-ons */
     .premium-list { display: flex; gap: 1rem; width: 100%; flex-wrap: wrap; }
-    .premium-card { flex: 1 1 0; min-width: 0; padding: 1.5rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); border-top: 3px solid var(--chip, var(--pool)); transition: transform 0.2s, box-shadow 0.2s; }
+    .premium-card { flex: 1 1 15rem; max-width: 100%; padding: 1.5rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); border-top: 3px solid var(--chip, var(--pool)); transition: transform 0.2s, box-shadow 0.2s; }
     .premium-card:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
     .premium-card .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
     .premium-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; }
@@ -382,29 +382,51 @@
     <div class="pricing" id="pricing">
       <div class="section-head" style="width:100%;">
         <h2>The whole flood, handled — for less than <span class="grad">one cleaning fee</span></h2>
-        <p>One setup, one simple monthly. No app for guests to download. No new number for you to babysit.</p>
+        <p>One flat monthly — setup's on us: we build your answers, test live with you, and ship your welcome cards before launch. No app for guests to download, no new number for you to babysit.</p>
       </div>
       <div class="price-card">
-        <div class="price-tag">$299</div>
-        <div class="price-sub">one-time setup</div>
-        <h3>Setup</h3>
+        <div class="price-tag">$49</div>
+        <div class="price-sub">/month per property</div>
+        <h3>Starter</h3>
         <ul>
-          <li>Every answer built for your property</li>
-          <li>Your own dedicated text line</li>
-          <li>Tested live with you before launch</li>
+          <li>24/7 guest text line</li>
+          <li>Answers from your property library</li>
           <li>Welcome card guests actually keep</li>
+          <li>Edit answers anytime</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="price-tag">$99</div>
+        <div class="price-sub">/month per property</div>
+        <h3>Essential</h3>
+        <ul>
+          <li>Everything in Starter</li>
+          <li>AI answers for the weird questions</li>
+          <li>Escalation to you only when it matters</li>
+          <li>Monthly report: what guests actually asked</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="price-tag">$159</div>
+        <div class="price-sub">/month per property</div>
+        <h3>Concierge</h3>
+        <ul>
+          <li>Everything in Essential</li>
+          <li>Real-time weather & storm alerts</li>
+          <li>Local Events & Dining picks</li>
+          <li>Hurricane tracking for your property</li>
         </ul>
       </div>
       <div class="price-card featured">
         <div class="most-loved">Most loved</div>
-        <div class="price-tag">$99</div>
+        <div class="price-tag">$199</div>
         <div class="price-sub">/month per property</div>
-        <h3>Host Package</h3>
+        <h3>Full Concierge</h3>
         <ul>
-          <li>24/7 guest line — real answers, no bots guessing</li>
-          <li>Escalation to you only when it matters</li>
-          <li>Monthly report: what guests actually asked</li>
-          <li>Edit answers anytime — no code, no redeploy</li>
+          <li>Everything in Concierge</li>
+          <li>Grocery & essentials pre-stocking</li>
+          <li>24/7 host backup & maintenance coordination</li>
+          <li>Your rental, fully hands-off</li>
         </ul>
       </div>
     </div>
@@ -412,32 +434,32 @@
     <div class="premium-services" id="premium" style="margin-top:4rem;">
       <div class="section-head">
         <h2>Go <span class="grad">beyond answers</span></h2>
-        <p>AI-powered add-ons that make your rental feel like a full concierge desk.</p>
+        <p>Weather and Events arrive in Concierge; all four come bundled in Full Concierge.</p>
       </div>
       <div class="premium-list">
         <div class="premium-card chip-pool">
           <div class="emoji">🌤️</div>
           <h3>Live Weather & Alerts</h3>
           <p>Real-time weather, storm alerts, hurricane tracking for your property</p>
-          <div class="price">$15/mo</div>
+          <div class="price">Included from Concierge</div>
         </div>
         <div class="premium-card chip-pink">
           <div class="emoji">🎭</div>
           <h3>Local Events & Dining</h3>
           <p>Curated events, restaurant reservations, attraction tickets for guests</p>
-          <div class="price">$20/mo</div>
+          <div class="price">Included from Concierge</div>
         </div>
         <div class="premium-card chip-gold">
           <div class="emoji">🛒</div>
           <h3>Grocery & Essentials Delivery</h3>
           <p>Pre-stock fridge, toiletries, beach gear before guests arrive</p>
-          <div class="price">$25/mo</div>
+          <div class="price">Included in Full Concierge</div>
         </div>
         <div class="premium-card chip-sun">
           <div class="emoji">⭐</div>
-          <h3>Full Concierge</h3>
-          <p>All of the above + 24/7 host backup, maintenance coordination</p>
-          <div class="price">$49/mo</div>
+          <h3>24/7 Host Backup</h3>
+          <p>Round-the-clock backup and maintenance coordination when things break</p>
+          <div class="price">Included in Full Concierge</div>
         </div>
       </div>
     </div>
@@ -752,7 +774,7 @@
         stopOverlay.innerHTML = `
           <div>
             <h1>STOP THE FLOOD!!</h1>
-            <p id="stopTextContainer" style="font-size: 1.5rem; color: var(--text); max-width: 80%; line-height: 1.5; margin: 0 auto;">
+            <p id="stopTextContainer" style="font-size: clamp(1.1rem, 3.2vw, 1.5rem); color: var(--text); max-width: 100%; padding: 0 1rem; line-height: 1.6; margin: 0 auto;">
               <span id="stopTypewriter"></span>
               <span id="stopCursor">|</span>
             </p>
