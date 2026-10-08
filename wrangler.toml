@@ -12,10 +12,13 @@ database_name = "davenport-host-co-db"
 database_id = "8dd9944d-411f-408a-bb3e-c039e4f86755"
 
 [vars]
+# Signature validation is ON for production. PUBLIC_URL must exactly match
+# the webhook URL configured in the Twilio console (scheme, host, path).
+VALIDATE_SIGNATURE = "true"
+PUBLIC_URL = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms"
+
 # Secrets must be set via: npx wrangler secret put <NAME>
 # OPENROUTER_API_KEY
 # TWILIO_ACCOUNT_SID
 # TWILIO_AUTH_TOKEN
-# TWILIO_MESSAGING_SERVICE_SID
-# VAULT_KEY
 # ADMIN_PASSWORD

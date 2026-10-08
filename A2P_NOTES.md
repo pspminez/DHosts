@@ -18,26 +18,35 @@ The A2P 10DLC campaign was rejected. We will switch to a Toll-Free Number approa
    - Search for a Toll-Free Number
    - Purchase one (typically ~$1.50/month)
 
-2. **Enable SMS on the Toll-Free Number:**
+2. **Submit Toll-Free Verification (TVC) — required before production traffic:**
+   - Twilio Console → Phone Numbers → Toll-Free Verification
+   - Unverified toll-free numbers are heavily filtered and volume-capped
+   - Use `drafts/optin-evidence.html` (print to PDF) as opt-in evidence if asked
+   - Approval typically takes 1-2 business days
+
+3. **Enable SMS on the Toll-Free Number:**
    - In Twilio Console, navigate to the purchased number
    - Under "Messaging", configure the webhook URL to point to your Cloudflare Worker
-   - Set webhook URL: `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/twilio`
+   - Set webhook URL: `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms`
+   - This must exactly match `PUBLIC_URL` in `wrangler.toml` (signature validation is ON and computed over this URL)
    - HTTP method: POST (Twilio signs every request with `X-Twilio-Signature`; the worker validates it)
 
-3. **Configure Messaging Service:**
+4. **Configure Messaging Service:**
    - Create a new Messaging Service in Twilio
    - Add the Toll-Free Number to the service
    - Set the webhook URL for the messaging service
    - This allows you to manage multiple numbers through one service
+   - Inbound SMS through a Messaging Service carry a MessagingServiceSid — the worker looks up by that first, then falls back to the To number
 
-4. **Update Your Code:**
-   - The webhook handler in `bot/worker.ts` should already work with Toll-Free numbers
-   - Verify the Twilio signature validation is working
-   - Test with a sample message
+5. **Update Your Code:**
+   - The webhook handler in `bot/worker.ts` already works with Toll-Free numbers
+   - Signature validation is ON by default (`VALIDATE_SIGNATURE` in wrangler.toml)
+   - STOP/HELP/START keywords are handled automatically (KV opt-out)
+   - Test with a sample message once the number is verified
 
-5. **Compliance Notes:**
+6. **Compliance Notes:**
    - Toll-Free numbers have stricter sending rules
-   - Must include STOP/HELP keywords in all messages
+   - STOP/HELP/START are handled automatically by the worker (STOP silences the guest, START resumes, HELP replies with info)
    - Opt-in confirmation required before sending
    - Message frequency limits apply
 
@@ -67,6 +76,7 @@ Thanks for opting in to [Property Name] support texts! You'll receive gate codes
 
 ## Action Items:
 - [ ] Purchase Toll-Free Number from Twilio
+- [ ] Submit Toll-Free Verification (TVC)
 - [ ] Configure webhook URL
 - [ ] Update messaging service settings
 - [ ] Test SMS flow end-to-end

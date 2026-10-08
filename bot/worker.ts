@@ -35,13 +35,11 @@ interface Env {
 interface Property {
   id: string;
   name: string;
-  host_id: string;
+  hostId: string;
   twilioNumber: string;
   hostPhone?: string;
   secrets?: { keywords: string[]; reply: string }[];
   answers?: { topic: string; keywords: string[]; reply: string }[];
-  rateLimitReply?: string;
-  unknownReply?: string;
   rateLimitReply?: string;
   unknownReply?: string;
 }
@@ -108,10 +106,26 @@ async function handleInbound(request, env) {
   const messagingServiceSid = String(form.get("MessagingServiceSid") || "");
   const body = String(form.get("Body") || "").trim();
 
-  // DEBUG: Log incoming fields
-  console.log("Inbound SMS - From:", from, "To:", to, "MessagingServiceSid:", messagingServiceSid, "Body:", body);
-
   if (!from || !to) return twimlError("Missing sender or recipient.");
+
+  // Opt-out compliance (CTIA): STOP silences this guest, START resumes, HELP answers.
+  // An opted-out guest gets complete silence — before property lookup, rate limits, or AI.
+  const optKey = `optout:${from}`;
+  let optedOut = false;
+  try { optedOut = (await env.PROPERTIES.get(optKey)) === "true"; } catch { /* KV hiccup: treat as not opted out */ }
+  const upper = body.toUpperCase();
+  if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END"].includes(upper)) {
+    try { await env.PROPERTIES.put(optKey, "true"); } catch { /* still confirm below */ }
+    return twiml("You've been unsubscribed and will receive no further messages. Reply START to resubscribe.");
+  }
+  if (optedOut && ["START", "UNSTOP", "YES"].includes(upper)) {
+    try { await env.PROPERTIES.delete(optKey); } catch { /* ignore */ }
+    return twiml("Welcome back! Your guest text line is active again.");
+  }
+  if (optedOut) return new Response(null, { status: 200 });
+  if (upper === "HELP" || upper === "INFO") {
+    return twiml("Davenport Host Co. guest text line — text your question any time (gate code, WiFi, checkout, pool). Reply STOP to opt out.");
+  }
 
   // Try lookup by MessagingServiceSid first (what Twilio actually sends when using Messaging Service)
   let property = null;
@@ -352,9 +366,11 @@ async function handleDemoChat(request, env) {
         `The answers in this demo are examples only — not real-time or accurate. ` +
         `Once the add-on is purchased, it turns on live alerts, up-to-date weather, ` +
         `and real reservations.`;
+      const newCount = currentCount + 1;
+      await env.PROPERTIES.put(rateLimitKey, String(newCount), { expirationTtl: 86400 });
       return new Response(JSON.stringify({
         reply,
-        remaining: Math.max(0, MAX_MESSAGES - currentCount),
+        remaining: Math.max(0, MAX_MESSAGES - newCount),
         premium: { name: premium.name, price: premium.price }
       }), { headers: corsHeaders });
     }
@@ -569,7 +585,6 @@ async function loadProperty(env: Env, twilioNumber: string) {
 
 function twiml(message) {
   const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`;
-  console.log("Generated TwiML:", twimlResponse);
   return new Response(
     twimlResponse,
     { headers: { "Content-Type": "text/xml" } },
@@ -632,6 +647,18 @@ async function verifyTwilioSignature(request, form, env) {
 /* ------------------------------------------------------------------ *
  * Public API
  * ------------------------------------------------------------------ */
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 async function handleLeadCapture(request: Request, env: Env) {
   let body;
   try {
@@ -642,7 +669,7 @@ async function handleLeadCapture(request: Request, env: Env) {
 
   const email = body.email;
 
-  if (!email || typeof email !== 'string' || !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: "Valid email is required." }, 400);
   }
 
@@ -664,6 +691,14 @@ async function handleLeadCapture(request: Request, env: Env) {
  * Admin page + API
  * ------------------------------------------------------------------ */
 
+/** Constant-time string compare for the admin password. */
+function timingSafeEqualStr(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 async function handleAdmin(request, env, url) {
   // Helper for JSON responses with CORS
   const corsHeaders = {
@@ -678,11 +713,29 @@ async function handleAdmin(request, env, url) {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Admin API: every request must carry the admin password. Fails closed
+  // (401) when ADMIN_PASSWORD is not configured — the previous open
+  // endpoints let anyone read gate codes and rewrite property data.
+  if (url.pathname.startsWith("/admin/api/")) {
+    const expected = env.ADMIN_PASSWORD;
+    const got = request.headers.get("x-admin-password") || "";
+    if (!expected || !timingSafeEqualStr(got, expected)) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+  }
+
   // Serve the admin HTML page
   if (url.pathname === "/admin" || url.pathname === "/admin/") {
     // Check password for admin page access
     const auth = request.headers.get("Authorization");
     const expectedPassword = env.ADMIN_PASSWORD;
+
+    if (!expectedPassword) {
+      return new Response("Unauthorized", {
+        status: 401,
+        headers: { "WWW-Authenticate": "Basic realm=\"Admin\"" }
+      });
+    }
 
     if (expectedPassword) {
       // For browser access, check cookie or basic auth
@@ -738,6 +791,14 @@ async function handleAdmin(request, env, url) {
         property.answers = kvProperty.answers;
       }
 
+      // Host escalation phone lives in the hosts table
+      const { results: hostRows } = await env.DB.prepare(
+        "SELECT phone AS hostPhone FROM hosts WHERE id = ?1"
+      ).bind(property.host_id).all();
+      if (hostRows && hostRows.length > 0) {
+        property.hostPhone = hostRows[0].hostPhone;
+      }
+
       return new Response(JSON.stringify(property), { headers: corsHeaders });
     } catch (err) {
       return new Response(JSON.stringify({ error: err?.message || "Failed to load property" }), { status: 500, headers: corsHeaders });
@@ -752,15 +813,23 @@ async function handleAdmin(request, env, url) {
 
       if (!id) return new Response(JSON.stringify({ error: "Property ID required" }), { status: 400, headers: corsHeaders });
 
-      // Update D1
+      // Update D1 — host phone lives in the hosts table, not properties
       await env.DB.prepare(
-        "UPDATE properties SET display_name = ?1, twilio_number = ?2, host_phone = ?3, rate_limit_reply = ?4, unknown_reply = ?5, updated_at = datetime('now') WHERE id = ?6"
-      ).bind(name, twilioNumber, hostPhone, rateLimitReply, unknownReply, id).run();
+        "UPDATE properties SET display_name = ?1, twilio_number = ?2, rate_limit_reply = ?3, unknown_reply = ?4, updated_at = datetime('now') WHERE id = ?5"
+      ).bind(name, twilioNumber, rateLimitReply, unknownReply, id).run();
 
-      // Update KV
-      if (secrets || answers) {
-        await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({ secrets: secrets || [], answers: answers || [] }));
+      if (hostPhone !== undefined) {
+        await env.DB.prepare(
+          "UPDATE hosts SET phone = ?1 WHERE id = (SELECT host_id FROM properties WHERE id = ?2)"
+        ).bind(hostPhone, id).run();
       }
+
+      // Update KV — merge so a partial save never wipes what it didn't send
+      const existing = (await env.PROPERTIES.get(`prop:${id}`, "json")) || {};
+      await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({
+        secrets: secrets !== undefined ? secrets : (existing.secrets || []),
+        answers: answers !== undefined ? answers : (existing.answers || []),
+      }));
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     } catch (err) {

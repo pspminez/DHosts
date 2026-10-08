@@ -360,7 +360,7 @@
         <div class="flood-shockwave"></div>
       </div>
       <div class="flood-cta">
-        <a href="index-solution.html" class="btn btn-ghost" style="margin-left: 0.75rem;">See the solution</a>
+        <a href="#solution" class="btn btn-ghost" style="margin-left: 0.75rem;">See the solution</a>
       </div>
     </section>
 
@@ -590,57 +590,13 @@
       setTimeout(createFloodBubble, i * 60);
     }
 
-    // Then steady stream
-    setInterval(createFloodBubble, 350);
+    // Then steady stream — cleared when the flood section transitions away
+    window.floodInterval = setInterval(createFloodBubble, 350);
   </script>
 
   <!-- Email capture & demo chat (module) -->
   <script type="module">
-    import { sendMessageToAI, submitLead, PREMIUM_SERVICES } from './api.js';
-
-    // Email capture (exists on this page)
-    const emailInput = document.getElementById('emailInput');
-    const subscribeBtn = document.getElementById('subscribeBtn');
-    const emailStatus = document.getElementById('emailStatus');
-
-    if (subscribeBtn && emailInput && emailStatus) {
-      subscribeBtn.addEventListener('click', async () => {
-        const email = emailInput.value.trim();
-        if (!email) {
-          emailStatus.textContent = 'Please enter your email address.';
-          emailStatus.style.color = 'var(--warn)';
-          return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          emailStatus.textContent = 'Please enter a valid email address.';
-          emailStatus.style.color = 'var(--warn)';
-          return;
-        }
-
-        emailStatus.textContent = 'Subscribing...';
-        emailStatus.style.color = 'var(--muted)';
-        subscribeBtn.disabled = true;
-
-        try {
-          const response = await submitLead(email);
-          if (response.success) {
-            emailStatus.textContent = 'Subscribed successfully!'
-            emailStatus.style.color = 'var(--green)';
-            emailInput.value = '';
-          } else {
-            emailStatus.textContent = 'Subscription failed. Please try again.';
-            emailStatus.style.color = 'var(--warn)';
-          }
-        } catch (error) {
-          emailStatus.textContent = `Error: ${error.message}`;
-          emailStatus.style.color = 'var(--warn)';
-        } finally {
-          subscribeBtn.disabled = false;
-        }
-      });
-    }
+    import { sendMessageToAI } from './api.js';
 
     // Demo chat (only on solution page)
     const chat = document.getElementById('chat');
@@ -728,48 +684,6 @@
         }
       });
 
-      const emailInput = document.getElementById('emailInput');
-      const subscribeBtn = document.getElementById('subscribeBtn');
-      const emailStatus = document.getElementById('emailStatus');
-
-      if (subscribeBtn && emailInput && emailStatus) {
-        subscribeBtn.addEventListener('click', async () => {
-          const email = emailInput.value.trim();
-          if (!email) {
-            emailStatus.textContent = 'Please enter your email address.';
-            emailStatus.style.color = 'var(--warn)';
-            return;
-          }
-
-          const emailRegex = /^[^\s@]+@[^\s@]+[^\s@]+$/;
-          if (!emailRegex.test(email)) {
-            emailStatus.textContent = 'Please enter a valid email address.';
-            emailStatus.style.color = 'var(--warn)';
-            return;
-          }
-
-          emailStatus.textContent = 'Subscribing...';
-          emailStatus.style.color = 'var(--muted)';
-          subscribeBtn.disabled = true;
-
-          try {
-            const response = await submitLead(email);
-            if (response.success) {
-              emailStatus.textContent = 'Subscribed successfully!';
-              emailStatus.style.color = 'var(--green)';
-              emailInput.value = '';
-            } else {
-              emailStatus.textContent = 'Subscription failed. Please try again.';
-              emailStatus.style.color = 'var(--warn)';
-            }
-          } catch (error) {
-            emailStatus.textContent = `Error: ${error.message}`;
-            emailStatus.style.color = 'var(--warn)';
-          } finally {
-            subscribeBtn.disabled = false;
-          }
-        });
-      }
     }
   </script>
 
@@ -799,6 +713,9 @@
 
     // After flood duration, show STOP THE FLOOD (automatic, no button needed)
     setTimeout(() => {
+      // Stop the bubble stream
+      clearInterval(window.floodInterval);
+
       // Fade out flood section smoothly
       floodSection.classList.add('fade-out');
 
