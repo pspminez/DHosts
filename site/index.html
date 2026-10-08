@@ -3,25 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Davenport Host Co. — The Flood Solution</title>
+  <title>Davenport Host Co. — Your rental answers itself</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a0a0f;
-      --surface: rgba(255,255,255,0.03);
-      --border: rgba(255,255,255,0.08);
-      --text: #e8e8ed;
-      --muted: #8b8b9a;
-      --accent: #7c5cff;
-      --accent-2: #22d3ee;
-      --green: #34d399;
-      --warn: #ff7a45;
+      --bg: #0a1526;
+      --card: #0f1e36;
+      --surface: rgba(148, 180, 255, 0.05);
+      --border: rgba(148, 180, 255, 0.14);
+      --text: #f2f6ff;
+      --muted: #93a5c9;
+      --sun: #ff9e4a;
+      --pink: #ff5e8a;
+      --gold: #ffd166;
+      --pool: #38e1c6;
+      /* legacy aliases (JS-inserted markup + shared styles) */
+      --accent: #ff9e4a;
+      --accent-2: #38e1c6;
+      --green: #38e1c6;
+      --warn: #ff9e4a;
+      --sunset: linear-gradient(96deg, #ffd166 0%, #ff9e4a 45%, #ff5e8a 100%);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
-      font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-family: "Bricolage Grotesque", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
       line-height: 1.6;
       display: flex;
       flex-direction: column;
@@ -31,23 +41,41 @@
     body::before {
       content: "";
       position: fixed;
-      top: -20rem; left: 50%; translate: -50% 0;
-      width: 60rem; height: 60rem;
-      background: radial-gradient(circle, rgba(124,92,255,0.18), transparent 60%);
+      top: -22rem; left: 50%; translate: -50% 0;
+      width: 64rem; height: 64rem;
+      background: radial-gradient(circle, rgba(255, 94, 138, 0.15), transparent 60%);
+      filter: blur(40px);
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      bottom: -18rem; right: -10rem;
+      width: 44rem; height: 44rem;
+      background: radial-gradient(circle, rgba(56, 225, 198, 0.09), transparent 60%);
       filter: blur(40px);
       pointer-events: none; z-index: 0;
     }
     main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
-    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 0.6rem; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-    h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
-    h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .lede { font-size: 1.1rem; color: var(--muted); max-width: 34rem; margin-bottom: 3rem; }
-    .demo { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 3rem; }
+    :focus-visible { outline: 2px solid var(--pool); outline-offset: 2px; border-radius: 6px; }
+
+    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pool); box-shadow: 0 0 10px var(--pool); }
+    h1 { font-size: clamp(2.25rem, 6vw, 3.9rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; margin-bottom: 1.25rem; }
+    .grad { background: var(--sunset); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { font-size: 1.12rem; color: var(--muted); max-width: 36rem; margin-bottom: 3rem; }
+    .lede strong { color: var(--text); font-weight: 600; }
+
+    .section-head { text-align: center; margin: 0 auto 2rem; max-width: 44rem; }
+    .section-head h2 { font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.6rem; }
+    .section-head p { color: var(--muted); font-size: 1rem; }
+
+    /* Demo chat */
+    .demo { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; margin-bottom: 3rem; }
     .demo-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .demo-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-    .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #000; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
-    .msg-counter { font-size: 0.75rem; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 0.35rem 0.7rem; border-radius: 999px; }
+    .demo-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #081120; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
+    .msg-counter { font-size: 0.75rem; color: var(--gold); background: rgba(255, 209, 102, 0.08); border: 1px solid rgba(255, 209, 102, 0.25); padding: 0.35rem 0.7rem; border-radius: 999px; font-weight: 600; }
     .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 28rem; overflow-y: auto; padding-right: 0.5rem; scroll-behavior: smooth; }
     .chat::-webkit-scrollbar { width: 6px; }
     .chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -55,55 +83,68 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
     .msg-guest { flex-direction: row-reverse; }
     .bubble { max-width: 78%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; }
-    .bubble-guest { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble-guest { background: var(--sunset); color: #1c0b06; border-bottom-right-radius: 4px; font-weight: 600; }
     .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
-    .msg-guest .bubble { background: var(--accent); color: #fff; border-radius: 18px; border-bottom-left-radius: 4px; }
+    .msg-guest .bubble { background: var(--sunset); color: #1c0b06; border-radius: 18px; border-bottom-left-radius: 4px; font-weight: 600; }
     .chat-input-area { display: flex; gap: 0.5rem; margin-top: 1rem; }
     .chat-input-area input { flex: 1; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 0.95rem; }
-    .chat-input-area input:focus { outline: none; border-color: var(--accent); }
-    .chat-input-area button { padding: 0.7rem 1.4rem; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
+    .chat-input-area input:focus { outline: none; border-color: var(--pool); }
+    .chat-input-area button { padding: 0.7rem 1.4rem; border-radius: 12px; border: 0; background: var(--pool); color: #06251d; font: inherit; font-weight: 700; cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
     .chat-input-area button:hover { transform: translateY(-1px); }
     .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .package-prompt { display: none; margin-top: 1rem; padding: 1.25rem; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-radius: 14px; color: #fff; text-align: center; }
+    .package-prompt { display: none; margin-top: 1rem; padding: 1.25rem; background: var(--sunset); border-radius: 14px; color: #1c0b06; text-align: center; }
     .package-prompt h3 { margin-bottom: 0.5rem; }
-    .package-prompt p { opacity: 0.9; }
-    .pricing { display: flex; gap: 1.5rem; margin-bottom: 3rem; width: 100%; }
-    .price-card { flex: 1 1 0; min-width: 0; padding: 1.5rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); backdrop-filter: blur(12px); transition: transform 0.25s ease, border-color 0.25s ease; }
-    .price-card:hover { transform: translateY(-4px); border-color: rgba(124,92,255,0.4); }
-    .price-card.featured { border-color: var(--accent); background: rgba(124,92,255,0.06); }
-    .price-tag { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
-    .price-card h3 { font-size: 1rem; margin-bottom: 1rem; }
-    .price-card ul { list-style: none; font-size: 0.9rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem; }
-    .price-card li::before { content: ""; }
-    .cta { text-align: center; margin-top: 2rem; }
-    .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-    .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,92,255,0.35); }
+    .package-prompt p { opacity: 0.85; }
+
+    /* Pricing */
+    .pricing { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 3rem; width: 100%; }
+    .price-card { position: relative; flex: 1 1 0; min-width: 0; padding: 1.75rem 1.5rem; border-radius: 20px; background: var(--card); border-top: 4px solid var(--gold); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    .price-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); }
+    .price-card.featured {
+      border: 2px solid transparent;
+      border-top: 2px solid transparent;
+      background:
+        linear-gradient(var(--card), var(--card)) padding-box,
+        var(--sunset) border-box;
+    }
+    .most-loved { position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%); background: var(--sunset); color: #1c0b06; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.85rem; border-radius: 999px; letter-spacing: 0.02em; }
+    .price-tag { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.15rem; }
+    .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
+    .price-card h3 { font-size: 1.05rem; margin-bottom: 1rem; font-weight: 700; }
+    .price-card ul { list-style: none; font-size: 0.95rem; color: #cfdaf0; display: flex; flex-direction: column; gap: 0.7rem; }
+    .price-card li { display: flex; gap: 0.6rem; align-items: flex-start; }
+    .price-card li::before {
+      content: "";
+      flex: none;
+      width: 1.15em; height: 1.15em; margin-top: 0.22em;
+      background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338e1c6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
+    }
+
+    /* CTA + buttons */
+    .cta { text-align: center; margin-top: 2.5rem; }
+    .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 700; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .btn-primary { background: var(--sunset); color: #1c0b06; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255, 94, 138, 0.35); }
     .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
+    .btn-ghost:hover { border-color: var(--pool); }
+    .cta .btn-ghost { margin-left: 0.75rem; }
+
+    /* How it works */
     .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
     .step { text-align: center; padding: 1.5rem; }
-    .step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 1rem; font-size: 1.1rem; }
-    .step h4 { font-size: 1rem; margin-bottom: 0.5rem; }
-    .step p { font-size: 0.85rem; color: var(--muted); }
+    .step-num { width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--sunset); color: #1c0b06; display: flex; align-items: center; justify-content: center; font-weight: 800; margin: 0 auto 1rem; font-size: 1.1rem; }
+    .step h4 { font-size: 1rem; margin-bottom: 0.5rem; font-weight: 700; }
+    .step p { font-size: 0.87rem; color: var(--muted); }
+
     footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
-    @media (max-width: 640px) {
-      .pricing { flex-wrap: wrap; }
-      .premium-list { flex-wrap: wrap; }
-    }
-
-    .premium-card { flex: 1 1 0; min-width: 0; }
-
-    @media (max-width: 480px) {
-      .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
-    }
 
     /* STOP THE FLOOD overlay */
     .stop-overlay h1 {
       font-size: clamp(2.5rem, 9vw, 5rem);
-      font-weight: 900;
-      color: #ff2d55;
-      text-shadow: 0 0 40px rgba(255,45,85,0.6), 0 0 90px rgba(255,45,85,0.35);
+      font-weight: 800;
+      background: var(--sunset);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 34px rgba(255, 94, 138, 0.55));
       letter-spacing: -0.02em;
       animation: stopPulse 1.1s ease-in-out infinite;
     }
@@ -111,31 +152,19 @@
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.07); }
     }
-    .stop-bold { font-weight: 800; }
-    .stop-grow {
-      font-weight: 900;
-      display: inline-block;
-      animation: stopGrow 1s ease-out 0.3s both;
-    }
-    @keyframes stopGrow {
-      0% { font-size: 1.4rem; transform: scale(0.5); opacity: 0; }
-      60% { transform: scale(1.3); }
-      100% { font-size: 2.8rem; transform: scale(1); opacity: 1; }
-    }
+    .stop-bold { font-weight: 800; color: var(--gold); }
 
-    /* Flood animation - overwhelming message bubbles */
+    /* Flood animation — the problem */
     .flood-section { margin: 3rem 0; position: relative; transition: opacity 0.8s ease, transform 0.8s ease; }
     .flood-section.fade-out { opacity: 0; transform: scale(0.98); }
-    .flood-label { text-align: center; font-size: 0.85rem; color: var(--warn); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
-    .flood-container { position: relative; height: 300px; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at center, rgba(255,122,69,0.08), transparent 70%); border: 1px solid rgba(255,122,69,0.2); }
+    .flood-label { text-align: center; font-size: 1rem; font-weight: 700; color: var(--gold); margin-bottom: 1rem; }
+    .flood-container { position: relative; height: 300px; overflow: hidden; border-radius: 20px; background: radial-gradient(circle at center, rgba(255, 94, 138, 0.07), transparent 70%); border: 1px solid rgba(255, 94, 138, 0.22); }
 
-    /* Pulsing center rings */
     .flood-container::before,
     .flood-container::after {
       content: '';
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       border-radius: 50%;
       border: 2px solid transparent;
@@ -143,29 +172,16 @@
       z-index: 0;
       animation: pulseRing 3s ease-out infinite;
     }
-    .flood-container::before {
-      width: 60px;
-      height: 60px;
-      border-color: rgba(124,92,255,0.5);
-      animation-delay: 0s;
-    }
-    .flood-container::after {
-      width: 90px;
-      height: 90px;
-      border-color: rgba(34,211,238,0.4);
-      animation-delay: 1.5s;
-    }
+    .flood-container::before { width: 60px; height: 60px; border-color: rgba(255, 158, 74, 0.5); animation-delay: 0s; }
+    .flood-container::after { width: 90px; height: 90px; border-color: rgba(56, 225, 198, 0.4); animation-delay: 1.5s; }
 
-    /* Shockwave ring */
     .flood-shockwave {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 10px;
-      height: 10px;
+      width: 10px; height: 10px;
       border-radius: 50%;
-      border: 3px solid var(--accent);
+      border: 3px solid var(--sun);
       opacity: 0;
       pointer-events: none;
       z-index: 1;
@@ -174,34 +190,22 @@
 
     .flood-bubble {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       padding: 0.7rem 1.1rem;
       border-radius: 22px;
       line-height: 1.3;
-      color: #fff;
-      border-bottom-right-radius: 6px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       animation: floodBurst 10s ease-out infinite;
       opacity: 0;
       white-space: nowrap;
       max-width: 85%;
-      font-weight: 500;
       z-index: 2;
     }
-    .flood-bubble.alt {
-      background: linear-gradient(135deg, var(--accent-2), #06b6d4);
-      box-shadow: 0 8px 24px rgba(34,211,238,0.5);
-    }
-    .flood-bubble.main {
-      background: linear-gradient(135deg, var(--accent), #a855f7);
-      box-shadow: 0 8px 24px rgba(124,92,255,0.5);
-    }
-    .flood-bubble.warn {
-      background: linear-gradient(135deg, var(--warn), #fb923c);
-      box-shadow: 0 8px 24px rgba(255,122,69,0.5);
-    }
+    .flood-bubble.main { background: var(--sunset); color: #1c0b06; box-shadow: 0 8px 24px rgba(255, 94, 138, 0.4); }
+    .flood-bubble.alt { background: linear-gradient(135deg, var(--pool), #22d3ee); color: #06251d; box-shadow: 0 8px 24px rgba(56, 225, 198, 0.4); }
+    .flood-bubble.warn { background: linear-gradient(135deg, #ff4d5e, var(--sun)); color: #fff; box-shadow: 0 8px 24px rgba(255, 77, 94, 0.4); }
 
     @keyframes floodBurst {
       0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
@@ -219,9 +223,9 @@
     }
 
     @keyframes shockwave {
-      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.8; border-color: var(--accent); }
-      50% { border-color: var(--accent-2); }
-      100% { transform: translate(-50%, -50%) scale(15); opacity: 0; border-color: var(--warn); }
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.8; border-color: var(--sun); }
+      50% { border-color: var(--pool); }
+      100% { transform: translate(-50%, -50%) scale(15); opacity: 0; border-color: var(--pink); }
     }
 
     .flood-overlay {
@@ -233,24 +237,18 @@
     }
 
     .flood-cta { text-align: center; margin-top: 1.5rem; }
+    .flood-cta .btn-ghost { margin-left: 0; }
 
-    @media (max-width: 640px) {
-      .flood-container { height: 220px; }
-      .flood-bubble { font-size: 0.75rem; padding: 0.5rem 0.8rem; max-width: 90%; }
-      .flood-container::before { width: 40px; height: 40px; }
-      .flood-container::after { width: 60px; height: 60px; }
-    }
-
-    /* Transition visualization - problem becomes solution */
+    /* Transition — the flood dries up */
     .transition-section { margin: 3rem 0; position: relative; }
-    .transition-label { text-align: center; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+    .transition-label { text-align: center; font-size: 1rem; font-weight: 700; color: var(--pool); margin-bottom: 1rem; }
     .transition-container {
       position: relative;
       height: 380px;
       overflow-y: auto;
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(124,92,255,0.05), transparent);
-      border: 1px solid rgba(124,92,255,0.2);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(56, 225, 198, 0.05), transparent);
+      border: 1px solid rgba(56, 225, 198, 0.22);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -264,7 +262,7 @@
       font-size: 0.9rem;
       line-height: 1.4;
       max-width: 75%;
-      font-weight: 500;
+      font-weight: 600;
       opacity: 0;
       transform: translateY(20px);
       transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -273,23 +271,20 @@
       z-index: 2;
     }
     .transition-bubble.guest {
-      background: var(--accent);
-      color: #fff;
+      background: var(--sunset);
+      color: #1c0b06;
       border-bottom-left-radius: 4px;
       align-self: flex-start;
-      box-shadow: 0 4px 12px rgba(124,92,255,0.3);
+      box-shadow: 0 4px 12px rgba(255, 94, 138, 0.3);
     }
     .transition-bubble.bot {
-      background: var(--green);
-      color: #0a0a0f;
+      background: var(--pool);
+      color: #06251d;
       border-bottom-right-radius: 4px;
       align-self: flex-end;
-      box-shadow: 0 4px 12px rgba(52,211,153,0.3);
+      box-shadow: 0 4px 12px rgba(56, 225, 198, 0.3);
     }
-    .transition-bubble.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .transition-bubble.visible { opacity: 1; transform: translateY(0); }
     .transition-overlay {
       position: absolute;
       inset: 0;
@@ -300,49 +295,45 @@
     .transition-cta { text-align: center; margin-top: 1.5rem; }
     .phase-label {
       position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
+      font-size: 0.78rem;
+      font-weight: 700;
       opacity: 0;
       transition: opacity 0.5s ease;
       z-index: 10;
     }
-    .phase-label.visible {
-      opacity: 1;
-    }
-    .phase-label.guest {
-      color: var(--accent);
-      top: 1rem;
-      left: 2rem;
-      transform: none;
-    }
-    .phase-label.bot {
-      color: var(--green);
-      top: 1rem;
-      right: 2rem;
-      left: auto;
-      transform: none;
-    }
-    .phase-label.visible {
-      opacity: 1;
-    }
+    .phase-label.guest { color: var(--pink); top: 1rem; left: 2rem; }
+    .phase-label.bot { color: var(--pool); top: 1rem; right: 2rem; }
+    .phase-label.visible { opacity: 1; }
+
+    /* Premium add-ons */
+    .premium-list { display: flex; gap: 1rem; width: 100%; flex-wrap: wrap; }
+    .premium-card { flex: 1 1 0; min-width: 0; padding: 1.5rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); border-top: 3px solid var(--chip, var(--pool)); transition: transform 0.2s, box-shadow 0.2s; }
+    .premium-card:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
+    .premium-card .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .premium-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .premium-card p { color: var(--muted); font-size: 0.9rem; margin: 0.5rem 0 1rem; }
+    .premium-card .price { font-weight: 800; color: var(--chip, var(--pool)); font-size: 1.1rem; }
+    .chip-pool { --chip: var(--pool); }
+    .chip-pink { --chip: var(--pink); }
+    .chip-gold { --chip: var(--gold); }
+    .chip-sun { --chip: var(--sun); }
 
     @media (max-width: 640px) {
-      .transition-container {
-        height: 280px;
-        padding: 0.75rem;
-        gap: 0.4rem;
-      }
-      .transition-bubble {
-        font-size: 0.8rem;
-        padding: 0.6rem 0.85rem;
-        max-width: 80%;
-      }
+      .pricing { flex-wrap: wrap; }
+      .flood-container { height: 220px; }
+      .flood-bubble { font-size: 0.75rem; padding: 0.5rem 0.8rem; max-width: 90%; }
+      .flood-container::before { width: 40px; height: 40px; }
+      .flood-container::after { width: 60px; height: 60px; }
+      .transition-container { height: 280px; padding: 0.75rem; gap: 0.4rem; }
+      .transition-bubble { font-size: 0.8rem; padding: 0.6rem 0.85rem; max-width: 80%; }
       .phase-label.guest { left: 1rem; }
       .phase-label.bot { right: 1rem; }
+      .cta .btn-ghost { display: block; margin: 0.75rem auto 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .flood-bubble, .flood-shockwave, .flood-container::before, .flood-container::after, .stop-overlay h1 { animation: none !important; }
+      .stop-overlay h1 { animation: none !important; }
     }
   </style>
 </head>
@@ -350,23 +341,24 @@
   <main>
     <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
 
-    <h1>Guests text.<br><span>You stop being on call.</span></h1>
+    <h1>Never answer <span class="grad">"what's the WiFi?"</span> again.</h1>
+    <p class="lede">A local text line for your vacation rental. Guests text, answers land in <strong>seconds</strong> — and only the weird stuff ever reaches you.</p>
 
     <!-- Flood visualization - the problem -->
     <section class="flood-section" aria-label="The problem: message overload">
-      <div class="flood-label">Is this what your phone looks like all times of the day?</div>
+      <div class="flood-label">Is this your phone at 9 PM on a Saturday?</div>
       <div class="flood-container" id="floodContainer">
         <div class="flood-overlay"></div>
         <div class="flood-shockwave"></div>
       </div>
       <div class="flood-cta">
-        <a href="#solution" class="btn btn-ghost" style="margin-left: 0.75rem;">See the solution</a>
+        <a href="#solution" class="btn btn-ghost">Skip to the fix</a>
       </div>
     </section>
 
     <!-- Solution: watch the flood become automatic replies -->
     <section class="transition-section" aria-label="The solution: automatic replies" id="solution">
-      <div class="transition-label">Watch the flood become automatic replies</div>
+      <div class="transition-label">Watch the flood dry up</div>
       <div class="transition-container" id="transitionContainer">
         <div class="phase-label guest" id="guestPhase">Guest questions</div>
         <div class="phase-label bot" id="botPhase">Auto-replies</div>
@@ -382,29 +374,34 @@
         <div class="transition-bubble bot">Checkout is 10 AM. Keys go back in the box by the front door.</div>
       </div>
       <div class="transition-cta">
-        <a href="#pricing" class="btn btn-primary">Get your text line →</a>
-        <a href="#demoChat" class="btn btn-ghost" style="margin-left: 0.75rem;">Try free chat</a>
+        <a href="#pricing" class="btn btn-primary">Get your text line</a>
+        <a href="#demoChat" class="btn btn-ghost">Try the free chat</a>
       </div>
     </section>
 
     <div class="pricing" id="pricing">
+      <div class="section-head" style="width:100%;">
+        <h2>The whole flood, handled — for less than <span class="grad">one cleaning fee</span></h2>
+        <p>One setup, one simple monthly. No app for guests to download. No new number for you to babysit.</p>
+      </div>
       <div class="price-card">
         <div class="price-tag">$299</div>
         <div class="price-sub">one-time setup</div>
         <h3>Setup</h3>
         <ul>
-          <li>Build your property's answer library</li>
-          <li>Configure your dedicated text line</li>
-          <li>Test live with you before launch</li>
-          <li>Welcome card template for guests</li>
+          <li>Every answer built for your property</li>
+          <li>Your own dedicated text line</li>
+          <li>Tested live with you before launch</li>
+          <li>Welcome card guests actually keep</li>
         </ul>
       </div>
       <div class="price-card featured">
+        <div class="most-loved">Most loved</div>
         <div class="price-tag">$99</div>
         <div class="price-sub">/month per property</div>
         <h3>Host Package</h3>
         <ul>
-          <li>24/7 guest text line (no bots guessing)</li>
+          <li>24/7 guest line — real answers, no bots guessing</li>
           <li>Escalation to you only when it matters</li>
           <li>Monthly report: what guests actually asked</li>
           <li>Edit answers anytime — no code, no redeploy</li>
@@ -413,34 +410,34 @@
     </div>
 
     <div class="premium-services" id="premium" style="margin-top:4rem;">
-      <h2 style="text-align:center; margin-bottom:0.5rem;">Premium Concierge Add-ons</h2>
-      <p style="text-align:center; color:var(--muted); margin-bottom:2rem; max-width:40rem; margin-left:auto; margin-right:auto;">
-        Upgrade your guests' experience with AI-powered services that go beyond basic property info.
-      </p>
-      <div class="premium-list" style="display:flex; gap:1rem; width:100%; flex-wrap:wrap;">
-        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🌤️</div>
+      <div class="section-head">
+        <h2>Go <span class="grad">beyond answers</span></h2>
+        <p>AI-powered add-ons that make your rental feel like a full concierge desk.</p>
+      </div>
+      <div class="premium-list">
+        <div class="premium-card chip-pool">
+          <div class="emoji">🌤️</div>
           <h3>Live Weather & Alerts</h3>
-          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Real-time weather, storm alerts, hurricane tracking for your property</p>
-          <div style="font-weight:700; color:var(--accent);">$15/mo</div>
+          <p>Real-time weather, storm alerts, hurricane tracking for your property</p>
+          <div class="price">$15/mo</div>
         </div>
-        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎭</div>
+        <div class="premium-card chip-pink">
+          <div class="emoji">🎭</div>
           <h3>Local Events & Dining</h3>
-          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Curated events, restaurant reservations, attraction tickets for guests</p>
-          <div style="font-weight:700; color:var(--accent);">$20/mo</div>
+          <p>Curated events, restaurant reservations, attraction tickets for guests</p>
+          <div class="price">$20/mo</div>
         </div>
-        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-          <div style="font-size:2.5rem; margin-bottom:0.5rem;">🛒</div>
+        <div class="premium-card chip-gold">
+          <div class="emoji">🛒</div>
           <h3>Grocery & Essentials Delivery</h3>
-          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">Pre-stock fridge, toiletries, beach gear before guests arrive</p>
-          <div style="font-weight:700; color:var(--accent);">$25/mo</div>
+          <p>Pre-stock fridge, toiletries, beach gear before guests arrive</p>
+          <div class="price">$25/mo</div>
         </div>
-        <div class="premium-card" style="padding:1.5rem; border:1px solid var(--border); border-radius:16px; background:var(--surface); transition:transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-          <div style="font-size:2.5rem; margin-bottom:0.5rem;">⭐</div>
+        <div class="premium-card chip-sun">
+          <div class="emoji">⭐</div>
           <h3>Full Concierge</h3>
-          <p style="color:var(--muted); font-size:0.9rem; margin:0.5rem 0 1rem;">All of the above + 24/7 host backup, maintenance coordination</p>
-          <div style="font-weight:700; color:var(--accent);">$49/mo</div>
+          <p>All of the above + 24/7 host backup, maintenance coordination</p>
+          <div class="price">$49/mo</div>
         </div>
       </div>
     </div>
@@ -461,31 +458,31 @@
       </div>
       <div id="packagePrompt" class="package-prompt">
         <h3>Love the demo? Get your own property text line! 🎉</h3>
-        <p style="margin:0.5rem 0 1rem; opacity:0.9;">Unlimited messages, your own property KB, and premium add-ons available.</p>
-        <a href="#pricing" class="btn btn-primary" style="background:#fff; color:var(--accent);">View Packages</a>
+        <p style="margin:0.5rem 0 1rem; opacity:0.85;">Unlimited messages, your own property KB, and premium add-ons available.</p>
+        <a href="#pricing" class="btn btn-primary" style="background:#fff; color:#1c0b06;">View Packages</a>
       </div>
     </div>
 
     <div class="cta">
-      <a href="#pricing" class="btn btn-primary">Start your setup</a>
-      <a href="mailto:hello@davenporthost.co" class="btn btn-ghost">Contact us</a>
+      <a href="#pricing" class="btn btn-primary">Stop the flood for good</a>
+      <a href="mailto:hello@davenporthost.co" class="btn btn-ghost">Talk to a human</a>
     </div>
 
     <div class="how">
       <div class="step">
         <div class="step-num">1</div>
         <h4>You onboard</h4>
-        <p>We build your property's KB — gate codes, WiFi, checkout, pool, trash, quiet hours.</p>
+        <p>We build your property's answer library — gate codes, WiFi, checkout, pool, trash, quiet hours. You review, we launch.</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <h4>Guests text</h4>
-        <p>They text the number on the fridge card. "SUNSET what's the gate code?" → instant answer.</p>
+        <p>They text the number on the fridge card. "What's the gate code?" — instant answer, day or night.</p>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <h4>You're free</h4>
-        <p>Only the weird stuff reaches you. "AC making noise" → you get a text. Everything else is handled.</p>
+        <p>Only the weird stuff reaches you. "AC making noise" — you get one text. Everything else is handled.</p>
       </div>
     </div>
   </main>
@@ -500,6 +497,8 @@
 
   <!-- Flood animation (runs independently, no module deps) -->
   <script>
+    const PREFERS_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // Flood animation - create overwhelming message bubbles
     const floodContainer = document.getElementById('floodContainer');
     const floodMessages = [
@@ -535,7 +534,7 @@
       const msg = floodMessages[Math.floor(Math.random() * floodMessages.length)];
       const bubble = document.createElement('div');
 
-      // Three colors: main (purple), alt (cyan), warn (orange)
+      // Three looks: sunset, pool, alarm
       const colorRoll = Math.random();
       const colorClass = colorRoll > 0.66 ? 'warn' : (colorRoll > 0.33 ? 'alt' : 'main');
       bubble.className = 'flood-bubble ' + colorClass;
@@ -585,16 +584,18 @@
       setTimeout(() => bubble.remove(), 12000);
     }
 
-    // Immediate flood burst - no delay
-    for (let i = 0; i < 12; i++) {
-      setTimeout(createFloodBubble, i * 60);
-    }
+    if (!PREFERS_REDUCED) {
+      // Immediate flood burst - no delay
+      for (let i = 0; i < 12; i++) {
+        setTimeout(createFloodBubble, i * 60);
+      }
 
-    // Then steady stream — cleared when the flood section transitions away
-    window.floodInterval = setInterval(createFloodBubble, 350);
+      // Then steady stream — cleared when the flood section transitions away
+      window.floodInterval = setInterval(createFloodBubble, 350);
+    }
   </script>
 
-  <!-- Email capture & demo chat (module) -->
+  <!-- Demo chat (module) -->
   <script type="module">
     import { sendMessageToAI } from './api.js';
 
@@ -641,8 +642,8 @@
         box.className = 'package-prompt';
         box.innerHTML = `
           <h3>⭐ ${name} — ${price}</h3>
-          <p style="margin:0.5rem 0 1rem; opacity:0.9;">This is a premium add-on. It's not live in the demo — the answers here are examples only. Once purchased it turns on real alerts, up-to-date weather, and live reservations.</p>
-          <a href="#premium" class="btn btn-primary" style="background:#fff; color:var(--accent);">See all add-ons</a>
+          <p style="margin:0.5rem 0 1rem; opacity:0.85;">This is a premium add-on. It's not live in the demo — the answers here are examples only. Once purchased it turns on real alerts, up-to-date weather, and live reservations.</p>
+          <a href="#premium" class="btn btn-primary" style="background:#fff; color:#1c0b06;">See all add-ons</a>
         `;
         chat.appendChild(box);
         chat.scrollTop = chat.scrollHeight;
@@ -699,180 +700,195 @@
     const ctaSection = document.querySelector('.cta');
     const howSection = document.querySelector('.how');
 
-    // Hide all sections except flood initially
-    transitionSection.style.display = 'none';
-    pricingSection.style.display = 'none';
-    premiumSection.style.display = 'none';
-    solutionSection.style.display = 'none';
-    demoChatSection.style.display = 'none';
-    ctaSection.style.display = 'none';
-    howSection.style.display = 'none';
+    function showAllSections() {
+      floodSection.style.display = 'none';
+      transitionSection.style.display = 'block';
+      pricingSection.style.display = 'flex';
+      premiumSection.style.display = 'block';
+      demoChatSection.style.display = 'block';
+      ctaSection.style.display = 'block';
+      howSection.style.display = 'grid';
+    }
 
-    // Show flood section immediately
-    floodSection.style.display = 'block';
+    if (PREFERS_REDUCED) {
+      // Reduced motion: no flood, no overlay, no typewriters — static page
+      showAllSections();
+    } else {
+      // Hide all sections except flood initially
+      transitionSection.style.display = 'none';
+      pricingSection.style.display = 'none';
+      premiumSection.style.display = 'none';
+      solutionSection.style.display = 'none';
+      demoChatSection.style.display = 'none';
+      ctaSection.style.display = 'none';
+      howSection.style.display = 'none';
 
-    // After flood duration, show STOP THE FLOOD (automatic, no button needed)
-    setTimeout(() => {
-      // Stop the bubble stream
-      clearInterval(window.floodInterval);
+      // Show flood section immediately
+      floodSection.style.display = 'block';
 
-      // Fade out flood section smoothly
-      floodSection.classList.add('fade-out');
+      // After flood duration, show STOP THE FLOOD (automatic, no button needed)
+      setTimeout(() => {
+        // Stop the bubble stream
+        clearInterval(window.floodInterval);
 
-      // Create and show STOP THE FLOOD overlay with typewriter body text
-      const stopOverlay = document.createElement('div');
-      stopOverlay.style.position = 'fixed';
-      stopOverlay.style.top = '0';
-      stopOverlay.style.left = '0';
-      stopOverlay.style.width = '100%';
-      stopOverlay.style.height = '100%';
-      stopOverlay.style.background = 'rgba(10,10,15,0.95)';
-      stopOverlay.style.display = 'flex';
-      stopOverlay.style.flexDirection = 'column';
-      stopOverlay.style.alignItems = 'center';
-      stopOverlay.style.justifyContent = 'center';
-      stopOverlay.style.zIndex = '1000';
-      stopOverlay.style.textAlign = 'center';
-      stopOverlay.className = 'stop-overlay';
-      stopOverlay.innerHTML = `
-        <div>
-          <h1>STOP THE FLOOD!!</h1>
-          <p id="stopTextContainer" style="font-size: 1.5rem; color: var(--text); max-width: 80%; line-height: 1.4; margin: 0 auto;">
-            <span id="stopTypewriter"></span>
-            <span id="stopCursor">|</span>
-          </p>
-        </div>
-      `;
-      document.body.appendChild(stopOverlay);
+        // Fade out flood section smoothly
+        floodSection.classList.add('fade-out');
 
-      const stopText = 'Davenport Host Co. puts a local text line in front of it.<br>Guests get answers in <b class="stop-bold">seconds</b>.<br>You get your <b class="stop-bold">evenings back</b>.';
-      let stopIndex = 0;
-      let stopHtml = '';
-      const stopTypewriter = document.getElementById('stopTypewriter');
-      const stopCursor = document.getElementById('stopCursor');
-      stopCursor.style.display = 'none';
-      function typeStop() {
-        if (stopIndex < stopText.length) {
-          // Handle HTML tags - if we hit a <, skip to the closing >
-          if (stopText[stopIndex] === '<') {
-            const closeIdx = stopText.indexOf('>', stopIndex);
-            if (closeIdx !== -1) {
-              stopHtml += stopText.slice(stopIndex, closeIdx + 1);
-              stopIndex = closeIdx + 1;
-            }
-          } else {
-            stopHtml += stopText[stopIndex];
-            stopIndex++;
-          }
-          // Assign the full string each tick — reading innerHTML back would
-          // auto-close an unclosed <b>, putting the typed text outside the tag
-          stopTypewriter.innerHTML = stopHtml;
-          setTimeout(typeStop, Math.random() * 40 + 40); // real typing pace
-        } else {
-          stopHtml += ' ';
-          stopTypewriter.innerHTML = stopHtml;
-          stopCursor.style.display = 'inline-block';
-          setTimeout(() => { stopHtml = stopHtml.slice(0, -1); stopTypewriter.innerHTML = stopHtml; stopCursor.style.display = 'none'; }, 800);
-        }
-      }
-      typeStop();
+        // Create and show STOP THE FLOOD overlay with typewriter body text
+        const stopOverlay = document.createElement('div');
+        stopOverlay.style.position = 'fixed';
+        stopOverlay.style.top = '0';
+        stopOverlay.style.left = '0';
+        stopOverlay.style.width = '100%';
+        stopOverlay.style.height = '100%';
+        stopOverlay.style.background = 'rgba(8, 18, 33, 0.96)';
+        stopOverlay.style.display = 'flex';
+        stopOverlay.style.flexDirection = 'column';
+        stopOverlay.style.alignItems = 'center';
+        stopOverlay.style.justifyContent = 'center';
+        stopOverlay.style.zIndex = '1000';
+        stopOverlay.style.textAlign = 'center';
+        stopOverlay.className = 'stop-overlay';
+        stopOverlay.innerHTML = `
+          <div>
+            <h1>STOP THE FLOOD!!</h1>
+            <p id="stopTextContainer" style="font-size: 1.5rem; color: var(--text); max-width: 80%; line-height: 1.5; margin: 0 auto;">
+              <span id="stopTypewriter"></span>
+              <span id="stopCursor">|</span>
+            </p>
+          </div>
+        `;
+        document.body.appendChild(stopOverlay);
 
-      // Wait for typing to finish, then add read time before removing overlay
-      function waitForStopTypingFinish() {
-        return new Promise(resolve => {
-          const check = () => {
-            if (stopIndex >= stopText.length) {
-              resolve();
+        const stopText = 'Davenport Host Co. puts a local text line in front of it.<br>Guests get answers in <b class="stop-bold">seconds</b>.<br>You get your <b class="stop-bold">evenings back</b>.';
+        let stopIndex = 0;
+        let stopHtml = '';
+        const stopTypewriter = document.getElementById('stopTypewriter');
+        const stopCursor = document.getElementById('stopCursor');
+        stopCursor.style.display = 'none';
+        function typeStop() {
+          if (stopIndex < stopText.length) {
+            // Handle HTML tags - if we hit a <, skip to the closing >
+            if (stopText[stopIndex] === '<') {
+              const closeIdx = stopText.indexOf('>', stopIndex);
+              if (closeIdx !== -1) {
+                stopHtml += stopText.slice(stopIndex, closeIdx + 1);
+                stopIndex = closeIdx + 1;
+              }
             } else {
-              setTimeout(check, 100);
+              stopHtml += stopText[stopIndex];
+              stopIndex++;
             }
-          };
-          check();
-        });
-      }
-
-      waitForStopTypingFinish().then(() => {
-        // Give user time to read the finished message
-        setTimeout(() => {
-          // Remove overlay and show solution sections (FULLY AUTOMATIC)
-          stopOverlay.remove();
-
-          // Show all solution sections
-          transitionSection.style.display = 'block';
-          pricingSection.style.display = 'flex';
-          premiumSection.style.display = 'block';
-          solutionSection.style.display = 'block';
-          demoChatSection.style.display = 'block';
-          ctaSection.style.display = 'block';
-          howSection.style.display = 'block';
-
-          // Scroll to solution section
-          solutionSection.scrollIntoView({ behavior: 'smooth' });
-
-          // Human-style chat flow: type guest question, wait, then show bot reply
-          const conversation = [
-            { sender: 'guest', text: "Hey, quick question — is the pool heated today?" },
-            { sender: 'bot', text: "Yes! The pool heater's on the lanai wall — press HEAT, set to 86. Takes about an hour to warm up. Reply STOP to opt out." },
-            { sender: 'guest', text: "Oh nice, thanks!" },
-            { sender: 'bot', text: "Anytime! WiFi is 'BeachBreeze2024' if you need it. Reply HELP for help." },
-            { sender: 'guest', text: "One more thing — what time is checkout?" },
-            { sender: 'bot', text: "Checkout is 10 AM. Just drop the keys back in the box by the front door." },
-            { sender: 'guest', text: "Got it, thanks so much!" },
-            { sender: 'bot', text: "Enjoy your stay! 🌴" }
-          ];
-
-          const container = document.getElementById('transitionContainer');
-          const guestPhase = document.getElementById('guestPhase');
-          const botPhase = document.getElementById('botPhase');
-          if (guestPhase) guestPhase.classList.add('visible');
-          if (botPhase) botPhase.classList.add('visible');
-
-          // Remove pre-written bubbles so we build the typed flow
-          const oldBubbles = container.querySelectorAll('.transition-bubble');
-          oldBubbles.forEach(b => b.remove());
-
-          // Play the conversation sequentially — wait for each bubble to finish typing
-          // before starting the next, so it reads like a real text thread.
-          let i = 0;
-
-          // Type a bubble character by character; returns a promise that resolves when typing is done
-          function typeBubble(bubble, text, sender) {
-            return new Promise(resolve => {
-              let charIndex = 0;
-              const typeChar = () => {
-                if (charIndex < text.length) {
-                  bubble.textContent += text[charIndex];
-                  charIndex++;
-                  const speed = sender === 'guest' ? Math.random() * 40 + 35 : Math.random() * 30 + 25;
-                  setTimeout(typeChar, speed);
-                } else {
-                  resolve();
-                }
-              };
-              typeChar();
-            });
+            // Assign the full string each tick — reading innerHTML back would
+            // auto-close an unclosed <b>, putting the typed text outside the tag
+            stopTypewriter.innerHTML = stopHtml;
+            setTimeout(typeStop, Math.random() * 40 + 40); // real typing pace
+          } else {
+            stopHtml += ' ';
+            stopTypewriter.innerHTML = stopHtml;
+            stopCursor.style.display = 'inline-block';
+            setTimeout(() => { stopHtml = stopHtml.slice(0, -1); stopTypewriter.innerHTML = stopHtml; stopCursor.style.display = 'none'; }, 800);
           }
+        }
+        typeStop();
 
-          function nextBubble() {
-            if (i >= conversation.length) return;
-            const pair = conversation[i];
-            const bubble = document.createElement('div');
-            bubble.className = 'transition-bubble ' + pair.sender + ' visible';
-            container.appendChild(bubble);
-            container.scrollTop = container.scrollHeight;
-            i++;
+        // Wait for typing to finish, then add read time before removing overlay
+        function waitForStopTypingFinish() {
+          return new Promise(resolve => {
+            const check = () => {
+              if (stopIndex >= stopText.length) {
+                resolve();
+              } else {
+                setTimeout(check, 100);
+              }
+            };
+            check();
+          });
+        }
 
-            typeBubble(bubble, pair.text, pair.sender).then(() => {
+        waitForStopTypingFinish().then(() => {
+          // Give user time to read the finished message
+          setTimeout(() => {
+            // Remove overlay and show solution sections (FULLY AUTOMATIC)
+            stopOverlay.remove();
+
+            // Show all solution sections
+            transitionSection.style.display = 'block';
+            pricingSection.style.display = 'flex';
+            premiumSection.style.display = 'block';
+            solutionSection.style.display = 'block';
+            demoChatSection.style.display = 'block';
+            ctaSection.style.display = 'block';
+            howSection.style.display = 'grid';
+
+            // Scroll to solution section
+            solutionSection.scrollIntoView({ behavior: 'smooth' });
+
+            // Human-style chat flow: type guest question, wait, then show bot reply
+            const conversation = [
+              { sender: 'guest', text: "Hey, quick question — is the pool heated today?" },
+              { sender: 'bot', text: "Yes! The pool heater's on the lanai wall — press HEAT, set to 86. Takes about an hour to warm up. Reply STOP to opt out." },
+              { sender: 'guest', text: "Oh nice, thanks!" },
+              { sender: 'bot', text: "Anytime! WiFi is 'BeachBreeze2024' if you need it. Reply HELP for help." },
+              { sender: 'guest', text: "One more thing — what time is checkout?" },
+              { sender: 'bot', text: "Checkout is 10 AM. Just drop the keys back in the box by the front door." },
+              { sender: 'guest', text: "Got it, thanks so much!" },
+              { sender: 'bot', text: "Enjoy your stay! 🌴" }
+            ];
+
+            const container = document.getElementById('transitionContainer');
+            const guestPhase = document.getElementById('guestPhase');
+            const botPhase = document.getElementById('botPhase');
+            if (guestPhase) guestPhase.classList.add('visible');
+            if (botPhase) botPhase.classList.add('visible');
+
+            // Remove pre-written bubbles so we build the typed flow
+            const oldBubbles = container.querySelectorAll('.transition-bubble');
+            oldBubbles.forEach(b => b.remove());
+
+            // Play the conversation sequentially — wait for each bubble to finish typing
+            // before starting the next, so it reads like a real text thread.
+            let i = 0;
+
+            // Type a bubble character by character; returns a promise that resolves when typing is done
+            function typeBubble(bubble, text, sender) {
+              return new Promise(resolve => {
+                let charIndex = 0;
+                const typeChar = () => {
+                  if (charIndex < text.length) {
+                    bubble.textContent += text[charIndex];
+                    charIndex++;
+                    const speed = sender === 'guest' ? Math.random() * 40 + 35 : Math.random() * 30 + 25;
+                    setTimeout(typeChar, speed);
+                  } else {
+                    resolve();
+                  }
+                };
+                typeChar();
+              });
+            }
+
+            function nextBubble() {
+              if (i >= conversation.length) return;
+              const pair = conversation[i];
+              const bubble = document.createElement('div');
+              bubble.className = 'transition-bubble ' + pair.sender + ' visible';
+              container.appendChild(bubble);
               container.scrollTop = container.scrollHeight;
-              // Human pause before the next message — longer after a question, shorter after a reply
-              const pause = pair.sender === 'guest' ? 1800 : 1100;
-              setTimeout(nextBubble, pause);
-            });
-          }
-          nextBubble();
-        }, 3000); // 3 seconds to read the finished STOP message
-      });
-    }, 11000); // Flood duration: 11 seconds
+              i++;
+
+              typeBubble(bubble, pair.text, pair.sender).then(() => {
+                container.scrollTop = container.scrollHeight;
+                // Human pause before the next message — longer after a question, shorter after a reply
+                const pause = pair.sender === 'guest' ? 1800 : 1100;
+                setTimeout(nextBubble, pause);
+              });
+            }
+            nextBubble();
+          }, 3000); // 3 seconds to read the finished STOP message
+        });
+      }, 11000); // Flood duration: 11 seconds
+    }
   </script>
 </body>
 </html>
