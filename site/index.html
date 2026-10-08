@@ -745,8 +745,9 @@
       `;
       document.body.appendChild(stopOverlay);
 
-      const stopText = 'Davenport Host Co. puts a local text line in front of it. Guests get answers in <b class="stop-bold">seconds</b>. You get your <b class="stop-bold">evenings back</b>.';
+      const stopText = 'Davenport Host Co. puts a local text line in front of it.<br>Guests get answers in <b class="stop-bold">seconds</b>.<br>You get your <b class="stop-bold">evenings back</b>.';
       let stopIndex = 0;
+      let stopHtml = '';
       const stopTypewriter = document.getElementById('stopTypewriter');
       const stopCursor = document.getElementById('stopCursor');
       stopCursor.style.display = 'none';
@@ -756,18 +757,22 @@
           if (stopText[stopIndex] === '<') {
             const closeIdx = stopText.indexOf('>', stopIndex);
             if (closeIdx !== -1) {
-              stopTypewriter.innerHTML += stopText.slice(stopIndex, closeIdx + 1);
+              stopHtml += stopText.slice(stopIndex, closeIdx + 1);
               stopIndex = closeIdx + 1;
             }
           } else {
-            stopTypewriter.innerHTML += stopText[stopIndex];
+            stopHtml += stopText[stopIndex];
             stopIndex++;
           }
+          // Assign the full string each tick — reading innerHTML back would
+          // auto-close an unclosed <b>, putting the typed text outside the tag
+          stopTypewriter.innerHTML = stopHtml;
           setTimeout(typeStop, Math.random() * 40 + 40); // real typing pace
         } else {
-          stopTypewriter.innerHTML += ' ';
+          stopHtml += ' ';
+          stopTypewriter.innerHTML = stopHtml;
           stopCursor.style.display = 'inline-block';
-          setTimeout(() => { stopTypewriter.innerHTML = stopTypewriter.innerHTML.slice(0, -1); stopCursor.style.display = 'none'; }, 800);
+          setTimeout(() => { stopHtml = stopHtml.slice(0, -1); stopTypewriter.innerHTML = stopHtml; stopCursor.style.display = 'none'; }, 800);
         }
       }
       typeStop();
