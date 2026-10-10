@@ -1,0 +1,22 @@
+{
+  "welcomeEmail": {
+    "subject": "Welcome to Davenport Host Co. — Your stay starts here 🌴",
+    "body": "Hi there!\n\nWelcome to your vacation rental! We're so excited to have you stay with us.\n\nBefore you arrive, here's everything you need to know:\n\n• Gate code: [GATE_CODE]\n• WiFi network: [WIFI_NETWORK]\n• WiFi password: [WIFI_PASSWORD]\n• Checkout time: 10:00 AM\n• Trash day: Bins go out Monday night\n• Pool heater: Grey panel on lanai wall — press HEAT, set to 86°\n\nWe've also included a welcome card at the property with these details physically.\n\nIf you have any questions before or during your stay, just text us — we're here to help!\n\nEnjoy your stay in beautiful Davenport, Florida!\n\nBest regards,\nDavenport Host Co. Team"
+  },
+  "checkoutReminderEmail": {
+    "subject": "Checkout reminder — Tomorrow is departure day 🏠",
+    "body": "Hi!\n\nJust a friendly reminder that checkout is tomorrow at 10:00 AM.\n\nPlease remember:\n• Return keys to the box by the front door\n• Strip the beds (or we'll do it for you)\n• Take trash to the curb if your pickup is tomorrow\n• Leave the AC at 78° while you're away\n\nHave a safe trip home! We hope you had a wonderful stay.\n\nDavenport Host Co. Team"
+  },
+  "emergencyContactEmail": {
+    "subject": "We're here if you need us — Host contact info",
+    "body": "Hi!\n\nIf anything comes up during your stay, we're just a text away.\n\n• For immediate issues: Text us anytime\n• For non-urgent questions: We'll reply within a few hours\n• If we don't respond quickly: Call the host directly at [HOST_PHONE]\n\nWe want your stay to be perfect, but we understand things come up.\n\nDavenport Host Co."
+  },
+  "specialRequestEmail": {
+    "subject": "Special request confirmation — Received ✓",
+    "body": "Hi!\n\nWe received your special request: [REQUEST_DETAILS]\n\nWe'll do our best to accommodate! Here's what we can confirm:\n• [CONFIRMATIONS]\n\nIf you have any questions or need to modify your request, just text us back.\n\nBest,\nDavenport Host Co. Team"
+  },
+  "feedbackRequestEmail": {
+    "subject": "How was your stay? 🌟",
+    "body": "Hi!\n\nWe hope you had a wonderful stay at our Davenport property!\n\nWe'd love to hear your feedback — what did you love, and what could we improve?\n\nJust reply to this message or text us any time.\n\nThanks for choosing Davenport Host Co.!\n\n— The Team"
+  }
+}

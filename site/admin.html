@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Davenport Host Co. Admin Panel</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg-subtle: #12121a;
+      --fg: #e8e8f0;
+      --muted: #6b6b80;
+      --accent: #00d4aa;
+      --accent-hover: #00f5c4;
+      --card: #1a1a24;
+      --border: #2a2a3a;
+      --error: #ff4757;
+      --success: #00d4aa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      padding: 0;
+    }
+
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, var(--fg) 0%, var(--muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+    }
+
+    .nav {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .nav button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .nav button.active {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    .section {
+      margin-top: 2rem;
+    }
+
+    .section h2 {
+      font-size: 1.2rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .json-viewer {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .json-header {
+      background: var(--bg-subtle);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .json-header h3 {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .json-header .refresh {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      font-size: 0.75rem;
+    }
+
+    .json-header .refresh:hover {
+      color: var(--accent);
+    }
+
+    .json-content {
+      max-height: 600px;
+      overflow-x: auto;
+    }
+
+    .json-content pre {
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 0.75rem;
+      padding: 1rem;
+      margin: 0;
+      overflow-x: auto;
+      line-height: 1.4;
+    }
+
+    .json-content pre::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .json-content pre::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .json-content pre::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    .status-bar {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .status-item .count {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .status-item .label {
+      color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      .nav {
+        justify-content: center;
+      }
+      .status-bar {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="header">
+      <h1>Davenport Host Co. Admin Panel</h1>
+      <p>SMS Bot Project — Property Management & Leads Administration</p>
+    </div>
+
+    <div class="nav" id="nav">
+      <button class="active" data-section="leads">Leads (50)</button>
+      <button data-section="email-scripts">Email Scripts</button>
+      <button data-section="phone-scripts">Phone Scripts</button>
+      <button data-section="pitch-workflow">Pitch Workflow</button>
+    </div>
+
+    <div class="json-viewer" id="json-viewer">
+      <div class="json-header">
+        <h3>Select a section above</h3>
+        <button class="refresh" onclick="location.reload()">Refresh</button>
+      </div>
+      <div class="json-content">
+        <pre>Welcome to the admin panel. Select a section from the navigation above to view JSON data.</pre>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="count" id="lead-count">Loading...</div>
+        <div class="label">Total Leads</div>
+      </div>
+      <div class="status-item">
+        <div class="count">5</div>
+        <div>Email Script Templates</div>
+      </div>
+      <div class="status-item">
+        <div class="count">8</div>
+        <div>Phone Script Templates</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load JSON data based on section
+    function loadJSON(section) {
+      const basePath = 'bot/knowledge/';
+      const files = {
+        leads: 'business-leads-50.json',
+        'email-scripts': 'email-scripts.json',
+        'phone-scripts': 'phone-scripts.json',
+        'pitch-workflow': 'pitch-workflow.md'
+      };
+
+      const file = files[section];
+      if (!file) return;
+
+      fetch(basePath + file)
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          const content = document.querySelector('.json-content pre');
+          if (section === 'pitch-workflow') {
+            // For markdown, just display as text with some formatting
+            content.innerHTML = marked.parse(JSON.stringify(data, null, 2));
+          } else {
+            content.textContent = JSON.stringify(data, null, 2);
+          }
+
+          // Update active nav button
+          document.querySelectorAll('.nav button').forEach(btn => btn.classList.remove('active'));
+          event.target.classList.add('active');
+        })
+        .catch(err => {
+          console.error('Failed to load JSON:', err);
+          const content = document.querySelector('.json-content pre');
+          content.textContent = 'Error loading ' + section + ': ' + err.message;
+        });
+    }
+
+    // Initialize with leads
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set up nav buttons
+      const navButtons = document.querySelectorAll('.nav button');
+      navButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const section = e.target.dataset.section;
+          loadJSON(section);
+          navButtons.forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+        });
+      });
+
+      // Load leads by default
+      loadJSON('leads');
+    });
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+</body>
+</html>

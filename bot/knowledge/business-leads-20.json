@@ -1,0 +1,154 @@
+[
+  {
+    "name": "Sunset Property Management",
+    "phone": "(863) 555-0100",
+    "email": "info@sunsetpm.com",
+    "address": "123 Main St, Davenport, FL 33837",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Florida Keys Vacation Rentals",
+    "phone": "(305) 555-0199",
+    "email": "leases@flkeysvr.com",
+    "address": "4201 Overseas Hwy, Key West, FL 33040",
+    "scriptTopic": "vacationRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Gulf Coast Property Solutions",
+    "phone": "(941) 555-0123",
+    "email": "sales@gulfcoastps.com",
+    "address": "5555 Bay St, Sarasota, FL 34243",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Orlando Guest Services",
+    "phone": "(407) 555-0155",
+    "email": "contact@orlandogs.com",
+    "address": "5555 International Dr, Orlando, FL 32801",
+    "scriptTopic": "guestServices",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Coastal Sun Rentals",
+    "phone": "(239) 555-0177",
+    "email": "info@coastalsunrentals.com",
+    "address": "3300 Lincoln Blvd, Naples, FL 34102",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Lakefront Hospitality Group",
+    "phone": "(352) 555-0144",
+    "email": "info@lakefronthg.com",
+    "address": "222 Lakeview Dr, Leesburg, FL 34748",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Beachside Property Group",
+    "phone": "(727) 555-0166",
+    "email": "leasing@beachsidepg.com",
+    "address": "800 Harbor Dr, St. Petersburg, FL 33701",
+    "scriptTopic": "vacationRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Sunshine State Management",
+    "phone": "(561) 555-0188",
+    "email": "admin@ssmfl.com",
+    "address": "1000 N Federal Hwy, Boca Raton, FL 33432",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Gator Getaway Rentals",
+    "phone": "(352) 555-0133",
+    "email": "info@gatorgetaway.com",
+    "address": "1500 SW 1st Ave, Gainesville, FL 32601",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Miami Beach Concierge",
+    "phone": "(305) 555-0122",
+    "email": "bookings@miamibc.com",
+    "address": "1111 Collins Ave, Miami Beach, FL 33139",
+    "scriptTopic": "guestServices",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Florida Panhandle Rentals",
+    "phone": "(850) 555-0199",
+    "email": "leases@fpanhandle.com",
+    "address": "333 Beach Blvd, Pensacola, FL 32501",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Sun Coast Property Advisors",
+    "phone": "(941) 555-0177",
+    "email": "advisors@suncoastpa.com",
+    "address": "4400 Clark Rd, Sarasota, FL 34231",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Island Living Rentals",
+    "phone": "(239) 555-0144",
+    "email": "info@islandlivingrentals.com",
+    "address": "2500 Third St, Sanibel, FL 33957",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Coast to Coast Rentals",
+    "phone": "(386) 555-0155",
+    "email": "leases@coasttocoastrentals.com",
+    "address": "1000 Beach St, Daytona Beach, FL 32118",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Florida Rural Hospitality",
+    "phone": "(352) 555-0166",
+    "email": "info@flruralhospitality.com",
+    "address": "555 Country Rd, Chiefland, FL 32626",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Emerald Coast Property Solutions",
+    "phone": "(850) 555-0111",
+    "email": "sales@ecpsfl.com",
+    "address": "1200 Miracle Strip Pkwy, Fort Walton Beach, FL 32548",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Sunshine Coast Rentals",
+    "phone": "(352) 555-0122",
+    "email": "leases@sunshinecoastrentals.com",
+    "address": "2000 Coastal Dr, Crystal River, FL 34429",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Tropical Property Group",
+    "phone": "(772) 555-0188",
+    "email": "info@tropicalpg.com",
+    "address": "111 Ocean Dr, Vero Beach, FL 32963",
+    "scriptTopic": "propertyManagement",
+    "clientType": "propertyManager"
+  },
+  {
+    "name": "Florida Homestead Rentals",
+    "phone": "(954) 555-0199",
+    "email": "leases@flhomestead.com",
+    "address": "3333 Hollywood Blvd, Hollywood, FL 33029",
+    "scriptTopic": "shortTermRental",
+    "clientType": "propertyManager"
+  }
+]

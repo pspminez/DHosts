@@ -1,0 +1,40 @@
+{
+  "answerPhone": {
+    "greeting": "Davenport Host Co., this is [HOST_NAME] speaking.",
+    "afterHours": "Hi, you've reached Davenport Host Co. Our office is closed — please leave a message and we'll return your call during business hours.",
+    "takingMessage": "I'm unable to take your call right now. Please leave your name, number, and a brief message after the beep, and we'll get back to you as soon as possible.",
+    "thankYou": "Thank you for calling Davenport Host Co. Have a great day!"
+  },
+  "gateCodeInquiry": {
+    "reply": "Your gate code is 4821. Please enter it on the keypad and press enter.",
+    "alternative": "If you're having trouble with the gate code, please text us 'gate' and we'll verify your request."
+  },
+  "wifiInquiry": {
+    "reply": "WiFi network: KIDS-SWIMMING-4. Password: SUNSHINE2026. Feel free to connect anytime!",
+    "alternative": "If you're having trouble connecting, let us know and we'll help troubleshoot."
+  },
+  "poolInquiry": {
+    "reply": "The pool heater is the grey panel on the lanai wall. Press HEAT, then the up arrow to 86. It takes about 4 hours to warm up.",
+    "alternative": "If the pool isn't heating properly, text us 'pool issue' and we'll escalate to the host."
+  },
+  "trashInquiry": {
+    "reply": "Trash pickup is Tuesday morning — please put bins out Monday night.",
+    "alternative": "If you have large items, text us 'trash pickup' and we'll confirm the proper disposal method."
+  },
+  "checkoutInquiry": {
+    "reply": "Checkout is 10:00 AM. Please return keys to the box by the front door.",
+    "alternative": "Late checkout is not available, but if you have a special circumstance, text us 'late checkout' and we'll check with the host."
+  },
+  "helpInquiry": {
+    "reply": "Davenport Host Co. guest text line — text your question any time (gate code, WiFi, checkout, pool). Reply STOP to opt out.",
+    "alternative": "If you'd like to opt out of messages, reply STOP. If you need help with something specific, just ask!"
+  },
+  "stopInquiry": {
+    "reply": "You've been unsubscribed and will receive no further messages. Reply START to resubscribe.",
+    "alternative": "None — STOP opt-out is automatic and final."
+  },
+  "helpInfoInquiry": {
+    "reply": "Davenport Host Co. guest text line — text your question any time (gate code, WiFi, checkout, pool). Reply STOP to opt out.",
+    "alternative": "Text HELP or INFO for property information."
+  }
+}
