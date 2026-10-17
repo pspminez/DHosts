@@ -20,6 +20,7 @@
  */
 
 import { z } from "zod";
+import { LEADS } from "./leads.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -339,16 +340,16 @@ async function handleDemoChat(request, env) {
   // Premium concierge add-ons. In the demo these are NOT live — the guest gets
   // a clear explanation instead of a made-up answer. Once purchased they enable
   // real alerts, live weather, reservations, etc.
-  const PREMIUM_SERVICES = [
-    { keywords: ["weather", "storm", "hurricane", "forecast", "rain", "temperature", "alerts", "wind"], name: "Live Weather & Alerts", price: "$15/mo" },
-    { keywords: ["events", "dining", "restaurant", "reservations", "things to do", "attraction", "tickets", "shows", "concerts"], name: "Local Events & Dining", price: "$20/mo" },
-    { keywords: ["grocery", "groceries", "essentials", "stock", "fridge", "delivery", "supplies", "beach gear"], name: "Grocery & Essentials Delivery", price: "$25/mo" },
-    { keywords: ["concierge", "24/7", "host backup", "maintenance", "personal assistant"], name: "Full Concierge", price: "$49/mo" },
+  const PRICING_SERVICES = [
+    { key: "weather", keywords: ["weather", "storm", "hurricane", "forecast", "rain", "temperature", "alerts", "wind"], name: "Live Weather & Alerts", price: "$15/mo" },
+    { key: "events", keywords: ["events", "dining", "restaurant", "reservations", "things to do", "attraction", "tickets", "shows", "concerts"], name: "Local Events & Dining", price: "$20/mo" },
+    { key: "grocery", keywords: ["grocery", "groceries", "essentials", "stock", "fridge", "delivery", "supplies", "beach gear"], name: "Grocery & Essentials Delivery", price: "$25/mo" },
+    { key: "concierge", keywords: ["concierge", "24/7", "host backup", "maintenance", "personal assistant"], name: "Full Concierge", price: "$49/mo" },
   ];
 
   function detectPremium(message) {
     const lower = message.toLowerCase();
-    for (const svc of PREMIUM_SERVICES) {
+    for (const svc of PRICING_SERVICES) {
       if (svc.keywords.some(k => lower.includes(k))) {
         return svc;
       }
@@ -927,6 +928,11 @@ async function handleAdmin(request, env, url) {
     }
   }
 
+  // Admin API: list all leads (read-only)
+  if (url.pathname === "/admin/api/leads" && request.method === "GET") {
+    return new Response(JSON.stringify({ leads: LEADS }), { headers: corsHeaders });
+  }
+
   return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: corsHeaders });
 }
 
@@ -1036,7 +1042,26 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .entry .top { grid-template-columns:1fr; }
     .savebar .inner { flex-wrap:wrap; }
     .savebar .status { text-align:left; }
+    .tab-bar { flex-direction:column; }
+    .lead-row { grid-template-columns:1.2fr 1fr 1fr 1fr; }
+    .lead-phone, .lead-email { font-size:.72rem; }
+    .leads-header { flex-direction:column; }
   }
+  .tab-bar { display:flex; gap:.75rem; margin:1.4rem 0 1rem; }
+  .tab { flex:1; padding:.7rem 1rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
+  .tab.active { background:var(--sun); color:#1c0b06; }
+  .tab-bar .tab:not(.active):hover { border-color:var(--sun); color:var(--sun); }
+  .leads-header { display:flex; gap:.75rem; align-items:center; margin-bottom:1rem; }
+  .leads-header .search-box { margin-bottom:0; flex:1; }
+  .leads-header button { margin-top:0; flex:none; }
+  .lead-row { display:grid; grid-template-columns:1.9fr 1fr 1fr 1.3fr auto; gap:.7rem; padding:.85rem 1.1rem; border:1px solid var(--border); background:var(--card); border-radius:14px; cursor:pointer; align-items:center; }
+  .lead-row:hover { border-color:var(--pool); }
+  .lead-name { font-size:.75rem; font-weight:700; cursor:pointer; }
+  .lead-city, .lead-phone, .lead-email { color:var(--muted); font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lead-email { white-space:nowrap; }
+  .status-select { padding:.35rem .7rem; border-radius:999px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.75rem; font-weight:700; cursor:pointer; }
+  .lead-detail .card { margin-top:1rem; }
+  .lead-detail textarea { min-height:5rem; }
 </style>
 </head>
 <body>
@@ -1054,6 +1079,10 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="listView" class="hidden">
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('properties')">Property manager</button>
+      <button class="tab" onclick="showTab('leads')">Leads</button>
+    </div>
     <div class="list-head">
       <h2>Properties</h2>
       <button class="ghost" onclick="showAdd()">+ New property</button>
@@ -1134,17 +1163,32 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="leadsView" class="hidden">
+    <div class="leads-header">
+      <input class="search-box" id="leadSearch" placeholder="Search leads by name, city, or email..." oninput="renderLeads()">
+      <button class="ghost" id="exportBtn" onclick="exportLeads()">Export to CSV</button>
+    </div>
+    <div id="leadList"></div>
+    <p class="status" id="leadsStatus"></p>
+  </div>
+
+  <div id="leadDetailView" class="hidden">
+    <button class="ghost back" onclick="closeLeadDetail()">← Back to leads</button>
+    <div class="lead-detail" id="leadDetailContent"></div>
+    <p class="status" id="leadDetailMsg"></p>
+  </div>
+
 <script>
 let password = "";
 let properties = [];
 let current = null;
+let leads = [];
+let detailIndex = -1;
 
-const ADDONS = [
-  ["weather", "Live Weather & Alerts"],
-  ["events", "Local Events & Dining"],
-  ["grocery", "Grocery & Essentials"],
-  ["concierge", "24/7 Host Backup"],
-];
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Derived from PRICING_SERVICES so the admin UI and the demo chat share one source of truth.
+const ADDONS = PRICING_SERVICES.map((s) => [s.key, s.name]);
 
 const $ = (id) => document.getElementById(id);
 
@@ -1428,12 +1472,12 @@ function renderAddons() {
   const box = $("addonChips");
   box.textContent = "";
   const on = current.addons || [];
-  ADDONS.forEach(([key, label]) => {
+  PRICING_SERVICES.forEach((s) => {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "chip" + (on.indexOf(key) >= 0 ? " on" : "");
-    chip.textContent = label;
-    chip.dataset.key = key;
+    chip.className = "chip" + (on.indexOf(s.key) >= 0 ? " on" : "");
+    chip.textContent = s.name + " - " + s.price;
+    chip.dataset.key = s.key;
     chip.onclick = () => {
       chip.classList.toggle("on");
       markDirty();
@@ -1485,6 +1529,224 @@ async function save() {
   } catch (err) {
     $("saveStatus").textContent = err.message;
   }
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab-bar .tab').forEach((t) => {
+    t.classList.toggle('active', t.textContent.trim() === (tab === 'properties' ? 'Property manager' : 'Leads'));
+  });
+  if (tab === 'leads') {
+    document.querySelector('.sub')?.classList.add('hidden');
+    $('h1').classList.add('hidden');
+  } else {
+    document.querySelector('.sub')?.classList.remove('hidden');
+    $('h1').classList.remove('hidden');
+  }
+  if (tab === 'properties') showList(); else loadLeads();
+}
+
+async function loadLeads() {
+  try {
+    leads = (await api('/admin/api/leads')).leads || [];
+    renderLeads();
+  } catch (err) {
+    $('leadsStatus').textContent = err.message;
+  }
+}
+
+function renderLeads() {
+  const list = $('leadList');
+  list.textContent = '';
+  const q = ($('leadSearch').value || '').toLowerCase();
+  let n = 0;
+  leads.forEach((l, i) => {
+    const key = (l.name + ' ' + (l.location || '') + ' ' + (l.email || '')).toLowerCase();
+    if (q && !key.includes(q)) return;
+    n++;
+    const row = document.createElement('div');
+    row.className = 'lead-row';
+    row.onclick = () => openLeadDetail(i);
+
+    const name = document.createElement('span');
+    name.className = 'lead-name';
+    name.textContent = esc(l.name);
+    name.onclick = () => openLeadDetail(i);
+
+    const city = document.createElement('span');
+    city.className = 'lead-city';
+    city.textContent = esc(l.location);
+
+    const phone = document.createElement('span');
+    phone.className = 'lead-phone';
+    phone.textContent = esc(l.phone || '-');
+
+    const email = document.createElement('span');
+    email.className = 'lead-email';
+    email.textContent = esc(l.email || '-');
+
+    row.append(name, city, phone, email, statusSelectCell(i, l.leadStatus));
+    list.appendChild(row);
+  });
+  if (!n) {
+    const p = document.createElement('p');
+    p.className = 'status';
+    p.textContent = q ? 'No leads match that search.' : 'No leads yet.';
+    list.appendChild(p);
+  }
+}
+
+function statusSelectCell(i, cur) {
+  const statuses = ['new', 'contacted', 'interested', 'closed'];
+  const sel = document.createElement('select');
+  sel.className = 'status-select';
+  sel.onchange = (e) => {
+    e.stopPropagation();
+    toggleLeadStatus(i, e.target.value);
+  };
+  const def = document.createElement('option');
+  def.textContent = cur ? cur.charAt(0).toUpperCase() + cur.slice(1) : 'status';
+  def.disabled = true;
+  if (!cur) def.selected = true;
+  sel.appendChild(def);
+  statuses.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    if (s === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function openLeadDetail(i) {
+  detailIndex = i;
+  const l = leads[i];
+  const d = $('leadDetailContent');
+  d.textContent = '';
+
+  const card1 = document.createElement('div');
+  card1.className = 'card';
+  const head = document.createElement('div');
+  head.className = 'prop-head';
+  const h2 = document.createElement('h2');
+  h2.textContent = esc(l.name);
+  head.append(h2);
+  const pill = document.createElement('span');
+  pill.className = 'pill' + (l.leadStatus === 'new' ? ' live' : '');
+  pill.textContent = l.leadStatus;
+  head.append(pill);
+  card1.append(head);
+
+  const stats = document.createElement('div');
+  stats.className = 'stats';
+  stats.append(makeStat(esc(l.location) + ' · ' + esc(l.propertyType)));
+  stats.append(makeStat(esc(l.phone || '-')));
+  stats.append(makeStat(esc(l.email || '-')));
+  stats.append(makeStat(esc(l.address || '-')));
+  card1.append(stats);
+  d.append(card1);
+
+  const card2 = document.createElement('div');
+  card2.className = 'card lead-detail';
+  card2.append(makeHeading('Lead status'));
+  card2.append(makeHint('Local only — tracks your outreach progress for this lead.'));
+  card2.append(statusSelectCell(i, l.leadStatus));
+  d.append(card2);
+
+  const card3 = document.createElement('div');
+  card3.className = 'card lead-detail';
+  card3.append(makeHeading('📧 Custom pitch email'));
+  card3.append(makeHint('Subject: ' + esc(l.pitchEmail.subject)));
+  const area1 = document.createElement('textarea');
+  area1.readOnly = true;
+  area1.textContent = esc(l.pitchEmail.body);
+  card3.append(area1);
+  d.append(card3);
+
+  const card4 = document.createElement('div');
+  card4.className = 'card lead-detail';
+  card4.append(makeHeading('📞 Custom pitch phone'));
+  card4.append(makeHint('Say this in a 30–45 second intro call'));
+  const area2 = document.createElement('textarea');
+  area2.readOnly = true;
+  area2.textContent = esc(l.pitchPhone);
+  card4.append(area2);
+  d.append(card4);
+
+  const card5 = document.createElement('div');
+  card5.className = 'card lead-detail';
+  card5.append(makeHeading('🔁 Follow-up email'));
+  card5.append(makeHint('Subject: ' + esc(l.followUpEmail.subject)));
+  const area3 = document.createElement('textarea');
+  area3.readOnly = true;
+  area3.textContent = esc(l.followUpEmail.body);
+  card5.append(area3);
+  d.append(card5);
+
+  $('listView').classList.add('hidden');
+  $('leadsView').classList.add('hidden');
+  $('leadDetailView').classList.remove('hidden');
+}
+
+function makeStat(text) {
+  const el = document.createElement('div');
+  el.className = 'stat';
+  const b = document.createElement('b');
+  b.textContent = text;
+  el.append(b, ' · ');
+  return el;
+}
+
+function makeHeading(text) {
+  const h = document.createElement('h2');
+  h.textContent = text;
+  return h;
+}
+
+function makeHint(text) {
+  const p = document.createElement('p');
+  p.className = 'hint';
+  p.textContent = text;
+  return p;
+}
+
+function closeLeadDetail() {
+  detailIndex = -1;
+  $('leadDetailView').classList.add('hidden');
+  showTab('leads');
+}
+
+function toggleLeadStatus(i, status) {
+  leads[i].leadStatus = status;
+  renderLeadDetail();
+}
+
+function renderLeadDetail() {
+  if (detailIndex < 0) return;
+  openLeadDetail(detailIndex);
+}
+
+function exportLeads() {
+  const escField = (v) => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    return /[,\n"]/.test(s) ? '"' + s + '"' : s;
+  };
+  const rows = [['name', 'phone', 'email', 'location', 'propertyType', 'status', 'pitchEmailSubject', 'pitchEmailBody', 'pitchPhone', 'followUpEmailSubject', 'followUpEmailBody']];
+  leads.forEach((l) => {
+    rows.push([
+      escField(l.name), escField(l.phone), escField(l.email), escField(l.location), escField(l.propertyType),
+      escField(l.leadStatus), escField(l.pitchEmail.subject), escField(l.pitchEmail.body), escField(l.pitchPhone),
+      escField(l.followUpEmail.subject), escField(l.followUpEmail.body),
+    ]);
+  });
+  const csv = rows.map((r) => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'leads.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });

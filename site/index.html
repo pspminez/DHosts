@@ -3,60 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Davenport Host Co. — Your rental answers itself</title>
+  <title>StayXI — Thoughtful guest support for vacation rentals</title>
+  <meta name="description" content="A thoughtful guest text line for your vacation rental. StayXI answers common property questions and brings you in when a guest needs a person.">
+  <link rel="canonical" href="https://stayxi.com/">
+  <meta property="og:site_name" content="StayXI">
+  <meta property="og:title" content="StayXI — Thoughtful guest support for vacation rentals">
+  <meta property="og:description" content="A thoughtful guest text line for your vacation rental.">
+  <meta property="og:url" content="https://stayxi.com/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a1526;
-      --card: #0f1e36;
-      --surface: rgba(148, 180, 255, 0.05);
-      --border: rgba(148, 180, 255, 0.14);
-      --text: #f2f6ff;
-      --muted: #93a5c9;
-      --sun: #ff9e4a;
-      --pink: #ff5e8a;
-      --gold: #ffd166;
-      --pool: #38e1c6;
-      /* legacy aliases (JS-inserted markup + shared styles) */
-      --accent: #ff9e4a;
-      --accent-2: #38e1c6;
-      --green: #38e1c6;
-      --warn: #ff9e4a;
-      --sunset: linear-gradient(96deg, #ffd166 0%, #ff9e4a 45%, #ff5e8a 100%);
+      --bg: #ded7c8;
+      --card: #eee8dc;
+      --surface: #d4ccbc;
+      --border: #c5bdac;
+      --text: #1d3029;
+      --muted: #5f6d62;
+      --sun: #c47d4d;
+      --pink: #ad6552;
+      --gold: #a77c38;
+      --pool: #244f43;
+      --accent: #244f43;
+      --accent-2: #a77c38;
+      --green: #244f43;
+      --warn: #c47d4d;
+      --sunset: linear-gradient(110deg, #244f43, #315f50);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
-      font-family: "Bricolage Grotesque", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-family: "Nunito Sans", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
       line-height: 1.6;
       display: flex;
       flex-direction: column;
       -webkit-font-smoothing: antialiased;
-      overflow: visible;
+      overflow-x: hidden;
     }
     body::before {
-      content: "";
-      position: fixed;
-      top: -22rem; left: 50%; translate: -50% 0;
-      width: 64rem; height: 64rem;
-      background: radial-gradient(circle, rgba(255, 94, 138, 0.15), transparent 60%);
-      filter: blur(40px);
-      pointer-events: none; z-index: 0;
+      content: none;
     }
     body::after {
-      content: "";
-      position: fixed;
-      bottom: -18rem; right: -10rem;
-      width: 44rem; height: 44rem;
-      background: radial-gradient(circle, rgba(56, 225, 198, 0.09), transparent 60%);
-      filter: blur(40px);
-      pointer-events: none; z-index: 0;
+      content: none;
     }
-    main { position: relative; z-index: 1; width: 100%; max-width: 62rem; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+    main { position: relative; z-index: 1; width: 100%; max-width: 78rem; margin: 0 auto; padding: 0 2.25rem 5rem; }
     :focus-visible { outline: 2px solid var(--pool); outline-offset: 2px; border-radius: 6px; }
 
     .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
@@ -117,12 +110,11 @@
     .price-card h3 { font-size: 1.05rem; margin-bottom: 1rem; font-weight: 700; }
     .price-card ul { list-style: none; font-size: 0.95rem; color: #cfdaf0; display: flex; flex-direction: column; gap: 0.7rem; }
     .price-card li { display: flex; gap: 0.6rem; align-items: flex-start; }
-    .price-card li::before {
-      content: "";
-      flex: none;
-      width: 1.15em; height: 1.15em; margin-top: 0.22em;
-      background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338e1c6' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
-    }
+    .price-card li.plan-feature { gap: .55rem; }
+    .plan-feature > span:not(.emoji) { font-weight: 600; }
+    .plan-feature .emoji { flex: none; width: 1.4rem; font-size: 1.2rem; line-height: 1.35; text-align: center; }
+    .plan-feature strong { display: block; color: var(--text); font-size: .85rem; font-weight: 600; }
+    .plan-feature small { display: block; margin-top: .12rem; color: var(--muted); font-size: .74rem; font-weight: 400; line-height: 1.45; }
 
     /* CTA + buttons */
     .cta { text-align: center; margin-top: 2.5rem; }
@@ -310,13 +302,6 @@
     .phase-label.visible { opacity: 1; }
 
     /* Premium add-ons */
-    .premium-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; width: 100%; }
-    .premium-card { flex: 1 1 15rem; max-width: 100%; padding: 1.5rem; border: 1px solid var(--border); border-radius: 20px; background: var(--card); border-top: 3px solid var(--chip, var(--pool)); transition: transform 0.2s, box-shadow 0.2s; }
-    .premium-card:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
-    .premium-card .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    .premium-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; }
-    .premium-card p { color: var(--muted); font-size: 0.9rem; margin: 0.5rem 0 1rem; }
-    .premium-card .price { font-weight: 800; color: var(--chip, var(--pool)); font-size: 1.1rem; }
     .chip-pool { --chip: var(--pool); }
     .chip-pink { --chip: var(--pink); }
     .chip-gold { --chip: var(--gold); }
@@ -339,136 +324,249 @@
       .flood-bubble, .flood-shockwave, .flood-container::before, .flood-container::after, .stop-overlay h1 { animation: none !important; }
       .stop-overlay h1 { animation: none !important; }
     }
+    .site-header { display:flex; align-items:center; justify-content:space-between; gap:1.5rem; padding:1.35rem 0; border-bottom:1px solid var(--border); }
+    .brand { display:flex; align-items:center; gap:.7rem; color:var(--text); text-decoration:none; font-size:1.25rem; font-weight:700; letter-spacing:-.04em; }
+    .brand-mark { display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:50%; background:var(--pool); color:white; font-family:"Lora",serif; font-size:1.1rem; }
+    .site-nav { display:flex; align-items:center; gap:1.8rem; }
+    .site-nav a { color:var(--muted); text-decoration:none; font-size:.9rem; font-weight:600; }
+    .site-nav a:hover { color:var(--pool); }
+    .header-cta { display:inline-flex; justify-content:center; padding:.7rem 1.15rem; border-radius:999px; background:var(--pool); color:white; text-decoration:none; font-size:.88rem; font-weight:700; }
+    .hero { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:3.5rem; padding:4.2rem 0 4rem; }
+    .hero-copy { max-width:35rem; }
+    .eyebrow { color:var(--pool); font-size:.75rem; font-weight:700; letter-spacing:.17em; text-transform:uppercase; }
+    h1 { margin:1rem 0 1.25rem; font-family:"Lora",Georgia,serif; font-size:clamp(3rem,6vw,5.4rem); font-weight:600; letter-spacing:-.055em; line-height:1.02; }
+    .hero-emphasis { color:var(--pool); font-style:italic; }
+    .lede { max-width:32rem; margin-bottom:1.7rem; color:var(--muted); font-size:1.08rem; line-height:1.75; }
+    .lede strong { color:var(--text); font-weight:600; }
+    .hero-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
+    .hero-note { display:flex; align-items:center; gap:.55rem; margin-top:1.45rem; color:var(--muted); font-size:.82rem; }
+    .hero-note::before { content:""; width:.5rem; height:.5rem; border-radius:50%; background:#8a9b66; }
+    .brand-promise { margin-top:.8rem; color:var(--muted); font-size:.78rem; }
+    .hero-visual { position:relative; min-height:440px; overflow:hidden; border-radius:1.5rem 1.5rem 7rem 1.5rem; background:#cbd8cc; box-shadow:0 24px 55px rgba(24,53,46,.15); }
+    .hero-visual img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
+    .hero-caption { position:absolute; right:1rem; bottom:1rem; left:1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 1.1rem; border:1px solid rgba(255,255,255,.48); border-radius:1rem; background:rgba(255,254,250,.92); color:var(--text); }
+    .hero-caption strong { display:block; font-size:.88rem; }
+    .hero-caption span { color:var(--muted); font-size:.76rem; }
+    .caption-mark { color:var(--gold); font-family:"Lora",serif; font-size:1.65rem; }
+    .flood-section { display:none !important; }
+    .transition-section { margin:0 0 5.5rem; padding:2rem; border:1px solid var(--border); border-radius:1.4rem; background:#d5cebf; }
+    .transition-label { margin-bottom:1.4rem; color:var(--text); font-family:"Lora",Georgia,serif; font-size:1.55rem; font-weight:600; text-align:left; }
+    .transition-container { height:auto; min-height:0; overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:.85rem 1rem; padding:0; border:0; background:transparent; }
+    .transition-overlay,.phase-label { display:none; }
+    .transition-bubble { max-width:88%; opacity:1; transform:none; padding:.8rem 1rem; border-radius:1rem; box-shadow:none !important; font-size:.88rem; font-weight:500; }
+    .transition-bubble.guest { border:1px solid var(--border); border-bottom-left-radius:.25rem; background:var(--card); color:var(--text); }
+    .transition-bubble.bot { border-bottom-right-radius:.25rem; background:#cbd8ca; color:#1d3029; }
+    .transition-cta { margin-top:1.5rem; text-align:left; }
+    .section-head { max-width:48rem; margin:0 auto 2.25rem; text-align:center; }
+    .pricing > .section-head { grid-column:1 / -1; width:100%; }
+    .section-head h2 { font-family:"Lora",Georgia,serif; font-size:clamp(2rem,4vw,3rem); font-weight:600; letter-spacing:-.04em; }
+    .section-head p { color:var(--muted); line-height:1.75; }
+    .grad { background:none; color:var(--pool); }
+    .pricing { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:0 auto 5.5rem; }
+    .pricing > .portfolio { grid-column:1 / -1; }
+    .pricing > .pilot-card { grid-column:1 / -1; width:min(100%,42rem); justify-self:center; }
+    .pilot-terms { grid-column:1 / -1; width:min(100%,42rem); justify-self:center; padding:1rem 1.2rem; border:1px solid var(--border); border-radius:1rem; color:var(--muted); font-size:.84rem; line-height:1.65; }
+    .pilot-terms strong { color:var(--text); }
+    .pilot-roadmap { grid-column:1 / -1; width:min(100%,58rem); justify-self:center; margin-top:.5rem; padding:1.5rem; border:1px solid var(--border); border-radius:1.2rem; background:var(--surface); }
+    .pilot-roadmap h3 { font-family:"Lora",Georgia,serif; font-size:1.45rem; font-weight:600; }
+    .pilot-roadmap-intro { max-width:48rem; margin:.5rem auto 0; color:var(--muted); font-size:.9rem; line-height:1.7; }
+    .pilot-addon-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; margin-top:1.1rem; }
+    .pilot-addon { padding:1rem; border:1px solid var(--border); border-radius:.9rem; background:var(--card); }
+    .pilot-addon h4 { margin:.35rem 0; color:var(--text); font-size:.9rem; }
+    .pilot-addon .emoji { font-size:1.25rem; }
+    .pilot-addon p { color:var(--muted); font-size:.8rem; line-height:1.55; }
+    .pilot-roadmap-note { margin:1rem 0 0; color:var(--muted); font-size:.8rem; line-height:1.6; }
+    .faq { max-width:58rem; margin:4rem auto; }
+    .faq-list { display:grid; gap:.7rem; }
+    .faq-list details { border:1px solid var(--border); border-radius:.9rem; padding:1rem 1.15rem; background:var(--card); }
+    .faq-list summary { color:var(--text); font-weight:700; cursor:pointer; }
+    .faq-list p { margin:.7rem 0 0; color:var(--muted); font-size:.9rem; }
+    .pilot-journey { margin:0 auto 5rem; }
+    .price-card,.price-card.featured { min-width:0; padding:1.5rem; border:1px solid var(--border); border-top:3px solid var(--pool); border-radius:1rem; background:var(--card); box-shadow:0 12px 32px rgba(24,53,46,.045); }
+    .price-card,.price-card.featured { display:flex; flex-direction:column; }
+    .price-card ul { flex:1; }
+    .plan-cta { display:inline-flex; justify-content:center; margin-top:1.25rem; padding:.68rem .85rem; border:1px solid var(--border); border-radius:999px; color:var(--pool); text-decoration:none; font-size:.8rem; font-weight:700; }
+    .plan-cta:hover { border-color:var(--pool); background:#dce4d9; }
+    .price-card:hover { transform:translateY(-3px); box-shadow:0 16px 32px rgba(24,53,46,.09); }
+    .price-card.featured { border-color:#b9c7b9; border-top-color:var(--gold); background:#e8e1d4; }
+    .most-loved { top:-.8rem; background:var(--gold); color:white; }
+    .price-tag { color:var(--text); font-family:"Lora",Georgia,serif; font-size:2.7rem; }
+    .price-sub { color:var(--muted); font-size:.8rem; }
+    .price-card h3 { margin-top:1.25rem; color:var(--pool); }
+    .price-card ul { color:var(--muted); font-size:.86rem; }
+    .price-card li::before { color:var(--pool); }
+    .portfolio { border:1px solid #bdc7b6; border-radius:1rem; background:#d2dbcf; }
+    .portfolio p { color:var(--text); }
+    .portfolio strong { color:var(--pool); }
+    .demo { margin:0 auto 4rem; padding:1.5rem; border:1px solid var(--border); border-radius:1.3rem; background:var(--card); box-shadow:0 18px 42px rgba(24,53,46,.07); }
+    .demo-label { display:block; color:var(--pool); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; }
+    .phone { margin-top:.4rem; border:0; background:none; color:var(--text); font-family:"Nunito Sans",sans-serif; font-size:.95rem; font-weight:600; padding:0; }
+    .msg-counter { border:1px solid var(--border); background:var(--surface); color:var(--muted); }
+    .chat { max-height:none; overflow:visible; padding:.35rem 0; }
+    .bubble { border-radius:1rem; font-weight:500; }
+    .bubble-guest,.msg-guest .bubble { border-radius:1rem; border-bottom-right-radius:.25rem; background:#d8d0c0; color:var(--text); }
+    .bubble-bot { border:1px solid #c8d3c7; border-bottom-left-radius:.25rem; background:#d9e1d4; color:var(--text); }
+    .chat-input-area input { border-color:var(--border); border-radius:.75rem; background:#fbfaf6; color:var(--text); }
+    .chat-input-area input:focus { border-color:var(--pool); }
+    .chat-input-area button { border-radius:.75rem; background:var(--pool); color:white; }
+    .package-prompt { border:1px solid #c4d0c2; background:#d9e1d4; color:var(--text); }
+    .package-prompt p { opacity:1 !important; color:var(--muted); }
+    .btn { border-radius:999px; font-size:.9rem; }
+    .btn-primary { background:var(--pool); color:white; }
+    .btn-primary:hover { box-shadow:0 8px 20px rgba(40,102,87,.18); }
+    .btn-ghost { margin-left:0; border-color:var(--border); color:var(--text); background:rgba(255,254,250,.65); }
+    .btn-ghost:hover { border-color:var(--pool); color:var(--pool); }
+    .how { gap:1rem; margin:1rem 0 2rem; }
+    .step { padding:1.5rem; border:1px solid var(--border); border-radius:1rem; background:var(--card); text-align:left; }
+    .step-num { width:2.3rem; height:2.3rem; margin:0 0 1rem; background:#cbd8ca; color:var(--pool); font-family:"Lora",serif; }
+    .step h4 { color:var(--text); }
+    .step p { color:var(--muted); }
+    footer { border-color:var(--border); color:var(--muted); }
+    :focus-visible { outline-color:var(--gold); }
+    @media (max-width:900px) {
+      main { padding-right:1.35rem; padding-left:1.35rem; }
+      .hero { gap:2rem; padding:3rem 0; }
+      .hero-visual { min-height:360px; }
+      .pricing { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .pilot-addon-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width:640px) {
+      .site-header { gap:.7rem; }
+      .site-nav { gap:.8rem; }
+      .site-nav a { font-size:.8rem; }
+      .header-cta { padding:.6rem .8rem; font-size:.78rem; }
+      .hero { grid-template-columns:1fr; gap:1.5rem; padding:2.5rem 0 3rem; }
+      .hero-visual { min-height:320px; }
+      .transition-section { margin-bottom:3.5rem; padding:1.2rem; }
+      .transition-container { grid-template-columns:1fr; }
+      .transition-bubble { max-width:95%; }
+      .pricing { grid-template-columns:1fr; gap:1.1rem; margin-bottom:3.5rem; }
+      .pilot-addon-grid { grid-template-columns:1fr; }
+      .portfolio { align-items:flex-start; }
+      .cta .btn-ghost { display:inline-block; margin:.75rem 0 0; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <div class="badge"><span class="dot"></span> Live in Davenport, FL</div>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="StayXI home"><span class="brand-mark">S</span> StayXI</a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#pilot-journey">Pilot process</a>
+        <a href="#pricing">Pilot</a>
+        <a href="#demoChat">Experience</a>
+      </nav>
+      <a class="header-cta" href="mailto:hello@stayxi.com">Talk with us</a>
+    </header>
 
-    <h1>Never answer <span class="grad">"what's the WiFi?"</span> again.</h1>
-    <p class="lede">A local text line for your vacation rental. Guests text, answers land in <strong>seconds</strong> — and only the weird stuff ever reaches you.</p>
-
-    <!-- Flood visualization - the problem -->
-    <section class="flood-section" aria-label="The problem: message overload">
-      <div class="flood-label">Is this your phone at 9 PM on a Saturday?</div>
-      <div class="flood-container" id="floodContainer">
-        <div class="flood-overlay"></div>
-        <div class="flood-shockwave"></div>
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <div class="eyebrow">A more thoughtful kind of hosting</div>
+        <h1 id="heroTitle">Make every stay feel <span class="hero-emphasis">effortless.</span></h1>
+        <p class="lede">A little more breathing room for you. StayXI helps answer routine guest questions by text, using information approved for your property.</p>
+        <div class="hero-actions">
+          <a href="#demoChat" class="btn btn-primary">Experience StayXI</a>
+          <a href="#pricing" class="btn btn-ghost">Explore the pilot</a>
+        </div>
+        <div class="hero-note">Made for independent vacation-rental hosts</div>
+        <p class="brand-promise">Our take on AI for your guests during their stay.</p>
       </div>
-      <div class="flood-cta">
-        <a href="#solution" class="btn btn-ghost">Skip to the fix</a>
+      <div class="hero-visual">
+        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&amp;fit=crop&amp;w=1500&amp;q=85" alt="Sunlit vacation home with a private pool" fetchpriority="high">
+        <div class="hero-caption">
+          <div><strong>More time to enjoy the stay</strong><span>Guest care that feels considered</span></div>
+          <span class="caption-mark" aria-hidden="true">XI</span>
+        </div>
       </div>
     </section>
 
     <!-- Solution: watch the flood become automatic replies -->
     <section class="transition-section" aria-label="The solution: automatic replies" id="solution">
-      <div class="transition-label">Watch the flood dry up</div>
+      <div class="transition-label">The little questions, thoughtfully handled.</div>
       <div class="transition-container" id="transitionContainer">
         <div class="phase-label guest" id="guestPhase">Guest questions</div>
-        <div class="phase-label bot" id="botPhase">Auto-replies</div>
+        <div class="phase-label bot" id="botPhase">StayXI replies</div>
         <div class="transition-overlay"></div>
-        <!-- Animated chat flow -->
-        <div class="transition-bubble guest">Pool's on the lanai — press HEAT, set to 86. Takes ~1 hour.</div>
-        <div class="transition-bubble bot">Pool heater's on the lanai wall — press HEAT, set to 86. Takes ~1 hour to warm up. Reply STOP to opt out.</div>
+        <div class="transition-bubble guest">Could you remind me how to connect to the Wi-Fi?</div>
+        <div class="transition-bubble bot">For a real stay, use the host-approved welcome guide. This sample does not display Wi-Fi credentials.</div>
         <div class="transition-bubble guest">What's the WiFi password?</div>
-        <div class="transition-bubble bot">WiFi is "BeachBreeze2024". Reply HELP for help or STOP to opt out.</div>
+        <div class="transition-bubble bot">This sample cannot provide network details. Please contact your host.</div>
         <div class="transition-bubble guest">Trash day?</div>
-        <div class="transition-bubble bot">Trash pickup is Tuesday AM. Put bins out Monday night. Reply HELP for help.</div>
+        <div class="transition-bubble bot">Collection is Tuesday morning. Please roll the bins out Monday evening.</div>
         <div class="transition-bubble guest">Checkout time?</div>
-        <div class="transition-bubble bot">Checkout is 10 AM. Keys go back in the box by the front door.</div>
+        <div class="transition-bubble bot">Sample checkout is 10 AM. Ask your host where to leave keys.</div>
       </div>
       <div class="transition-cta">
-        <a href="#pricing" class="btn btn-primary">Get your text line</a>
-        <a href="#demoChat" class="btn btn-ghost">Try the free chat</a>
+        <a href="#pricing" class="btn btn-primary">See pilot details</a>
+        <a href="#demoChat" class="btn btn-ghost">Try the experience</a>
+      </div>
+    </section>
+
+    <section class="pilot-journey" id="pilot-journey" aria-labelledby="pilotJourneyTitle">
+      <div class="section-head">
+        <h2 id="pilotJourneyTitle">What launch includes—and what happens next.</h2>
+        <p>The pilot is one property and 30 days of automated guest text support, followed by a review—not an open-ended concierge commitment.</p>
+      </div>
+      <div class="how">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h4>Before launch: set up and test</h4>
+          <p>We configure property answers and an escalation contact with the host. The host reviews and approves them; together we test common questions, escalations, and SMS opt-out/help before guests receive the number.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h4>During the pilot: support and learn</h4>
+          <p>The host shares the guest-initiated text line. Automated replies use approved property information; uncertain questions are sent to the host, who remains responsible for follow-up. We review activity and feedback weekly to spot recurring needs.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h4>At day 30: review and decide</h4>
+          <p>We review usage, answer quality, escalations, and repeated guest needs. The host can stop or discuss a separately priced continuation. Future add-ons will only be offered after they are scoped, built, tested, and priced.</p>
+        </div>
       </div>
     </section>
 
     <div class="pricing" id="pricing">
       <div class="section-head" style="width:100%;">
-        <h2>The whole flood, handled — for less than <span class="grad">one cleaning fee</span></h2>
-        <p>Setup is on us — we build your property's answers, test them live with you, and mail your welcome cards before day one. After that, one flat monthly. No apps for guests to download, no new number for you to babysit.</p>
+        <h2>A practical first step: a 30-day pilot.</h2>
+        <p>Try the guest text line with one property. Setup and a review are included; any ongoing price is discussed before you decide whether to continue.</p>
       </div>
-      <div class="price-card">
+      <div class="price-card pilot-card">
         <div class="price-tag">$49</div>
-        <div class="price-sub">/month per property</div>
-        <h3>Starter</h3>
+        <div class="price-sub">one property · first 30 days · setup included</div>
+        <h3>Guest text line pilot</h3>
         <ul>
-          <li>24/7 guest text line</li>
-          <li>Answers from your property library</li>
-          <li>Welcome card guests actually keep</li>
-          <li>Edit answers anytime</li>
+          <li class="plan-feature"><span class="emoji" aria-hidden="true">💬</span><span>Automated guest SMS replies based on operator-approved property information</span></li>
+          <li class="plan-feature"><span class="emoji" aria-hidden="true">📚</span><span>Edit the property's approved answers in the admin panel</span></li>
+          <li class="plan-feature"><span class="emoji" aria-hidden="true">🔔</span><span>Questions the system cannot answer confidently are escalated to the host's configured phone</span></li>
+          <li class="plan-feature"><span class="emoji" aria-hidden="true">📊</span><span>Review guest-message, answer, and escalation counts in the property dashboard</span></li>
+          <li class="plan-feature"><span class="emoji" aria-hidden="true">🧪</span><span>Setup, test with the operator, and review results at the end of the pilot</span></li>
         </ul>
+        <a class="plan-cta" href="mailto:hello@stayxi.com?subject=StayXI%2030-day%20pilot">Ask about the pilot</a>
       </div>
-      <div class="price-card">
-        <div class="price-tag">$99</div>
-        <div class="price-sub">/month per property</div>
-        <h3>Essential</h3>
-        <ul>
-          <li>Everything in Starter</li>
-          <li>AI answers for the weird questions</li>
-          <li>Escalation to you only when it matters</li>
-          <li>Monthly report: what guests actually asked</li>
-        </ul>
-      </div>
-      <div class="price-card">
-        <div class="price-tag">$159</div>
-        <div class="price-sub">/month per property</div>
-        <h3>Concierge</h3>
-        <ul>
-          <li>Everything in Essential</li>
-          <li>Real-time weather & storm alerts</li>
-          <li>Local Events & Dining picks</li>
-          <li>Hurricane tracking for your property</li>
-        </ul>
-      </div>
-      <div class="price-card featured">
-        <div class="most-loved">Most loved</div>
-        <div class="price-tag">$199</div>
-        <div class="price-sub">/month per property</div>
-        <h3>Full Concierge</h3>
-        <ul>
-          <li>Everything in Concierge</li>
-          <li>Grocery & essentials pre-stocking</li>
-          <li>24/7 host backup & maintenance coordination</li>
-          <li>Your rental, fully hands-off</li>
-        </ul>
-      </div>
-      <div class="portfolio">
-        <p>Running more than one property? Discounts stack: 2–4 properties <strong>10% off each</strong> · 5–9 properties <strong>15% off each</strong> · 10+ properties <strong>custom pricing</strong>.</p>
-        <a href="mailto:hello@davenporthost.co?subject=Portfolio%20pricing" class="btn btn-ghost">Get a portfolio quote</a>
-      </div>
-    </div>
-
-    <div class="premium-services" id="premium" style="margin-top:4rem;">
-      <div class="section-head">
-        <h2>Go <span class="grad">beyond answers</span></h2>
-        <p>Weather and Events arrive in Concierge; all four come bundled in Full Concierge.</p>
-      </div>
-      <div class="premium-list">
-        <div class="premium-card chip-pool">
-          <div class="emoji">🌤️</div>
-          <h3>Live Weather & Alerts</h3>
-          <p>Real-time weather, storm alerts, hurricane tracking for your property</p>
-          <div class="price">Included from Concierge</div>
+      <p class="pilot-terms"><strong>Pilot terms:</strong> $49 is a one-time test fee for the first 30 days, invoiced manually before launch. There is no automatic renewal, and the ongoing price has not been set. Guest SMS/data charges may apply under the guest's mobile plan.</p>
+      <p class="pilot-terms"><strong>Scope:</strong> This is automated property-specific text support, not staffed concierge or emergency coverage. Live weather, reservations, tickets, grocery delivery, and PMS/booking integrations are not included. The host remains responsible for guest safety and responding to escalations.</p>
+      <div class="pilot-roadmap">
+        <h3>Possible paid add-ons, shaped by pilot needs</h3>
+        <p class="pilot-roadmap-intro">During the trial, we review logged questions, escalations, and host feedback to build a categorized picture of what guests need. Repeated, validated needs may become add-ons; these are candidates, not services currently included or for sale.</p>
+        <div class="pilot-addon-grid">
+          <div class="pilot-addon">
+            <span class="emoji" aria-hidden="true">📊</span>
+            <h4>Guest-question insights</h4>
+            <p>A recurring summary of common questions, unanswered topics, and escalation patterns, with suggestions for improving the property guide.</p>
+          </div>
+          <div class="pilot-addon">
+            <span class="emoji" aria-hidden="true">🛠️</span>
+            <h4>Answer-library tune-ups</h4>
+            <p>Optional help preparing and maintaining host-approved property answers as details and guest needs change.</p>
+          </div>
+          <div class="pilot-addon">
+            <span class="emoji" aria-hidden="true">🏘️</span>
+            <h4>Portfolio insights</h4>
+            <p>A combined view of question and escalation trends for operators managing multiple properties.</p>
+          </div>
         </div>
-        <div class="premium-card chip-pink">
-          <div class="emoji">🎭</div>
-          <h3>Local Events & Dining</h3>
-          <p>Curated events, restaurant reservations, attraction tickets for guests</p>
-          <div class="price">Included from Concierge</div>
-        </div>
-        <div class="premium-card chip-gold">
-          <div class="emoji">🛒</div>
-          <h3>Grocery & Essentials Delivery</h3>
-          <p>Pre-stock fridge, toiletries, beach gear before guests arrive</p>
-          <div class="price">Included in Full Concierge</div>
-        </div>
-        <div class="premium-card chip-sun">
-          <div class="emoji">⭐</div>
-          <h3>24/7 Host Backup</h3>
-          <p>Round-the-clock backup and maintenance coordination when things break</p>
-          <div class="price">Included in Full Concierge</div>
-        </div>
+        <p class="pilot-roadmap-note">The pilot does not guarantee any specific add-on, release date, or price. We will prioritize only ideas that operators want, can be delivered reliably, and have a clear cost to serve.</p>
       </div>
     </div>
 
@@ -476,49 +574,62 @@
     <div class="demo" id="demoChat">
       <div class="demo-header">
         <div>
-          <span class="demo-label">Live demo</span>
-          <span class="phone">+1 (407) 555-0100</span>
+          <span class="demo-label">Interactive sample</span>
+          <span class="phone">Fictional sample property</span>
         </div>
         <span id="msgCounter" class="msg-counter">5 messages free</span>
       </div>
+      <p class="hint">This sample uses fictional details. It sends no SMS, does not call AI, and never displays real access credentials. Unknown or high-risk questions fail closed.</p>
       <div class="chat" id="chat"></div>
       <div class="chat-input-area">
         <input type="text" id="chatInput" placeholder="Type your message…">
         <button id="sendChat">Send</button>
       </div>
       <div id="packagePrompt" class="package-prompt">
-        <h3>Love the demo? Get your own property text line! 🎉</h3>
-        <p style="margin:0.5rem 0 1rem; opacity:0.85;">Unlimited messages, your own property KB, and premium add-ons available.</p>
-        <a href="#pricing" class="btn btn-primary" style="background:#fff; color:#1c0b06;">View Packages</a>
+        <h3>Want to try it with your property?</h3>
+        <p style="margin:0.5rem 0 1rem; opacity:0.85;">Ask about the one-property, 30-day pilot. The $49 pilot fee is a test price, with no automatic renewal.</p>
+        <a href="#pricing" class="btn btn-primary" style="background:#fff; color:#1c0b06;">See pilot details</a>
       </div>
     </div>
 
     <div class="cta">
-      <a href="#pricing" class="btn btn-primary">Stop the flood for good</a>
-      <a href="mailto:hello@davenporthost.co" class="btn btn-ghost">Talk to a human</a>
+      <a href="#pricing" class="btn btn-primary">Explore the 30-day pilot</a>
+      <a href="mailto:hello@stayxi.com" class="btn btn-ghost">Talk to a human</a>
     </div>
 
-    <div class="how">
-      <div class="step">
-        <div class="step-num">1</div>
-        <h4>You onboard</h4>
-        <p>We build your property's answer library — gate codes, WiFi, checkout, pool, trash, quiet hours. You review, we launch.</p>
+    <section class="faq" aria-labelledby="faqTitle">
+      <div class="section-head">
+        <h2 id="faqTitle">A few practical questions</h2>
+        <p>What the current pilot does—and what it does not promise.</p>
       </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <h4>Guests text</h4>
-        <p>They text the number on the fridge card. "What's the gate code?" — instant answer, day or night.</p>
+      <div class="faq-list">
+        <details>
+          <summary>What happens after the 30-day pilot?</summary>
+          <p>We review usage and host feedback together. You can stop, or separately agree to continue at a price discussed before continuing. There is no automatic renewal and no long-term price set yet.</p>
+        </details>
+        <details>
+          <summary>Does StayXI handle emergencies or provide 24/7 human coverage?</summary>
+          <p>No. The system is designed to provide immediate safety guidance and notify the configured host for recognized emergencies, but it is not emergency dispatch or guaranteed human coverage. Call 911 for immediate danger.</p>
+        </details>
+        <details>
+          <summary>How are answers and access details controlled?</summary>
+          <p>Answers are based on information the host supplies and approves. Uncertain or higher-risk questions are routed away from AI. Access credentials are not sent to AI; critical changes are staged for an explicit review before publication.</p>
+        </details>
+        <details>
+          <summary>Are future add-ons available now?</summary>
+          <p>No. Guest-question insights, answer-library tune-ups, and portfolio trends are candidates to evaluate from pilot feedback—not current services or commitments. Any future add-on must be built, tested, and separately priced first.</p>
+        </details>
+        <details>
+          <summary>How do I discuss a pilot?</summary>
+          <p><a href="mailto:hello@stayxi.com?subject=StayXI%2030-day%20pilot">Email the StayXI team</a> to discuss fit, property setup, and written pilot terms.</p>
+        </details>
       </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <h4>You're free</h4>
-        <p>Only the weird stuff reaches you. "AC making noise" — you get one text. Everything else is handled.</p>
-      </div>
-    </div>
+    </section>
+
   </main>
 
   <footer>
-    &copy; 2026 Davenport Host Co. · Davenport, Florida · <a href="mailto:hello@davenporthost.co" style="color:inherit">hello@davenporthost.co</a>
+    &copy; 2026 StayXI · Davenport, Florida · <a href="mailto:hello@stayxi.com" style="color:inherit">hello@stayxi.com</a>
     <br style="margin-top:1rem;">
     <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
     <span style="color:var(--border);">|</span>
@@ -527,7 +638,7 @@
 
   <!-- Flood animation (runs independently, no module deps) -->
   <script>
-    const PREFERS_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const USE_STATIC_PRESENTATION = true;
 
     // Flood animation - create overwhelming message bubbles
     const floodContainer = document.getElementById('floodContainer');
@@ -614,7 +725,7 @@
       setTimeout(() => bubble.remove(), 12000);
     }
 
-    if (!PREFERS_REDUCED) {
+    if (!USE_STATIC_PRESENTATION) {
       // Immediate flood burst - no delay
       for (let i = 0; i < 12; i++) {
         setTimeout(createFloodBubble, i * 60);
@@ -627,7 +738,7 @@
 
   <!-- Demo chat (module) -->
   <script type="module">
-    import { sendMessageToAI } from './api.js';
+    import { sendDemoMessage } from './api.js';
 
     // Demo chat (only on solution page)
     const chat = document.getElementById('chat');
@@ -649,7 +760,7 @@
       }
 
       // Initial bot message
-      addMsg("Hey there! Welcome to Sunset Villa! 👋 Happy to help with any questions about the property, WiFi, pool, parking, or anything else during your stay. What can I help you with?", false);
+      addMsg("Hi! This is a fictional StayXI sample. I can show a few saved property answers, but I can't provide access codes or contact a real host. What property question can I help with?", false);
       updateCounter(5);
 
       function updateCounter(remaining) {
@@ -664,21 +775,6 @@
         if (sendChatBtn) sendChatBtn.disabled = true;
       }
 
-      function showPremiumUpsell(name, price) {
-        const existing = document.getElementById('premiumUpsell');
-        if (existing) existing.remove();
-        const box = document.createElement('div');
-        box.id = 'premiumUpsell';
-        box.className = 'package-prompt';
-        box.innerHTML = `
-          <h3>⭐ ${name} — ${price}</h3>
-          <p style="margin:0.5rem 0 1rem; opacity:0.85;">This is a premium add-on. It's not live in the demo — the answers here are examples only. Once purchased it turns on real alerts, up-to-date weather, and live reservations.</p>
-          <a href="#premium" class="btn btn-primary" style="background:#fff; color:#1c0b06;">See all add-ons</a>
-        `;
-        chat.appendChild(box);
-        chat.scrollTop = chat.scrollHeight;
-      }
-
       sendChatBtn.addEventListener('click', async () => {
         const message = chatInput.value.trim();
         if (!message) return;
@@ -688,14 +784,11 @@
         sendChatBtn.disabled = true;
 
         try {
-          const response = await sendMessageToAI(message);
+          const response = await sendDemoMessage(message);
 
           if (response.showPackage) {
             addMsg(response.reply, false);
             showPackageUpsell();
-          } else if (response.premium) {
-            addMsg(response.reply, false);
-            showPremiumUpsell(response.premium.name, response.premium.price);
           } else {
             addMsg(response.reply, false);
             if (response.remaining !== undefined) {
@@ -724,30 +817,26 @@
     const floodSection = document.querySelector('.flood-section');
     const transitionSection = document.querySelector('.transition-section');
     const pricingSection = document.getElementById('pricing');
-    const premiumSection = document.getElementById('premium');
     const solutionSection = document.getElementById('solution');
     const demoChatSection = document.getElementById('demoChat');
     const ctaSection = document.querySelector('.cta');
     const howSection = document.querySelector('.how');
 
     function showAllSections() {
-      floodSection.style.display = 'none';
       transitionSection.style.display = 'block';
-      pricingSection.style.display = 'flex';
-      premiumSection.style.display = 'block';
+      pricingSection.style.display = 'grid';
       demoChatSection.style.display = 'block';
       ctaSection.style.display = 'block';
       howSection.style.display = 'grid';
     }
 
-    if (PREFERS_REDUCED) {
-      // Reduced motion: no flood, no overlay, no typewriters — static page
+    if (USE_STATIC_PRESENTATION) {
+      // Keep the full experience visible immediately; no forced animation or scroll.
       showAllSections();
     } else {
       // Hide all sections except flood initially
       transitionSection.style.display = 'none';
       pricingSection.style.display = 'none';
-      premiumSection.style.display = 'none';
       solutionSection.style.display = 'none';
       demoChatSection.style.display = 'none';
       ctaSection.style.display = 'none';
@@ -790,7 +879,7 @@
         `;
         document.body.appendChild(stopOverlay);
 
-        const stopText = 'Davenport Host Co. puts a local text line in front of it.<br>Guests get answers in <b class="stop-bold">seconds</b>.<br>You get your <b class="stop-bold">evenings back</b>.';
+        const stopText = 'StayXI puts a local text line in front of it.<br>Guests get answers in <b class="stop-bold">seconds</b>.<br>You get your <b class="stop-bold">evenings back</b>.';
         let stopIndex = 0;
         let stopHtml = '';
         const stopTypewriter = document.getElementById('stopTypewriter');
@@ -844,8 +933,7 @@
 
             // Show all solution sections
             transitionSection.style.display = 'block';
-            pricingSection.style.display = 'flex';
-            premiumSection.style.display = 'block';
+            pricingSection.style.display = 'grid';
             solutionSection.style.display = 'block';
             demoChatSection.style.display = 'block';
             ctaSection.style.display = 'block';
