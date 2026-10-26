@@ -178,3 +178,42 @@ test("the demo dataset is labelled, complete, and deterministic", () => {
     "demo rows must be obviously sample data",
   );
 });
+
+// These came out of looking at a rendered screenshot: the weekly bars were eight
+// identical columns and the replies line sat exactly on top of the inbound line,
+// so the demo looked like a broken chart rather than a plausible week.
+test("the demo weekly bars differ enough to read as a real trend", () => {
+  const { weekly } = sampleAnalytics(NOW);
+  const values = weekly.map((bucket) => bucket.inbound);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  assert.ok(max - min >= max * 0.15, `weeks span ${min}..${max} — too flat to chart`);
+  assert.ok(new Set(values).size >= 6, "nearly every week should differ");
+});
+
+test("the demo reply line sits visibly below the inbound line", () => {
+  const { daily, totals } = sampleAnalytics(NOW);
+  const gap = totals.inbound - totals.outbound;
+  assert.ok(gap > 0, "replies cannot be drawn on top of inbound");
+  assert.ok(gap < totals.inbound, "replies still have to exist");
+  for (const day of daily) {
+    assert.ok(day.outbound <= day.inbound, "a day cannot reply to more than it received");
+  }
+});
+
+test("the demo headline figures agree with the series drawn under them", () => {
+  const snapshot = sampleAnalytics(NOW);
+  const last = snapshot.daily[snapshot.daily.length - 1];
+  const prior = snapshot.daily[snapshot.daily.length - 2];
+  assert.equal(snapshot.today.inbound, last.inbound);
+  assert.equal(snapshot.today.outbound, last.outbound);
+  assert.equal(snapshot.yesterday.inbound, prior.inbound);
+
+  const current = snapshot.daily.reduce((sum, day) => sum + day.inbound, 0);
+  assert.equal(snapshot.totals.inbound, current, "the 30-day hero must match its own chart");
+
+  // A demo that shows a delta has to have a previous period behind it.
+  const sharesInbound = snapshot.deltas.inbound === null || Number.isFinite(snapshot.deltas.inbound);
+  assert.ok(sharesInbound, "delta must be a number, never NaN");
+  assert.notEqual(snapshot.deltas.inbound, 0, "the demo should show movement, not a flat line");
+});

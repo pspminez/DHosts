@@ -220,19 +220,25 @@ const SAMPLE_EVENTS = [
 export function sampleAnalytics(now = new Date()) {
   const totalDays = ANALYTICS_WINDOW_DAYS * 2;
   const empty = buildDailySeries([], totalDays, now);
+  // A weekday rhythm plus a slow ramp, deliberately not a repeating 7-day loop:
+  // eight identical weeks made the weekly bars look like a broken chart, and a
+  // demo is the one place the shape has to look plausible at a glance.
   const daily = empty.map((day, index) => {
-    const base = SAMPLE_WEEK_PATTERN[index % SAMPLE_WEEK_PATTERN.length];
-    const inbound = base + Math.floor(index / 21);
-    return {
-      day: day.day,
-      inbound,
-      outbound: inbound - (index % 5 === 3 ? 1 : 0),
-      escalated: index % 4 === 2 ? 2 : index % 3 === 0 ? 1 : 0,
-    };
+    const weekday = SAMPLE_WEEK_PATTERN[index % SAMPLE_WEEK_PATTERN.length];
+    const inbound = weekday + Math.floor(index / 12) + (index % 9 === 4 ? 4 : 0);
+    // Replies trail inbound: escalated and rate-limited messages never get an
+    // automated answer, so the second line must not sit on top of the first.
+    const outbound = Math.max(0, inbound - 1 - (index % 4));
+    const escalated = index % 13 === 5 ? 3 : index % 5 === 2 ? 2 : index % 7 === 0 ? 1 : 0;
+    return { day: day.day, inbound, outbound, escalated };
   });
 
   const window = daily.slice(-ANALYTICS_WINDOW_DAYS);
+  const previous = daily.slice(0, totalDays - ANALYTICS_WINDOW_DAYS);
   const totals = totalsFrom(window);
+  const priorTotals = totalsFrom(previous);
+  const today = daily[daily.length - 1];
+  const yesterday = daily[daily.length - 2];
   const mixTotal = 402;
   const mix = buildMix([
     { resolution: "keyword", n: 178 },
@@ -254,7 +260,12 @@ export function sampleAnalytics(now = new Date()) {
       escalated: 38,
       mixTotal,
     },
-    deltas: { inbound: 14.5, outbound: 11.2 },
+    // Derived, not typed in: the headline delta has to agree with the series
+    // drawn underneath it.
+    deltas: {
+      inbound: percentDelta(totals.inbound, priorTotals.inbound),
+      outbound: percentDelta(totals.outbound, priorTotals.outbound),
+    },
     daily: window,
     weekly: buildWeekly(daily, WEEKLY_BUCKETS),
     mix,
@@ -264,8 +275,8 @@ export function sampleAnalytics(now = new Date()) {
       { id: "sample-c", name: SAMPLE_PROPERTIES[2], inbound: 74, aiAnswers: 20, escalated: 8, lastActivity: new Date(now.getTime() - 26 * 3600000).toISOString() },
       { id: "sample-d", name: SAMPLE_PROPERTIES[3], inbound: 39, aiAnswers: 9, escalated: 5, lastActivity: new Date(now.getTime() - 50 * 3600000).toISOString() },
     ]),
-    today: { inbound: 12, outbound: 11 },
-    yesterday: { inbound: 9, outbound: 9 },
+    today: { inbound: today.inbound, outbound: today.outbound },
+    yesterday: { inbound: yesterday.inbound, outbound: yesterday.outbound },
     recent: SAMPLE_EVENTS.map((event) => ({
       kind: event.kind,
       status: event.status || null,
