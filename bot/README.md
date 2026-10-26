@@ -159,8 +159,9 @@ After deploy, the Worker is live but knows no houses. A property needs **both** 
 
 **Step 1 — insert the D1 rows (one time, from the repo root):**
 ```powershell
-npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO properties (id, display_name, host_id, twilio_number, active) VALUES ('SUNSET', 'Sunset Villa', 'host1', '+18005551234', 1)"
-npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO hosts (id, phone) VALUES ('host1', '+18635551234')"
+# The host row must exist first: properties.host_id references hosts(id).
+npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO hosts (id, name, phone) VALUES ('host1', 'Your Name', '+18635551234')"
+npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO properties (id, house_code, display_name, host_id, twilio_number, active) VALUES ('SUNSET', 'SUNSET', 'Sunset Villa', 'host1', '+18005551234', 1)"
 ```
 
 **Step 2 — fill in the answers, either way:**
@@ -177,7 +178,7 @@ npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO hos
 # The KV key is prop:<property id> — the same id as the D1 row, NOT the phone number:
 # For live data, prefer Admin > Properties > Knowledge import so critical items are staged for review.
 # A direct KV write bypasses that review; do not use it for access codes or critical answers.
-wrangler kv:key put --binding=PROPERTIES "prop:SUNSET" --path=./private/SUNSET-knowledge.json
+npx wrangler kv key put --binding=PROPERTIES "prop:SUNSET" --path=./private/SUNSET-knowledge.json
 ```
 
 Then verify an approved, non-sensitive answer on the Twilio number. Test gate or door codes only in a controlled non-guest environment after the critical information has been reviewed and published.
