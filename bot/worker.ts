@@ -1651,6 +1651,39 @@ function base64Utf8(value: string) {
   return btoa(binary);
 }
 
+// Admin sessions are random bearer tokens stored hashed in KV, so a copied cookie
+// never reveals the admin password and the cookie can be HttpOnly.
+const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 24 * 3; // 3 days
+
+function randomSessionToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function adminSessionValid(env: Env, token: string) {
+  if (!token) return false;
+  try {
+    return (await env.PROPERTIES.get(`admin:session:${await sha256Hex(token)}`)) === "1";
+  } catch (err) {
+    console.error("Admin session lookup failed:", errorMessage(err) || err);
+    return false;
+  }
+}
+
+function adminSessionSetCookie(token: string) {
+  return `admin_session=${token}; Path=/; Max-Age=${ADMIN_SESSION_TTL_SECONDS}; HttpOnly; Secure; SameSite=Strict`;
+}
+
+function adminSessionClearCookie() {
+  return "admin_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict";
+}
+
 function getCookieValue(cookieHeader: string, name: string) {
   const prefix = `${name}=`;
   const cookie = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix));
@@ -1663,8 +1696,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   const userAgent = request.headers.get("User-Agent") || "unknown";
   const timestamp = new Date().toISOString();
   const cookieHeader = request.headers.get("Cookie") || "";
-  const adminCookie = getCookieValue(cookieHeader, "admin_auth");
-  const hasCookie = adminCookie !== "";
+  const adminSessionCookie = getCookieValue(cookieHeader, "admin_session");
   const authHeaderPresent = request.headers.get("x-admin-password") ? "present" : "absent";
 
   // Helper for JSON responses with CORS
@@ -1684,29 +1716,59 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Admin API: every request must carry the admin password. Fails closed
-  // (503) when ADMIN_PASSWORD is not configured — the previous open
-  // endpoints let anyone read gate codes and rewrite property data.
-  if (url.pathname.startsWith("/admin/api/")) {
+  // Admin API: every request must carry either the admin password header (used
+  // only to establish a session) or a valid session cookie. Fails closed (503)
+  // when ADMIN_PASSWORD is not configured — the previous open endpoints let
+  // anyone read gate codes and rewrite property data.
+  const isSessionEndpoint = url.pathname === "/admin/api/login" || url.pathname === "/admin/api/logout";
+  if (url.pathname.startsWith("/admin/api/") && !isSessionEndpoint) {
     const expected = env.ADMIN_PASSWORD;
     if (!expected) {
       console.error("Admin API access denied: ADMIN_PASSWORD is not configured.");
       return adminJson({ error: "Admin access is not configured" }, 503);
     }
 
-    // Accept either x-admin-password header OR admin_auth cookie
+    // Accept either the x-admin-password header or a valid session cookie. The
+    // cookie is a random token validated against KV, never the password itself.
     const got = request.headers.get("x-admin-password") || "";
     const headerOk = timingSafeEqualStr(got, expected);
-    const cookieOk = hasCookie && timingSafeEqualStr(adminCookie, base64Utf8(expected));
-    if (!headerOk && !cookieOk) {
-      console.log(`[${timestamp}] AUTH FAILURE: ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method} header=${authHeaderPresent} cookie=${hasCookie ? 'present' : 'absent'}`);
+    const sessionOk = !headerOk && await adminSessionValid(env, adminSessionCookie);
+    if (!headerOk && !sessionOk) {
+      console.log(`[${timestamp}] AUTH FAILURE: ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method} header=${authHeaderPresent} session=${adminSessionCookie ? 'present' : 'absent'}`);
       return adminJson({ error: "Unauthorized" }, 401);
     }
-    if (headerOk) {
-      console.log(`[${timestamp}] AUTH SUCCESS (header): ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method}`);
-    } else {
-      console.log(`[${timestamp}] AUTH SUCCESS (cookie): ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method}`);
+    console.log(`[${timestamp}] AUTH SUCCESS (${headerOk ? "header" : "session"}): ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method}`);
+  }
+
+  // Establish a session: verify the password, then issue a random HttpOnly cookie.
+  if (url.pathname === "/admin/api/login" && request.method === "POST") {
+    const expected = env.ADMIN_PASSWORD;
+    if (!expected) {
+      console.error("Admin login denied: ADMIN_PASSWORD is not configured.");
+      return adminJson({ error: "Admin access is not configured" }, 503);
     }
+    const got = request.headers.get("x-admin-password") || "";
+    if (!timingSafeEqualStr(got, expected)) {
+      console.log(`[${timestamp}] LOGIN FAILURE: ${clientIp} (${userAgent})`);
+      return adminJson({ error: "Unauthorized" }, 401);
+    }
+    const token = randomSessionToken();
+    await env.PROPERTIES.put(`admin:session:${await sha256Hex(token)}`, "1", { expirationTtl: ADMIN_SESSION_TTL_SECONDS });
+    const headers = new Headers(corsHeaders as Record<string, string>);
+    headers.append("Set-Cookie", adminSessionSetCookie(token));
+    headers.append("Set-Cookie", "admin_auth=; Path=/; Max-Age=0; Secure; SameSite=Strict");
+    console.log(`[${timestamp}] LOGIN SUCCESS: ${clientIp} (${userAgent})`);
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+  }
+
+  // End the session: delete the stored token and clear the cookie.
+  if (url.pathname === "/admin/api/logout" && request.method === "POST") {
+    if (adminSessionCookie) {
+      await env.PROPERTIES.delete(`admin:session:${await sha256Hex(adminSessionCookie)}`);
+    }
+    const headers = new Headers(corsHeaders as Record<string, string>);
+    headers.append("Set-Cookie", adminSessionClearCookie());
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers });
   }
 
   if (url.pathname === "/admin/api/gmail/status" && request.method === "GET") {
@@ -1769,33 +1831,10 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   // Serve the admin HTML page (public — the UI login form validates the
   // password. API endpoints below are where auth is actually enforced).
   if (url.pathname === "/admin" || url.pathname === "/admin/") {
-    const auth = request.headers.get("Authorization");
-    const expectedPassword = env.ADMIN_PASSWORD;
-    if (expectedPassword && auth && auth.startsWith("Basic ") && timingSafeEqualStr(auth.slice(6), base64Utf8(`admin:${expectedPassword}`))) {
-      console.log(`[${timestamp}] PAGE ACCESS (Basic Auth): ${clientIp} (${userAgent}) - served admin HTML with cookie set`);
-      return new Response(ADMIN_HTML, {
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store, must-revalidate",
-          "Set-Cookie": `admin_auth=${base64Utf8(expectedPassword)}; Path=/; Max-Age=259200; Secure; SameSite=Strict`
-        }
-      });
-    }
-    if (expectedPassword && hasCookie && timingSafeEqualStr(adminCookie, base64Utf8(expectedPassword))) {
-      console.log(`[${timestamp}] PAGE ACCESS (cookie): ${clientIp} (${userAgent}) - served admin HTML`);
-      return new Response(ADMIN_HTML, {
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store, must-revalidate"
-        }
-      });
-    }
-    // Unauthenticated — still serve the full admin HTML. The page shows only its
-    // login card until an authenticated /admin/api/* call proves the password, and
-    // every data endpoint is authenticated separately, so one page can cover both
-    // states. Serving a separate login page that redirected back to /admin caused
-    // an unlock → second login screen loop, so it is no longer used.
-    console.log(`[${timestamp}] PAGE ACCESS (no auth): ${clientIp} (${userAgent}) - served admin HTML (login state)`);
+    // One page covers both states: it shows only the login card until an
+    // authenticated /admin/api/* call proves the session. Every data endpoint is
+    // authenticated separately, so nothing sensitive is served here. No cookie is
+    // issued on page load — only /admin/api/login creates a session.
     return new Response(ADMIN_HTML, {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, must-revalidate" }
     });
@@ -2771,6 +2810,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .tab-bar.hidden { display:none; }
   .tab { flex:1; padding:.7rem 1rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
   .tab.active { background:var(--pool); border-color:var(--pool); color:#071a1b; }
+  .tab.sign-out { margin-left:auto; }
   .tab-bar .tab:not(.active):hover { border-color:var(--sun); color:var(--sun); }
   .tab { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
   button { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
@@ -2862,6 +2902,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="showTab('analytics')">Analytics</button>
     <button class="tab" onclick="showTab('operations')">Operations</button>
     <button class="tab" onclick="showTab('pilot')">Pilot Program</button>
+    <button class="tab sign-out" onclick="signOut()">Sign out</button>
   </div>
 
   <div id="listView" class="hidden">
@@ -3225,7 +3266,6 @@ let detailIndex = -1;
 let gmailStatus = { connected: false, ready: false, missing: [] };
 const leadProgressSaves = new Map();
 const LEAD_PROGRESS_KEY = 'davenport-host-co-lead-progress';
-const encodeBase64Utf8 = (value) => btoa(Array.from(new TextEncoder().encode(value), (byte) => String.fromCharCode(byte)).join(''));
 
 const displayText = (s) => String(s ?? '');
 const LEAD_CHECKLIST = ['Name verified', 'Phone verified', 'Email verified', 'Property type selected', 'Lead status updated', 'Pitch email sent', 'Follow-up email sent'];
@@ -3368,15 +3408,25 @@ async function api(path, options = {}) {
 async function unlock() {
   password = $("pw").value;
   try {
-    await api("/admin/api/properties");
-    // Persist auth cookie so subsequent visits skip the login form
-    document.cookie = "admin_auth=" + encodeBase64Utf8(password) + "; Path=/; Max-Age=259200; Secure; SameSite=Strict";
+    // The Worker verifies the password and sets a random HttpOnly session cookie.
+    await api("/admin/api/login", { method: "POST", body: "{}" });
+    $("loginStatus").textContent = "";
     $("login").classList.add("hidden");
     $("tabBar").classList.remove("hidden");
     showList();
   } catch (err) {
     $("loginStatus").textContent = err.message;
   }
+}
+
+async function signOut() {
+  try {
+    await api("/admin/api/logout", { method: "POST", body: "{}" });
+  } catch (err) {
+    // The cookie is cleared on the server; reload either way.
+  }
+  password = "";
+  window.location.reload();
 }
 
 function pillFor(p) {
@@ -4665,109 +4715,19 @@ function exportLeads() {
 }
 
 async function restoreSession() {
-  const hasAdminCookie = document.cookie.split(";").some((cookie) => cookie.trim().startsWith("admin_auth="));
-  if (!hasAdminCookie) return;
-
+  // The session cookie is HttpOnly, so ask the API whether it is still valid.
   try {
     await api("/admin/api/properties");
     $("login").classList.add("hidden");
     $("tabBar").classList.remove("hidden");
     showList();
   } catch (err) {
-    $("loginStatus").textContent = err.message;
+    // Not signed in: leave the login card in place.
   }
 }
 
 restoreSession();
 $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
-</script>
-</body>
-</html>`;
-
-// Minimal login HTML served to unauthenticated users — only the password form,
-// with the CSS and JS needed to attempt unlock. Authenticated users get the full
-// ADMIN_HTML below.
-const ADMIN_LOGIN_HTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StayXI - Admin Login</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
-<style>
-:root { --bg:#0a1526; --card:#0f1e36; --surface:rgba(148,180,255,.05); --border:rgba(148,180,255,.14);
-  --text:#f2f6ff; --muted:#93a5c9; --pool:#38e1c6; --sun:#ff9e4a;
-  --sunset:linear-gradient(96deg,#ffd166,#ff9e4a 45%,#ff5e8a); }
-* { box-sizing:border-box; margin:0; padding:0; }
-body { background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
-  font:15px/1.6 "Bricolage Grotesque",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
-  max-width:46rem; margin:0 auto; padding:2.5rem 1.5rem 7rem; }
-.badge { display:inline-flex; align-items:center; gap:.5rem; padding:.3rem .8rem; margin-bottom:1rem;
-  border:1px solid var(--border); border-radius:999px; background:var(--surface);
-  font-size:.75rem; color:var(--muted); }
-.dot { width:7px; height:7px; border-radius:50%; background:var(--pool); box-shadow:0 0 10px var(--pool); }
-h1 { font-size:1.7rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.3rem; }
-label { display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin:1rem 0 .4rem; }
-input { width:100%; padding:.6rem .8rem; border-radius:12px;
-  border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
-input:focus { outline:2px solid var(--pool); outline-offset:1px; }
-.row { display:flex; gap:.6rem; align-items:center; }
-.row input { flex:1 1 auto; min-width:0; }
-.row button { flex:none; margin-top:0; }
-.card { border:1px solid var(--border); background:var(--card); border-radius:18px;
-  padding:1.4rem; margin-top:1.25rem; }
-button.primary { margin-top:1.5rem; padding:.75rem 1.4rem; border-radius:12px; border:0;
-  background:var(--sunset); color:#1c0b06; font:inherit; font-weight:700; cursor:pointer; }
-.status { margin-top:1rem; font-size:.85rem; color:var(--muted); }
-.hidden { display:none; }
-</style>
-</head>
-<body>
-  <div class="badge"><span class="dot"></span> StayXI admin</div>
-  <p class="sub">Our take on AI for your guests during their stay.</p>
-  <h1>Admin Login</h1>
-  <p>Enter the admin password to unlock the panel.</p>
-
-  <div id="login" class="card">
-    <label for="pw">Admin password</label>
-    <div class="row">
-      <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
-      <button class="primary" onclick="unlock()">Unlock</button>
-    </div>
-    <p class="status" id="loginStatus"></p>
-  </div>
-
-<script>
-let password = "";
-const encodeBase64Utf8 = (value) => btoa(Array.from(new TextEncoder().encode(value), (byte) => String.fromCharCode(byte)).join(''));
-
-const esc = (s) => String(s ?? '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-
-const $ = (id) => document.getElementById(id);
-
-document.getElementById("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
-
-async function unlock() {
-  password = $("pw").value;
-  try {
-    await api("/admin/api/properties");
-    document.cookie = "admin_auth=" + encodeBase64Utf8(password) + "; Path=/; Max-Age=259200; Secure; SameSite=Strict";
-    window.location.href = "/admin";
-  } catch (err) {
-    $("loginStatus").textContent = err.message;
-  }
-}
-
-async function api(path, options = {}) {
-  const res = await fetch(path, {
-    ...options,
-    headers: { "x-admin-password": password, "Content-Type": "application/json" },
-  });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
-  return res.json();
-}
 </script>
 </body>
 </html>`;
