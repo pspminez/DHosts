@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test bot/*.test.js",
+    "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs",
+    "test:unit": "node --test bot/*.test.js",
     "typecheck": "tsc --noEmit",
     "check:ui": "node tools/ui-check.cjs",
     "check:setup": "node tools/check-setup-docs.cjs",
