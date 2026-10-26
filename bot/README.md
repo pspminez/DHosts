@@ -181,6 +181,8 @@ npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO pro
 npx wrangler kv key put --binding=PROPERTIES "prop:SUNSET" --path=./private/SUNSET-knowledge.json
 ```
 
+`npm run check:setup` runs these commands against a throwaway local database, so text that stops working fails there instead of during your first pilot.
+
 Then verify an approved, non-sensitive answer on the Twilio number. Test gate or door codes only in a controlled non-guest environment after the critical information has been reviewed and published.
 
 ---

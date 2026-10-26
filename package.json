@@ -7,6 +7,7 @@
     "test": "node --test bot/*.test.js",
     "typecheck": "tsc --noEmit",
     "check:ui": "node tools/ui-check.cjs",
+    "check:setup": "node tools/check-setup-docs.cjs",
     "shot": "node tools/screenshot.cjs",
     "seed:demo": "node tools/seed-demo.cjs"
   },
