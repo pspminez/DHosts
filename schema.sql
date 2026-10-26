@@ -1,5 +1,12 @@
 -- Davenport Host Co. — D1 schema
 -- Run: wrangler d1 execute davenport --remote --file=./schema.sql
+--
+-- This file is the single source of truth: a database built from these tables
+-- plus migrations/0000-0006 has exactly this shape and nothing else. Production
+-- was aligned to it on 2026-10-26 by dropping columns that predated these tables
+-- and that no code read: fifteen on leads (name, phone, property_name, notes,
+-- status, source, pitch and property detail columns) and properties.latitude /
+-- longitude. Add new columns in a migration, not here, or the two drift again.
 
 -- Hosts: the people who own/manage properties and receive escalations
 CREATE TABLE IF NOT EXISTS hosts (
