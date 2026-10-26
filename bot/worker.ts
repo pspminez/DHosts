@@ -1790,9 +1790,13 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         }
       });
     }
-    // Unauthenticated — serve only the login form
-    console.log(`[${timestamp}] PAGE ACCESS (no auth): ${clientIp} (${userAgent}) - served login form`);
-    return new Response(ADMIN_LOGIN_HTML, {
+    // Unauthenticated — still serve the full admin HTML. The page shows only its
+    // login card until an authenticated /admin/api/* call proves the password, and
+    // every data endpoint is authenticated separately, so one page can cover both
+    // states. Serving a separate login page that redirected back to /admin caused
+    // an unlock → second login screen loop, so it is no longer used.
+    console.log(`[${timestamp}] PAGE ACCESS (no auth): ${clientIp} (${userAgent}) - served admin HTML (login state)`);
+    return new Response(ADMIN_HTML, {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, must-revalidate" }
     });
   }
