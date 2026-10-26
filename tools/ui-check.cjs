@@ -162,6 +162,7 @@ async function runPage({ html, script, routes }) {
     "loadOperations: loadOperations",
     "loadInsights: loadInsights",
     "loadAnalytics: loadAnalytics",
+    "applyFeatures: applyFeatures",
     "toggleInsights: toggleInsightsSample",
     "renderList: renderList",
     "renderLeads: renderLeads",
@@ -232,6 +233,19 @@ function wiring(html, script) {
 }
 
 const HEALTH = { database: "ok", propertyStore: "ok", twilioConfigured: true, aiConfigured: true, signatureValidationEnabled: true, missingHostPhone: 0, missingTextNumber: 0 };
+// Mirrors the demo shape: one property past the four-hour stale threshold and
+// one inside it, so both the warn and ok styling are exercised.
+const AWAITING = {
+  open: 4,
+  oldestMinutes: 291,
+  over1h: 3,
+  over4h: 1,
+  byProperty: [
+    { name: "Sunset Villa", open: 2, oldestMinutes: 291 },
+    { name: "Harbor House", open: 1, oldestMinutes: 96 },
+  ],
+};
+
 const LIVE_METRICS = { guestMessages24h: 12, resolvedGuestMessages24h: 10, openEscalations: 2, escalations24h: 2, failedHostNotifications24h: 0, rateLimitedMessages24h: 0, failedAI24h: 0, aiInteractions24h: 13, aiAnswers24h: 11, avgAILatencyMs24h: 1180.5, avgHostResponseMinutes30d: 8.4, measuredAt: "2026-10-26 11:22:33" };
 const PROPERTIES = [
   { id: "sunset", name: "Sunset Villa", active: true, asked: 168, escalated: 14, answerCount: 12, twilioNumber: "+18635550142", openEscalations: 2, lastActivity: "2026-10-26T09:00:00Z" },
@@ -258,8 +272,9 @@ const LEADS = [
     "/admin/api/analytics?sample=1": sampleAnalytics(now),
     "/admin/api/insights": { ...insightsSample, sample: false },
     "/admin/api/insights?sample=1": insightsSample,
-    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS },
+    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, awaiting: AWAITING },
     "/admin/api/operations?sample=1": operationsSample,
+    "/admin/api/features": { insights: true },
     "/admin/api/health": HEALTH,
     "/admin/api/properties": { properties: PROPERTIES },
   };
@@ -348,6 +363,46 @@ const LEADS = [
   check("overlapping loads leave six stat tiles, not twelve", ops.registry.operationMetrics.children.length, 6);
   check("overlapping loads leave seven health rows", ops.registry.operationHealth.children.length, 7);
   check("operations stamp", ops.registry.operationsStatus.textContent, "Updated 2026-10-26 11:22:33.");
+
+  // ---- questions awaiting a host reply ------------------------------------
+  check("awaiting count", ops.registry.opAwaitingCount.textContent, "4");
+  check("awaiting oldest age", ops.registry.opAwaitingAge.textContent, "oldest waiting 4 h 51 m");
+  check("awaiting ageing buckets", ops.registry.opAwaitingBuckets.textContent, "3 waiting over an hour · 1 over four hours");
+  check("awaiting per-property rows", ops.registry.opAwaitingList.children.length, AWAITING.byProperty.length);
+  check(
+    "awaiting row shows count and age",
+    ops.registry.opAwaitingList.children[0].children.map((cell) => cell.textContent).slice(1),
+    ["Sunset Villa", "2 · 4 h 51 m"],
+  );
+  check("stale waiting row is flagged", ops.registry.opAwaitingList.children[0].children[0].className, "op-dot warn");
+  check("fresh waiting row is not flagged", ops.registry.opAwaitingList.children[1].children[0].className, "op-dot ok");
+
+  const noQueue = await runPage({
+    html,
+    script,
+    routes: { ...routes, "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, awaiting: null } },
+  });
+  await noQueue.helpers.loadOperations();
+  check("unreadable queue degrades to a dash", noQueue.registry.opAwaitingCount.textContent, "—");
+  check("unreadable queue says so", noQueue.registry.opAwaitingAge.textContent, "queue unavailable");
+
+  const quietQueue = await runPage({
+    html,
+    script,
+    routes: { ...routes, "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, awaiting: { open: 0, oldestMinutes: null, over1h: 0, over4h: 0, byProperty: [] } } },
+  });
+  await quietQueue.helpers.loadOperations();
+  check("empty queue says nothing is waiting", quietQueue.registry.opAwaitingAge.textContent, "nothing waiting");
+  check("empty queue copy", quietQueue.registry.opAwaitingBuckets.textContent, "every guest question has an answer");
+
+  // ---- insights entitlement gate ------------------------------------------
+  const entitled = await runPage({ html, script, routes });
+  await entitled.helpers.applyFeatures();
+  check("entitled deployment shows the insights nav item", entitled.registry.navInsights.classList.contains("hidden"), false);
+
+  const gated = await runPage({ html, script, routes: { ...routes, "/admin/api/features": { insights: false } } });
+  await gated.helpers.applyFeatures();
+  check("unentitled deployment hides the insights nav item", gated.registry.navInsights.classList.contains("hidden"), true);
 
   const failed = checks.filter((c) => !c.ok);
   for (const c of checks) {

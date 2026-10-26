@@ -54,6 +54,19 @@ const PROPERTIES = [
   { id: "OAK", name: "Oak Terrace", active: false, asked: 0, escalated: 0, answerCount: 0, twilioNumber: "", openEscalations: 0, lastActivity: null },
 ];
 
+// What the live endpoint returns for the open queue, so a capture taken in live
+// mode does not show the "queue unavailable" fallback instead of the card.
+const AWAITING = {
+  open: 3,
+  oldestMinutes: 291,
+  over1h: 2,
+  over4h: 1,
+  byProperty: [
+    { name: "Sunset Villa", open: 2, oldestMinutes: 291 },
+    { name: "Harbor House", open: 1, oldestMinutes: 47 },
+  ],
+};
+
 const LIVE_METRICS = {
   guestMessages24h: 12,
   resolvedGuestMessages24h: 10,
@@ -69,10 +82,13 @@ const LIVE_METRICS = {
   measuredAt: "2026-10-26 11:22:33",
 };
 
+// Set the state instead of toggling it. These flags are declared with `let` in
+// the page script, which a later classic script can still assign, and an
+// assignment stays correct however many times the driver runs.
 const DRIVE = {
-  analytics: "toggleSample();",
-  insights: "toggleInsightsSample();",
-  operations: "toggleOperationsSample();",
+  analytics: "analyticsSample = true; loadAnalytics();",
+  insights: "insightsSample = true; loadInsights();",
+  operations: "operationsSample = true; loadOperations();",
 };
 
 async function waitForDevtools(timeoutMs) {
@@ -134,7 +150,7 @@ function connect(url) {
     "/admin/api/analytics?sample=1": sampleAnalytics(now),
     "/admin/api/insights": { ...sampleInsights(now), sample: false },
     "/admin/api/insights?sample=1": sampleInsights(now),
-    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS },
+    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, awaiting: AWAITING },
     "/admin/api/operations?sample=1": sampleOperations(now),
     "/admin/api/health": HEALTH,
     "/admin/api/features": { insights: true },
@@ -210,6 +226,12 @@ function connect(url) {
       url: "file:///" + path.resolve(pageFile).replace(/\\/g, "/"),
     });
     await new Promise((resolve) => setTimeout(resolve, 2600));
+
+    // Do not trust the in-page timers: on a narrow, emulated-mobile viewport
+    // they sometimes had not run yet and the shot captured the login card.
+    // Forcing the same reveal here makes the capture deterministic.
+    await client.send("Runtime.evaluate", { expression: "reveal(); " + switchCall });
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     const metrics = await client.send("Page.getLayoutMetrics");
     const size = metrics.cssContentSize || metrics.contentSize;

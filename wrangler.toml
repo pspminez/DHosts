@@ -16,6 +16,10 @@ database_id = "8dd9944d-411f-408a-bb3e-c039e4f86755"
 # the webhook URL configured in the Twilio console (scheme, host, path).
 # Keep the current callback until api.stayxi.com is configured and Twilio is
 # switched to it; change both together to avoid rejecting inbound messages.
+# Guest-question insights (the Insights tab) is the paid add-on from the pilot
+# plan. This is the per-deployment entitlement: set it to "false" for an
+# operator who has not bought it and the tab disappears *and* the API refuses.
+INSIGHTS_ENTITLED = "true"
 VALIDATE_SIGNATURE = "true"
 PUBLIC_URL = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms"
 GMAIL_OAUTH_REDIRECT_URI = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin/google/oauth/callback"

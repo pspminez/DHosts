@@ -55,6 +55,9 @@ interface Env {
   ADMIN_PASSWORD: string;
   PUBLIC_URL?: string;
   VALIDATE_SIGNATURE?: string;
+  // Per-deployment entitlement for the paid guest-question report. See
+  // wrangler.toml; anything other than "true" leaves it gated.
+  INSIGHTS_ENTITLED?: string;
   GMAIL_CLIENT_ID?: string;
   GMAIL_CLIENT_SECRET?: string;
   GMAIL_OAUTH_REDIRECT_URI?: string;
@@ -1656,6 +1659,59 @@ function timingSafeEqualStr(a: string, b: string) {
   return diff === 0;
 }
 
+function insightsEntitled(env: Env): boolean {
+  return String(env.INSIGHTS_ENTITLED || "").toLowerCase() === "true";
+}
+
+// The open escalation queue, with ages, for the Operations panel. Failure here
+// returns null instead of taking the whole panel down with it.
+async function loadAwaitingQueue(env: Env) {
+  try {
+    const [summary, byProperty] = await Promise.all([
+      env.DB.prepare(
+        // MAX of the age, not MIN: MIN would report the *newest* open question
+        // and label it "oldest waiting", which is the one number a host would
+        // trust before deciding whether anything is stuck.
+        `SELECT COUNT(*) AS open,
+                MAX((julianday('now') - julianday(created_at)) * 1440) AS oldestMinutes,
+                SUM(CASE WHEN created_at <= datetime('now', '-1 hour') THEN 1 ELSE 0 END) AS over1h,
+                SUM(CASE WHEN created_at <= datetime('now', '-4 hours') THEN 1 ELSE 0 END) AS over4h
+         FROM escalations
+         WHERE status = 'open'`
+      ).first<{ open: number; oldestMinutes: number | null; over1h: number; over4h: number }>(),
+      env.DB.prepare(
+        `SELECT COALESCE(NULLIF(p.display_name, ''), e.property_id) AS name,
+                COUNT(*) AS open,
+                MAX((julianday('now') - julianday(e.created_at)) * 1440) AS oldestMinutes
+         FROM escalations e
+         LEFT JOIN properties p ON p.id = e.property_id
+         WHERE e.status = 'open'
+         GROUP BY e.property_id
+         ORDER BY open DESC, oldestMinutes DESC`
+      ).all<{ name: string; open: number; oldestMinutes: number | null }>(),
+    ]);
+    // Never hand the panel a negative age. A clock skew between D1 and whatever
+    // wrote the row is enough to produce one, and "waiting -16 h" reads like the
+    // panel is broken rather than the timestamp.
+    const minutes = (value: number | null | undefined) =>
+      value === null || value === undefined ? null : Math.max(0, Math.round(Number(value)));
+    return {
+      open: Number((summary && summary.open) || 0),
+      oldestMinutes: minutes(summary && summary.oldestMinutes),
+      over1h: Number((summary && summary.over1h) || 0),
+      over4h: Number((summary && summary.over4h) || 0),
+      byProperty: (byProperty.results || []).map((row) => ({
+        name: row.name || "Unassigned",
+        open: Number(row.open || 0),
+        oldestMinutes: minutes(row.oldestMinutes),
+      })),
+    };
+  } catch (err) {
+    console.error("Awaiting-reply query failed:", errorMessage(err) || err);
+    return null;
+  }
+}
+
 async function handleAdmin(request: Request, env: Env, url: URL) {
   // Login logger - tracks all admin access attempts
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -2670,7 +2726,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         avgHostResponseMinutes30d: number | null;
         measuredAt: string;
       }>();
-      return adminJson({ sample: false, metrics });
+      return adminJson({ sample: false, metrics, awaiting: await loadAwaitingQueue(env) });
     } catch (err) {
       console.error("Operations metrics query failed:", errorMessage(err) || err);
       return adminJson({ error: "Failed to load operations metrics." }, 500);
@@ -2680,6 +2736,11 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   // Admin API: guest-question insights (read-only, aggregate counts only).
   // `?sample=1` returns the deterministic demo dataset.
   if (url.pathname === "/admin/api/insights" && request.method === "GET") {
+    // The report is a paid add-on, so the API refuses as well as the nav hiding
+    // it — otherwise the data is one URL away.
+    if (!insightsEntitled(env)) {
+      return adminJson({ error: "Insights is not enabled for this deployment." }, 403);
+    }
     if (url.searchParams.get("sample") === "1") {
       return adminJson(sampleInsights());
     }
@@ -2728,6 +2789,12 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       console.error("Admin insights query failed:", errorMessage(err) || err);
       return adminJson({ error: "Failed to load insights." }, 500);
     }
+  }
+
+  // Which optional features this deployment has. The page asks once after login
+  // and hides what is not entitled.
+  if (url.pathname === "/admin/api/features" && request.method === "GET") {
+    return adminJson({ insights: insightsEntitled(env) });
   }
 
   if (url.pathname === "/admin/api/health" && request.method === "GET") {
@@ -3062,6 +3129,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .op-health b.warn { color:var(--sun); }
   .op-hint { color:var(--muted); font-size:.76rem; margin-top:.4rem; }
   .op-form { display:grid; gap:.15rem; margin:.6rem 0 1rem; }
+  .op-await { margin-bottom:1rem; }
 
   /* --- insights tab --- */
   .insight-row { display:grid; grid-template-columns:minmax(0,9rem) minmax(0,1fr) auto 4.4rem;
@@ -3505,6 +3573,16 @@ const ADMIN_HTML = `<!DOCTYPE html>
       </section>
     </div>
 
+    <section class="dash-card op-await">
+      <div class="dash-label-row">
+        <span class="dash-label">Questions awaiting your reply</span>
+        <span class="dash-sub" id="opAwaitingAge"></span>
+      </div>
+      <div class="dash-hero small" id="opAwaitingCount">—</div>
+      <div class="dash-sub" id="opAwaitingBuckets"></div>
+      <ul class="op-health" id="opAwaitingList"></ul>
+    </section>
+
     <section class="dash-card">
       <div class="dash-label">Test a guest message</div>
       <p class="op-hint">Simulation only: this does not call AI, send SMS, or write message logs.</p>
@@ -3852,6 +3930,7 @@ async function unlock() {
     $("loginStatus").textContent = "";
     $("login").classList.add("hidden");
     $("tabBar").classList.remove("hidden");
+    await applyFeatures();
     showList();
   } catch (err) {
     $("loginStatus").textContent = err.message;
@@ -5700,6 +5779,8 @@ async function loadOperations() {
       healthContainer.append(item);
     });
 
+    renderAwaiting(operations.awaiting);
+
     const select = $('testProperty');
     const previousId = select.value;
     select.textContent = '';
@@ -5723,6 +5804,51 @@ async function loadOperations() {
 function toggleOperationsSample() {
   operationsSample = !operationsSample;
   loadOperations();
+}
+
+function humanizeMinutes(minutes) {
+  const total = Math.max(0, Math.round(Number(minutes) || 0));
+  if (total < 60) return total + ' m';
+  const hours = Math.floor(total / 60);
+  if (hours < 24) return hours + ' h ' + (total % 60) + ' m';
+  return Math.floor(hours / 24) + ' d ' + (hours % 24) + ' h';
+}
+
+function renderAwaiting(awaiting) {
+  const list = $('opAwaitingList');
+  clearNode(list);
+  if (!awaiting) {
+    $('opAwaitingCount').textContent = '—';
+    $('opAwaitingAge').textContent = 'queue unavailable';
+    $('opAwaitingBuckets').textContent = '';
+    return;
+  }
+  const open = Number(awaiting.open || 0);
+  const oldest = awaiting.oldestMinutes;
+  $('opAwaitingCount').textContent = open.toLocaleString();
+  $('opAwaitingAge').textContent = !open
+    ? 'nothing waiting'
+    : oldest === null || oldest === undefined
+      ? 'age unknown'
+      : 'oldest waiting ' + humanizeMinutes(oldest);
+  $('opAwaitingBuckets').textContent = !open
+    ? 'every guest question has an answer'
+    : Number(awaiting.over1h || 0) + ' waiting over an hour · ' + Number(awaiting.over4h || 0) + ' over four hours';
+
+  (awaiting.byProperty || []).forEach(function (row) {
+    const stale = row.oldestMinutes !== null && row.oldestMinutes !== undefined && row.oldestMinutes >= 240;
+    const item = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = 'op-dot ' + (stale ? 'warn' : 'ok');
+    const name = document.createElement('span');
+    name.textContent = row.name;
+    const value = document.createElement('b');
+    value.className = stale ? 'warn' : 'ok';
+    value.textContent = Number(row.open || 0) +
+      (row.oldestMinutes === null || row.oldestMinutes === undefined ? '' : ' · ' + humanizeMinutes(row.oldestMinutes));
+    item.append(dot, name, value);
+    list.appendChild(item);
+  });
 }
 
 async function simulateGuestMessage() {
@@ -5792,12 +5918,24 @@ function exportLeads() {
   URL.revokeObjectURL(url);
 }
 
+// Optional features are per deployment: ask once, then hide what is not
+// entitled rather than letting someone click into a 403.
+async function applyFeatures() {
+  try {
+    const features = await api('/admin/api/features');
+    $('navInsights').classList.toggle('hidden', !features.insights);
+  } catch (err) {
+    // Leave the nav as it is; the API still refuses the report itself.
+  }
+}
+
 async function restoreSession() {
   // The session cookie is HttpOnly, so ask the API whether it is still valid.
   try {
     await api("/admin/api/properties");
     $("login").classList.add("hidden");
     $("tabBar").classList.remove("hidden");
+    await applyFeatures();
     showList();
   } catch (err) {
     // Not signed in: leave the login card in place.

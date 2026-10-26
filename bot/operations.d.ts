@@ -23,10 +23,25 @@ export interface OperationsHealth {
   missingTextNumber: number;
 }
 
+export interface AwaitingProperty {
+  name: string;
+  open: number;
+  oldestMinutes: number | null;
+}
+
+export interface OperationsAwaiting {
+  open: number;
+  oldestMinutes: number | null;
+  over1h: number;
+  over4h: number;
+  byProperty: AwaitingProperty[];
+}
+
 export interface OperationsSample {
   sample: true;
   metrics: OperationsMetrics;
   health: OperationsHealth;
+  awaiting: OperationsAwaiting;
 }
 
 export function sampleOperations(now?: Date): OperationsSample;

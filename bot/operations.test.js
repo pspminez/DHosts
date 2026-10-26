@@ -101,6 +101,25 @@ test("keeps every count a non-negative whole number", () => {
   assert.ok(metrics.aiAnswers24h <= metrics.aiInteractions24h);
 });
 
+test("the demo open queue adds up and names real sample properties", () => {
+  const { awaiting } = sampleOperations(NOW);
+  const analytics = sampleAnalytics(NOW);
+  assert.equal(typeof awaiting.open, "number");
+  assert.equal(
+    awaiting.byProperty.reduce((sum, row) => sum + row.open, 0),
+    awaiting.open,
+    "the per-property counts must add up to the headline",
+  );
+  const names = analytics.properties.map((property) => property.name);
+  for (const row of awaiting.byProperty) {
+    assert.ok(names.includes(row.name), row.name + " is not one of the sample properties");
+    assert.equal(Number.isInteger(row.oldestMinutes), true, "age should be whole minutes");
+  }
+  assert.equal(awaiting.over4h <= awaiting.over1h, true, "four hours is a subset of one hour");
+  assert.equal(awaiting.over1h <= awaiting.open, true);
+  assert.equal(awaiting.oldestMinutes, Math.max(...awaiting.byProperty.map((row) => row.oldestMinutes)));
+});
+
 test("is deterministic, so reloading the demo never moves the numbers", () => {
   assert.deepEqual(sampleOperations(NOW), sampleOperations(NOW));
 });

@@ -22,6 +22,12 @@ const SAMPLE_OPEN_ESCALATIONS = 3;
 
 // Same shape as datetime('now') from the live query, so the stamp in the panel
 // head doesn't suddenly switch format when demo mode is on.
+// Demo property names come from the analytics sample so both tabs agree.
+function propertyName(analytics, index) {
+  const properties = (analytics && analytics.properties) || [];
+  return (properties[index] && properties[index].name) || "Sample Villa " + (index + 1);
+}
+
 function measuredAtStamp(now) {
   return now.toISOString().slice(0, 19).replace("T", " ");
 }
@@ -49,6 +55,20 @@ export function sampleOperations(now = new Date()) {
       avgAILatencyMs24h: SAMPLE_AI_LATENCY_MS,
       avgHostResponseMinutes30d: SAMPLE_AVG_HOST_RESPONSE_MINUTES,
       measuredAt: measuredAtStamp(now),
+    },
+    // The open queue: a couple of young questions plus one that has been sitting
+    // past the four-hour mark, so the demo exercises the stale styling rather
+    // than only ever showing the calm state.
+    awaiting: {
+      open: 4,
+      oldestMinutes: 291,
+      over1h: 3,
+      over4h: 1,
+      byProperty: [
+        { name: propertyName(analytics, 0), open: 2, oldestMinutes: 291 },
+        { name: propertyName(analytics, 1), open: 1, oldestMinutes: 96 },
+        { name: propertyName(analytics, 2), open: 1, oldestMinutes: 38 },
+      ],
     },
     // A whole healthy panel. Showing live checks next to demo figures would
     // mix two different truths in one card, which is exactly what the banner

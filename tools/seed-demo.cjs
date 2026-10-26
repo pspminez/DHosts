@@ -130,7 +130,14 @@ function buildSql() {
       guestCounter += 1;
       const guest = "+1555010" + String(1000 + guestCounter).slice(-4);
       const thread = "thr_" + property.id.toLowerCase() + "_" + day + "_" + i;
-      const inboundAt = new Date(since + (DAYS - day) * 86400000 + between(7, 22) * 3600000 + between(0, 59) * 60000);
+      // Today's traffic must not land in the future: naive "hour 7-22 of the
+      // current day" put the newest rows up to 17h ahead of the clock, which the
+      // awaiting query then reported as a negative age. Pull anything that would
+      // cross now back into the last few hours.
+      const scheduled = since + (DAYS - day) * 86400000 + between(7, 22) * 3600000 + between(0, 59) * 60000;
+      const inboundAt = new Date(
+        scheduled > now - 60000 ? now - between(1, 240) * 60000 : scheduled,
+      );
 
       lines.push(
         "INSERT INTO messages (created_at, direction, property_id, from_number, body, body_redacted, thread_id, intent_key, risk, resolution) VALUES (" +
@@ -194,9 +201,10 @@ function buildSql() {
       }
 
       if (resolution.key === "escalated") {
-        // Older escalations are mostly resolved; recent ones are still open —
-        // which is what makes "awaiting a host reply" show a real queue.
-        const openChance = day <= 2 ? 0.75 : day <= 7 ? 0.25 : 0.05;
+        // Only recent escalations stay open. A 0.05 chance on every old day left
+        // a question unanswered for six weeks, which is not the healthy-but-busy
+        // panel this is supposed to show.
+        const openChance = day <= 1 ? 0.7 : day <= 2 ? 0.3 : 0;
         const isOpen = rand() < openChance;
         const answeredAt = new Date(inboundAt.getTime() + between(4, 95) * 60000);
         lines.push(
