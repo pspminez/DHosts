@@ -44,6 +44,7 @@ import {
   randomSessionToken,
   revokeAdminSession,
 } from "./admin-session.js";
+import { buildAnalytics, sampleAnalytics } from "./analytics.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -2517,54 +2518,100 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     }
   }
 
-  // Admin API: analytics for properties currently marked live (read-only)
+  // Admin API: analytics dashboard (read-only).
+  // `?sample=1` returns the deterministic demo dataset instead of live figures;
+  // the response always carries `sample` so the page can label it.
   if (url.pathname === "/admin/api/analytics" && request.method === "GET") {
+    if (url.searchParams.get("sample") === "1") {
+      return adminJson(sampleAnalytics());
+    }
     try {
-      const [result, commonRequests] = await Promise.all([
+      const [daily, resolutions, properties, escalations, messages, commonRequests] = await Promise.all([
+        // 60 days so the panel can compare the last 30 with the 30 before it.
         env.DB.prepare(
-      `SELECT
-         p.id,
-         COALESCE(NULLIF(p.display_name, ''), p.id) AS name,
-         COALESCE(m.guest_messages, 0) AS guestMessages,
-         COALESCE(m.ai_answers, 0) AS aiAnswers,
-         COALESCE(e.escalations, 0) AS escalations,
-         m.last_activity AS lastActivity
-       FROM properties p
-       LEFT JOIN (
-         SELECT
-           property_id,
-           SUM(CASE WHEN direction = 'in' THEN 1 ELSE 0 END) AS guest_messages,
-           SUM(CASE WHEN direction = 'in' AND resolution = 'ai' THEN 1 ELSE 0 END) AS ai_answers,
-           MAX(CASE WHEN direction = 'in' THEN created_at END) AS last_activity
-         FROM messages
-         GROUP BY property_id
-       ) m ON m.property_id = p.id
-       LEFT JOIN (
-         SELECT property_id, COUNT(*) AS escalations
-         FROM escalations
-         GROUP BY property_id
-       ) e ON e.property_id = p.id
-       WHERE p.active = 1
-       ORDER BY name COLLATE NOCASE, p.id`
+          `SELECT date(created_at) AS day,
+                  SUM(CASE WHEN direction = 'in' THEN 1 ELSE 0 END) AS inbound,
+                  SUM(CASE WHEN direction = 'out' THEN 1 ELSE 0 END) AS outbound,
+                  SUM(CASE WHEN direction = 'in' AND resolution IN ('escalated','escalate','emergency') THEN 1 ELSE 0 END) AS escalated
+           FROM messages
+           WHERE created_at >= datetime('now', '-60 days')
+           GROUP BY day ORDER BY day`
+        ).all<{ day: string; inbound: number; outbound: number; escalated: number }>(),
+        env.DB.prepare(
+          `SELECT resolution, COUNT(*) AS n
+           FROM messages
+           WHERE direction = 'in' AND created_at >= datetime('now', '-30 days')
+           GROUP BY resolution`
+        ).all<{ resolution: string | null; n: number }>(),
+        env.DB.prepare(
+          `SELECT p.id AS id,
+                  COALESCE(NULLIF(p.display_name, ''), p.id) AS name,
+                  COALESCE(SUM(CASE WHEN m.direction = 'in' THEN 1 ELSE 0 END), 0) AS inbound,
+                  COALESCE(SUM(CASE WHEN m.direction = 'in' AND m.resolution = 'ai' THEN 1 ELSE 0 END), 0) AS aiAnswers,
+                  COALESCE(SUM(CASE WHEN m.direction = 'in' AND m.resolution IN ('escalated','escalate','emergency') THEN 1 ELSE 0 END), 0) AS escalated,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', MAX(CASE WHEN m.direction = 'in' THEN m.created_at END)) AS lastActivity
+           FROM properties p
+           LEFT JOIN messages m
+             ON m.property_id = p.id AND m.created_at >= datetime('now', '-30 days')
+           WHERE p.active = 1
+           GROUP BY p.id
+           ORDER BY inbound DESC, name COLLATE NOCASE`
         ).all<{
           id: string;
           name: string;
-          guestMessages: number;
+          inbound: number;
           aiAnswers: number;
-          escalations: number;
+          escalated: number;
           lastActivity: string | null;
         }>(),
+        env.DB.prepare(
+          `SELECT 'escalation' AS kind, e.status AS status,
+                  COALESCE(NULLIF(p.display_name, ''), e.property_id) AS property,
+                  e.question AS text,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', e.created_at) AS at
+           FROM escalations e
+           LEFT JOIN properties p ON p.id = e.property_id
+           ORDER BY e.created_at DESC LIMIT 6`
+        ).all<{ kind: string; status: string | null; property: string | null; text: string | null; at: string }>(),
+        // body_redacted only: guest text may hold gate codes or personal detail.
+        env.DB.prepare(
+          `SELECT 'message' AS kind, NULL AS status,
+                  COALESCE(NULLIF(p.display_name, ''), m.property_id) AS property,
+                  COALESCE(NULLIF(m.body_redacted, ''), 'Message received') AS text,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', m.created_at) AS at
+           FROM messages m
+           LEFT JOIN properties p ON p.id = m.property_id
+           WHERE m.direction = 'in'
+           ORDER BY m.created_at DESC LIMIT 6`
+        ).all<{ kind: string; status: string | null; property: string | null; text: string | null; at: string }>(),
         env.DB.prepare(
           `SELECT COALESCE(intent_key, 'unknown') AS intentKey, COUNT(*) AS total
            FROM messages
            WHERE direction = 'in' AND created_at >= datetime('now', '-30 days')
-           GROUP BY intent_key ORDER BY total DESC LIMIT 10`
+           GROUP BY intent_key ORDER BY total DESC LIMIT 8`
         ).all<{ intentKey: string; total: number }>(),
       ]);
-      return adminJson({
-        properties: result.results || [],
-        commonRequests: commonRequests.results || [],
-      });
+
+      const recent = [...(escalations.results || []), ...(messages.results || [])]
+        .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+        .slice(0, 8)
+        .map((event) => ({
+          kind: event.kind,
+          status: event.status || null,
+          property: event.property || "Unassigned",
+          text: String(event.text || "").slice(0, 160),
+          at: event.at,
+        }));
+
+      return adminJson(
+        buildAnalytics({
+          daily: daily.results || [],
+          resolutions: resolutions.results || [],
+          properties: properties.results || [],
+          recent,
+          commonRequests: commonRequests.results || [],
+        }),
+      );
     } catch (err) {
       console.error("Admin analytics query failed:", errorMessage(err) || err);
       return adminJson({ error: "Failed to load analytics." }, 500);
@@ -2817,6 +2864,80 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .analytics-metric span { color:var(--muted); font-size:.75rem; }
   .analytics-last { color:var(--muted); font-size:.75rem; margin-top:.8rem; }
   @media (max-width:560px) { .analytics-metrics { grid-template-columns:1fr; } }
+
+  /* --- analytics dashboard --- */
+  .dash-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .dash-controls { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; }
+  .dash-stamp { color:var(--muted); font-size:.72rem; }
+  .dash-toggle { font-size:.78rem; white-space:nowrap; }
+  .sample-banner { margin:0 0 1rem; padding:.6rem .9rem; border-radius:12px; font-size:.78rem;
+         color:var(--gold); border:1px solid rgba(255,209,102,.35); background:rgba(255,209,102,.08); }
+  .dash-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2.05fr) minmax(0,1fr);
+         gap:1rem; align-items:start; margin-bottom:1rem; }
+  .dash-col { display:flex; flex-direction:column; gap:1rem; min-width:0; }
+  .dash-stack { display:grid; gap:1rem; }
+  .dash-card { position:relative; border:1px solid var(--border); border-radius:16px; padding:1rem 1.1rem;
+         background:radial-gradient(120% 80% at 0% 0%,rgba(56,225,198,.09),transparent 62%),
+                    linear-gradient(160deg,rgba(20,38,66,.97),rgba(11,22,41,.99));
+         box-shadow:inset 0 1px 0 rgba(190,214,255,.06), 0 22px 44px -30px #000; }
+  .dash-label { font-size:.64rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .dash-label-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; }
+  .dash-hero { font-size:2.7rem; font-weight:800; letter-spacing:-.045em; line-height:1.05; margin:.3rem 0 .1rem;
+         text-shadow:0 0 28px rgba(56,225,198,.28); }
+  .dash-hero.small { font-size:1.85rem; }
+  .dash-sub { color:var(--muted); font-size:.74rem; }
+  .dash-delta { display:inline-flex; align-items:center; gap:.3rem; margin-top:.3rem; font-size:.72rem;
+         font-weight:700; color:var(--pool); }
+  .dash-delta.down { color:var(--pink); }
+  .dash-delta.flat { color:var(--muted); font-weight:600; }
+  .dash-legend { display:inline-flex; align-items:center; gap:.35rem; color:var(--muted); font-size:.68rem; }
+  .dash-legend i { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dash-legend i.k-in { background:var(--pool); box-shadow:0 0 8px var(--pool); }
+  .dash-legend i.k-out { background:#8b7cff; box-shadow:0 0 8px #8b7cff; margin-left:.55rem; }
+  .chart { width:100%; height:auto; display:block; margin-top:.7rem; }
+  .spark { width:100%; height:auto; display:block; margin-top:.55rem; }
+  .donut-wrap { position:relative; display:flex; align-items:center; justify-content:center; margin:.65rem 0 .3rem; }
+  .donut { width:10.5rem; height:10.5rem; }
+  .donut-center { position:absolute; text-align:center; pointer-events:none; }
+  .donut-center strong { display:block; font-size:1.5rem; font-weight:800; letter-spacing:-.03em; }
+  .donut-center span { color:var(--muted); font-size:.6rem; text-transform:uppercase; letter-spacing:.12em; }
+  .mix-legend { list-style:none; display:grid; gap:.42rem; margin-top:.35rem; }
+  .mix-legend li { display:flex; align-items:center; gap:.5rem; font-size:.75rem; color:var(--muted); }
+  .mix-legend b { margin-left:auto; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+  .swatch { width:9px; height:9px; border-radius:3px; flex:none; }
+  .cap-list { display:grid; gap:.72rem; margin-top:.85rem; }
+  .cap-row { font-size:.75rem; }
+  .cap-top { display:flex; justify-content:space-between; gap:.5rem; margin-bottom:.32rem; }
+  .cap-top span { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cap-top b { font-weight:700; font-variant-numeric:tabular-nums; }
+  .cap-track { height:7px; border-radius:99px; background:rgba(148,180,255,.13); overflow:hidden; }
+  .cap-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#38e1c6,#5aa9ff);
+         box-shadow:0 0 12px rgba(56,225,198,.5); }
+  .events { list-style:none; display:grid; gap:.72rem; margin-top:.8rem; }
+  .events li { display:flex; gap:.55rem; align-items:flex-start; font-size:.76rem; }
+  .ev-dot { width:9px; height:9px; border-radius:50%; margin-top:.32rem; flex:none; }
+  .ev-dot.open { background:var(--pink); box-shadow:0 0 10px var(--pink); }
+  .ev-dot.answered { background:var(--pool); box-shadow:0 0 10px var(--pool); }
+  .ev-dot.message { background:#5aa9ff; box-shadow:0 0 10px #5aa9ff; }
+  .ev-body { min-width:0; }
+  .ev-text { color:var(--text); overflow-wrap:anywhere; }
+  .ev-meta { color:var(--muted); font-size:.67rem; margin-top:.12rem; }
+  .req-list { display:grid; gap:.55rem; margin-top:.8rem; }
+  .req-row { display:grid; grid-template-columns:minmax(0,10rem) minmax(0,1fr) auto; gap:.7rem;
+         align-items:center; font-size:.76rem; }
+  .req-row .cap-track { height:8px; }
+  .req-row b { font-variant-numeric:tabular-nums; }
+  .prop-table { margin-top:.9rem; overflow-x:auto; }
+  .prop-table table { width:100%; border-collapse:collapse; font-size:.77rem; }
+  .prop-table th { text-align:left; font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
+         color:var(--muted); font-weight:700; padding:.4rem .55rem; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .prop-table td { padding:.55rem .55rem; border-bottom:1px solid rgba(148,180,255,.07); }
+  .prop-table td.num, .prop-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .prop-table tr:last-child td { border-bottom:none; }
+  .dash-empty { color:var(--muted); font-size:.78rem; margin-top:.7rem; }
+  @media (max-width:1080px) { .dash-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
+  @media (max-width:720px) { .dash-grid { grid-template-columns:1fr; } .req-row { grid-template-columns:minmax(0,1fr) auto; }
+         .req-row .cap-track { grid-column:1 / -1; } }
   .pilot-content { display:grid; gap:1rem; }
   .pilot-content .card { margin-top:0; }
   .pilot-content h2 { font-size:1.1rem; }
@@ -3015,17 +3136,91 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="analyticsView" class="hidden">
-    <div class="analytics-head">
-      <h2>Live property analytics</h2>
-      <p>All-time guest activity for properties currently marked live.</p>
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Guest activity</h2>
+        <p>Last 30 days across your live properties.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="dashStamp"></span>
+        <button class="ghost dash-toggle" id="sampleToggle" onclick="toggleSample()">Show demo data</button>
+      </div>
     </div>
+    <p class="sample-banner hidden" id="sampleBanner">Demo data — these figures are generated to show what the dashboard looks like. They are not your traffic.</p>
     <p class="no-data" id="noAnalytics" style="display:none">No live properties yet.</p>
-    <div class="analytics-list" id="propertyAnalytics"></div>
-    <section class="card">
-      <h2>Most common guest requests · 30 days</h2>
-      <div class="analytics-list" id="commonRequests"></div>
-      <p class="status" id="commonRequestsStatus"></p>
-    </section>
+
+    <div class="dash-grid">
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label">Guest messages · 30 days</div>
+          <div class="dash-hero" id="heroAnswered">—</div>
+          <div class="dash-delta flat" id="heroDelta"></div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">How questions were answered</div>
+          <div class="donut-wrap">
+            <svg id="mixDonut" class="donut" viewBox="0 0 120 120" role="img" aria-label="How guest questions were answered"></svg>
+            <div class="donut-center"><strong id="mixPct">—</strong><span>no human</span></div>
+          </div>
+          <ul class="mix-legend" id="mixLegend"></ul>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Escalated to you</div>
+          <div class="dash-hero small" id="heroEscalated">—</div>
+          <div class="dash-sub">in the last 30 days</div>
+          <svg id="escalationSpark" class="spark" viewBox="0 0 240 54" role="img" aria-label="Escalations per day"></svg>
+        </section>
+      </div>
+
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label-row">
+            <span class="dash-label">Message throughput · 30 days</span>
+            <span class="dash-legend"><i class="k-in"></i>Inbound<i class="k-out"></i>Replies</span>
+          </div>
+          <svg id="throughput" class="chart" viewBox="0 0 620 230" role="img" aria-label="Guest messages and replies per day"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Weekly volume · inbound</div>
+          <svg id="weeklyBars" class="chart" viewBox="0 0 320 160" role="img" aria-label="Weekly inbound volume"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Message share by property</div>
+          <div id="capacityBars" class="cap-list"></div>
+        </section>
+      </div>
+
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label">Inbound today</div>
+          <div class="dash-hero small" id="todayIn">—</div>
+          <div class="dash-delta flat" id="todayInDelta"></div>
+          <svg id="todayInSpark" class="spark" viewBox="0 0 240 54" role="img" aria-label="Inbound messages per day"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Replies today</div>
+          <div class="dash-hero small" id="todayOut">—</div>
+          <div class="dash-delta flat" id="todayOutDelta"></div>
+          <svg id="todayOutSpark" class="spark" viewBox="0 0 240 54" role="img" aria-label="Replies per day"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Recent events</div>
+          <ul class="events" id="recentEvents"></ul>
+        </section>
+      </div>
+    </div>
+
+    <div class="dash-stack">
+      <section class="dash-card">
+        <div class="dash-label">Most common guest requests · 30 days</div>
+        <div id="commonRequests" class="req-list"></div>
+        <p class="status" id="commonRequestsStatus"></p>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">By property · 30 days</div>
+        <div class="prop-table" id="propertyAnalytics"></div>
+      </section>
+    </div>
   </div>
 
   <div id="operationsView" class="hidden">
@@ -4466,77 +4661,505 @@ function closeLeadDetail() {
   showTab('leads');
 }
 
+let analyticsSample = false;
+
+function clearNode(node) {
+  while (node && node.firstChild) node.removeChild(node.firstChild);
+}
+
+function svgEl(name, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+  if (attrs) {
+    for (const key in attrs) {
+      if (Object.prototype.hasOwnProperty.call(attrs, key)) el.setAttribute(key, attrs[key]);
+    }
+  }
+  return el;
+}
+
+function glow(el, color) {
+  el.style.filter = 'drop-shadow(0 0 6px ' + color + ')';
+}
+
+function emptyNote(text) {
+  const note = document.createElement('p');
+  note.className = 'dash-empty';
+  note.textContent = text;
+  return note;
+}
+
+function relativeTime(value) {
+  const then = Date.parse(value);
+  if (!Number.isFinite(then)) return '';
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return minutes + ' min ago';
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours + (hours === 1 ? ' hr ago' : ' hrs ago');
+  const days = Math.round(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 30) return days + ' days ago';
+  return new Date(then).toLocaleDateString();
+}
+
+function shortDay(value) {
+  const date = new Date(String(value) + 'T00:00:00Z');
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function changeSince(current, previous) {
+  if (!previous) return current ? null : 0;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+function setDelta(node, value, against) {
+  if (!node) return;
+  const suffix = against || 'vs previous 30 days';
+  node.classList.remove('up', 'down', 'flat');
+  if (value === null || value === undefined) {
+    node.classList.add('flat');
+    node.textContent = 'No earlier period to compare';
+    return;
+  }
+  if (value === 0) {
+    node.classList.add('flat');
+    node.textContent = 'No change ' + suffix;
+    return;
+  }
+  node.classList.add(value > 0 ? 'up' : 'down');
+  node.textContent = (value > 0 ? '▲ ' : '▼ ') + Math.abs(value) + '% ' + suffix;
+}
+
+function smoothPath(points) {
+  if (!points.length) return '';
+  let path = 'M ' + points[0].x + ' ' + points[0].y;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    const mid = (previous.x + point.x) / 2;
+    path += ' C ' + mid + ' ' + previous.y + ', ' + mid + ' ' + point.y + ', ' + point.x + ' ' + point.y;
+  }
+  return path;
+}
+
+function areaPath(points, bottom) {
+  if (!points.length) return '';
+  return smoothPath(points) + ' L ' + points[points.length - 1].x + ' ' + bottom +
+    ' L ' + points[0].x + ' ' + bottom + ' Z';
+}
+
+function vGradient(defs, id, color, topOpacity) {
+  const gradient = svgEl('linearGradient', { id: id, x1: '0', y1: '0', x2: '0', y2: '1' });
+  gradient.appendChild(svgEl('stop', { offset: '0', 'stop-color': color, 'stop-opacity': String(topOpacity) }));
+  gradient.appendChild(svgEl('stop', { offset: '1', 'stop-color': color, 'stop-opacity': '0' }));
+  defs.appendChild(gradient);
+}
+
+function drawSeries(svg, defs, points, bottom, color, gradientId, topOpacity) {
+  vGradient(defs, gradientId, color, topOpacity);
+  svg.appendChild(svgEl('path', { d: areaPath(points, bottom), fill: 'url(#' + gradientId + ')', stroke: 'none' }));
+  const line = svgEl('path', {
+    d: smoothPath(points),
+    fill: 'none',
+    stroke: color,
+    'stroke-width': '2.2',
+    'stroke-linejoin': 'round',
+    'stroke-linecap': 'round',
+  });
+  glow(line, color);
+  svg.appendChild(line);
+}
+
+function chartNote(svg, text, width, height) {
+  const note = svgEl('text', {
+    x: String(width / 2),
+    y: String(height / 2),
+    'text-anchor': 'middle',
+    fill: 'rgba(147,165,201,.8)',
+    'font-size': '11',
+  });
+  note.textContent = text;
+  svg.appendChild(note);
+}
+
+function renderThroughput(svg, daily) {
+  clearNode(svg);
+  const width = 620;
+  const height = 230;
+  const padLeft = 34;
+  const padRight = 10;
+  const padTop = 14;
+  const padBottom = 26;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const bottom = padTop + plotHeight;
+  const series = daily && daily.length ? daily : [];
+
+  const peak = Math.max(1, series.reduce(function (max, day) {
+    return Math.max(max, Number(day.inbound || 0), Number(day.outbound || 0));
+  }, 0));
+
+  for (let step = 0; step <= 3; step += 1) {
+    const value = (peak / 3) * step;
+    const y = padTop + plotHeight - (value / peak) * plotHeight;
+    svg.appendChild(svgEl('line', {
+      x1: String(padLeft), y1: String(y), x2: String(width - padRight), y2: String(y),
+      stroke: 'rgba(148,180,255,.12)', 'stroke-width': '1',
+    }));
+    const label = svgEl('text', {
+      x: String(padLeft - 8), y: String(y + 3.5), 'text-anchor': 'end',
+      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+    });
+    label.textContent = String(Math.round(value));
+    svg.appendChild(label);
+  }
+
+  if (!series.length) {
+    chartNote(svg, 'No guest messages in this period yet', width, height);
+    return;
+  }
+
+  const xAt = function (index) {
+    return padLeft + (series.length <= 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth);
+  };
+  const yAt = function (value) {
+    return padTop + plotHeight - (Math.min(Number(value || 0), peak) / peak) * plotHeight;
+  };
+
+  const defs = svgEl('defs', {});
+  svg.appendChild(defs);
+  const inboundPoints = series.map(function (day, index) {
+    return { x: xAt(index), y: yAt(day.inbound) };
+  });
+  const outboundPoints = series.map(function (day, index) {
+    return { x: xAt(index), y: yAt(day.outbound) };
+  });
+  drawSeries(svg, defs, outboundPoints, bottom, '#8b7cff', 'gradOutbound', 0.24);
+  drawSeries(svg, defs, inboundPoints, bottom, '#38e1c6', 'gradInbound', 0.34);
+
+  const marks = [0, Math.floor((series.length - 1) / 2), series.length - 1];
+  marks.forEach(function (index, order) {
+    const point = series[index];
+    if (!point) return;
+    const label = svgEl('text', {
+      x: String(xAt(index)),
+      y: String(height - 6),
+      'text-anchor': order === 0 ? 'start' : (order === marks.length - 1 ? 'end' : 'middle'),
+      fill: 'rgba(147,165,201,.85)',
+      'font-size': '9',
+    });
+    label.textContent = shortDay(point.day);
+    svg.appendChild(label);
+  });
+}
+
+function renderWeeklyBars(svg, weekly) {
+  clearNode(svg);
+  const width = 320;
+  const height = 160;
+  const padBottom = 22;
+  const padTop = 12;
+  const plotHeight = height - padBottom - padTop;
+  const bars = weekly && weekly.length ? weekly : [];
+
+  if (!bars.length) {
+    chartNote(svg, 'No weekly volume yet', width, height);
+    return;
+  }
+
+  const peak = Math.max(1, bars.reduce(function (max, bar) {
+    return Math.max(max, Number(bar.inbound || 0));
+  }, 0));
+
+  const defs = svgEl('defs', {});
+  const gradient = svgEl('linearGradient', { id: 'gradWeekly', x1: '0', y1: '0', x2: '0', y2: '1' });
+  gradient.appendChild(svgEl('stop', { offset: '0', 'stop-color': '#6ff2dc' }));
+  gradient.appendChild(svgEl('stop', { offset: '1', 'stop-color': '#2c9fb8' }));
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+
+  const slot = width / bars.length;
+  const barWidth = Math.min(24, slot * 0.5);
+  bars.forEach(function (bar, index) {
+    const value = Number(bar.inbound || 0);
+    const barHeight = Math.max(value ? 4 : 1, (value / peak) * plotHeight);
+    const x = slot * index + (slot - barWidth) / 2;
+    const y = padTop + plotHeight - barHeight;
+    const rect = svgEl('rect', {
+      x: String(x), y: String(y), width: String(barWidth), height: String(barHeight),
+      rx: '5', fill: 'url(#gradWeekly)',
+    });
+    if (value) glow(rect, 'rgba(56,225,198,.5)');
+    svg.appendChild(rect);
+    const label = svgEl('text', {
+      x: String(x + barWidth / 2), y: String(height - 6), 'text-anchor': 'middle',
+      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+    });
+    label.textContent = bar.label;
+    svg.appendChild(label);
+  });
+}
+
+function renderSparkline(svg, values, color, gradientId) {
+  clearNode(svg);
+  const width = 240;
+  const height = 54;
+  const pad = 3;
+  const series = values && values.length ? values.map(function (value) { return Number(value || 0); }) : [];
+  if (!series.length) return;
+
+  const peak = Math.max(1, Math.max.apply(null, series));
+  const points = series.map(function (value, index) {
+    const x = series.length <= 1 ? width / 2 : (index / (series.length - 1)) * width;
+    const y = height - pad - (value / peak) * (height - pad * 2);
+    return { x: x, y: y };
+  });
+  const defs = svgEl('defs', {});
+  svg.appendChild(defs);
+  drawSeries(svg, defs, points, height - pad, color, gradientId, 0.3);
+}
+
+function renderDonut(svg, mix) {
+  clearNode(svg);
+  const center = 60;
+  const radius = 46;
+  const strokeWidth = 13;
+  const circumference = 2 * Math.PI * radius;
+  const colors = { fromAnswers: '#38e1c6', byAi: '#8b7cff', escalated: '#ff5e8a', other: '#5b6b8c' };
+
+  svg.appendChild(svgEl('circle', {
+    cx: String(center), cy: String(center), r: String(radius), fill: 'none',
+    stroke: 'rgba(148,180,255,.10)', 'stroke-width': String(strokeWidth),
+  }));
+
+  const entries = (mix || []).filter(function (entry) { return Number(entry.n || 0) > 0; });
+  const total = entries.reduce(function (sum, entry) { return sum + Number(entry.n || 0); }, 0);
+  if (!total) {
+    chartNote(svg, 'No data yet', 120, 120);
+    return;
+  }
+
+  let offset = 0;
+  entries.forEach(function (entry) {
+    const length = (Number(entry.n) / total) * circumference;
+    const visible = Math.max(length - 3, 2);
+    const color = colors[entry.key] || '#5b6b8c';
+    const arc = svgEl('circle', {
+      cx: String(center), cy: String(center), r: String(radius), fill: 'none',
+      stroke: color,
+      'stroke-width': String(strokeWidth),
+      'stroke-linecap': 'round',
+      'stroke-dasharray': visible + ' ' + (circumference - visible),
+      'stroke-dashoffset': String(-offset),
+      transform: 'rotate(-90 60 60)',
+    });
+    glow(arc, color);
+    svg.appendChild(arc);
+    offset += length;
+  });
+}
+
+function renderMixLegend(list, mix) {
+  clearNode(list);
+  const colors = { fromAnswers: '#38e1c6', byAi: '#8b7cff', escalated: '#ff5e8a', other: '#5b6b8c' };
+  (mix || []).forEach(function (entry) {
+    const item = document.createElement('li');
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = colors[entry.key] || '#5b6b8c';
+    const label = document.createElement('span');
+    label.textContent = entry.label;
+    const value = document.createElement('b');
+    value.textContent = Number(entry.n || 0) ? entry.pct + '%' : '0%';
+    item.append(swatch, label, value);
+    list.appendChild(item);
+  });
+}
+
+function renderCapacityBars(container, properties) {
+  clearNode(container);
+  if (!properties || !properties.length) {
+    container.appendChild(emptyNote('No properties to compare yet.'));
+    return;
+  }
+  properties.forEach(function (property) {
+    const row = document.createElement('div');
+    row.className = 'cap-row';
+    const top = document.createElement('div');
+    top.className = 'cap-top';
+    const name = document.createElement('span');
+    name.textContent = property.name;
+    const share = document.createElement('b');
+    share.textContent = property.pct + '%';
+    top.append(name, share);
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill';
+    fill.style.width = Math.max(property.inbound ? 3 : 0, property.pct) + '%';
+    track.appendChild(fill);
+    row.append(top, track);
+    container.appendChild(row);
+  });
+}
+
+function renderEvents(list, recent) {
+  clearNode(list);
+  if (!recent || !recent.length) {
+    list.appendChild(emptyNote('No guest activity yet.'));
+    return;
+  }
+  recent.forEach(function (event) {
+    const item = document.createElement('li');
+    const dot = document.createElement('span');
+    const kind = event.kind === 'escalation'
+      ? (event.status === 'open' ? 'open' : 'answered')
+      : 'message';
+    dot.className = 'ev-dot ' + kind;
+    const body = document.createElement('div');
+    body.className = 'ev-body';
+    const text = document.createElement('div');
+    text.className = 'ev-text';
+    text.textContent = event.text || 'Message received';
+    const meta = document.createElement('div');
+    meta.className = 'ev-meta';
+    meta.textContent = [event.property, relativeTime(event.at)].filter(Boolean).join(' · ');
+    body.append(text, meta);
+    item.append(dot, body);
+    list.appendChild(item);
+  });
+}
+
+function renderCommonRequests(container, rows, statusNode) {
+  clearNode(container);
+  if (statusNode) statusNode.textContent = rows.length ? '' : 'No guest requests recorded in the last 30 days.';
+  if (!rows.length) return;
+  const peak = Math.max.apply(null, rows.map(function (row) { return Number(row.total || 0); }));
+  rows.forEach(function (row) {
+    const line = document.createElement('div');
+    line.className = 'req-row';
+    const label = document.createElement('span');
+    label.textContent = String(row.intentKey || 'unknown').split('_').join(' ');
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill';
+    fill.style.width = Math.max(4, Math.round((Number(row.total || 0) / Math.max(1, peak)) * 100)) + '%';
+    track.appendChild(fill);
+    const count = document.createElement('b');
+    count.textContent = Number(row.total || 0).toLocaleString();
+    line.append(label, track, count);
+    container.appendChild(line);
+  });
+}
+
+function renderPropertyTable(container, properties) {
+  clearNode(container);
+  if (!properties || !properties.length) {
+    container.appendChild(emptyNote('No live properties yet. Add a property and mark it live to see analytics.'));
+    return;
+  }
+  const table = document.createElement('table');
+  const head = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  const columns = [
+    ['Property', ''],
+    ['Guest messages', 'num'],
+    ['AI answered', 'num'],
+    ['Escalated', 'num'],
+    ['Last guest message', ''],
+  ];
+  columns.forEach(function (column) {
+    const cell = document.createElement('th');
+    cell.textContent = column[0];
+    if (column[1]) cell.className = column[1];
+    headRow.appendChild(cell);
+  });
+  head.appendChild(headRow);
+  const body = document.createElement('tbody');
+  properties.forEach(function (property) {
+    const row = document.createElement('tr');
+    const name = document.createElement('td');
+    name.textContent = property.name;
+    row.appendChild(name);
+    [property.inbound, property.aiAnswers, property.escalated].forEach(function (value) {
+      const cell = document.createElement('td');
+      cell.className = 'num';
+      cell.textContent = Number(value || 0).toLocaleString();
+      row.appendChild(cell);
+    });
+    const last = document.createElement('td');
+    last.textContent = property.lastActivity ? relativeTime(property.lastActivity) : 'No messages yet';
+    row.appendChild(last);
+    body.appendChild(row);
+  });
+  table.append(head, body);
+  container.appendChild(table);
+}
+
 async function loadAnalytics() {
   try {
-    const data = await api('/admin/api/analytics');
+    const data = await api('/admin/api/analytics' + (analyticsSample ? '?sample=1' : ''));
     renderAnalytics(data);
   } catch (err) {
-    $('propertyAnalytics').textContent = '';
-    $('noAnalytics').textContent = 'Failed to load analytics: ' + err.message;
-    $('noAnalytics').style.display = 'block';
+    $('dashStamp').textContent = 'Could not load analytics: ' + err.message;
   }
 }
 
+function toggleSample() {
+  analyticsSample = !analyticsSample;
+  loadAnalytics();
+}
+
 function renderAnalytics(data) {
-  const list = $('propertyAnalytics');
-  list.textContent = '';
-  const properties = data.properties || [];
-  properties.forEach((property) => {
-    const card = document.createElement('section');
-    card.className = 'analytics-card';
+  const sample = Boolean(data && data.sample);
+  analyticsSample = sample;
+  $('sampleBanner').classList.toggle('hidden', !sample);
+  $('sampleToggle').textContent = sample ? 'Show real data' : 'Show demo data';
+  $('dashStamp').textContent = sample
+    ? 'Demo dataset'
+    : 'Updated ' + new Date(data && data.generatedAt ? data.generatedAt : Date.now()).toLocaleTimeString();
 
-    const head = document.createElement('div');
-    head.className = 'analytics-card-head';
-    const name = document.createElement('h3');
-    name.textContent = property.name || property.id;
-    const id = document.createElement('span');
-    id.className = 'analytics-id';
-    id.textContent = property.id;
-    head.append(name, id);
+  const totals = (data && data.totals) || {};
+  const deltas = (data && data.deltas) || {};
+  const daily = (data && data.daily) || [];
+  const properties = (data && data.properties) || [];
+  const mix = (data && data.mix) || [];
 
-    const metrics = document.createElement('div');
-    metrics.className = 'analytics-metrics';
-    [
-      ['Guest messages', property.guestMessages],
-      ['AI answered', property.aiAnswers],
-      ['Escalations', property.escalations],
-    ].forEach(([label, value]) => {
-      const metric = document.createElement('div');
-      metric.className = 'analytics-metric';
-      const count = document.createElement('strong');
-      count.textContent = Number(value || 0).toLocaleString();
-      const caption = document.createElement('span');
-      caption.textContent = label;
-      metric.append(count, caption);
-      metrics.appendChild(metric);
-    });
-
-    const lastActivity = document.createElement('p');
-    lastActivity.className = 'analytics-last';
-    lastActivity.textContent = property.lastActivity
-      ? 'Last guest message: ' + new Date(property.lastActivity + 'Z').toLocaleString()
-      : 'No guest messages yet';
-
-    card.append(head, metrics, lastActivity);
-    list.appendChild(card);
-  });
   $('noAnalytics').style.display = properties.length ? 'none' : 'block';
   $('noAnalytics').textContent = 'No live properties yet. Add a property and mark it live to see analytics.';
-  const commonContainer = $('commonRequests');
-  commonContainer.textContent = '';
-  const commonRequests = data.commonRequests || [];
-  $('commonRequestsStatus').textContent = commonRequests.length ? '' : 'No guest requests recorded in the last 30 days.';
-  commonRequests.forEach((request) => {
-    const card = document.createElement('div');
-    card.className = 'analytics-card';
-    const title = document.createElement('h3');
-    title.textContent = String(request.intentKey).replace(/_/g, ' ');
-    const count = document.createElement('p');
-    count.className = 'analytics-last';
-    count.textContent = Number(request.total || 0).toLocaleString() + ' incoming messages';
-    card.append(title, count);
-    commonContainer.append(card);
-  });
+
+  $('heroAnswered').textContent = Number(totals.inbound || 0).toLocaleString();
+  setDelta($('heroDelta'), deltas.inbound);
+  $('heroEscalated').textContent = Number(totals.escalated || 0).toLocaleString();
+
+  const withoutHuman = totals.answeredWithoutHuman;
+  $('mixPct').textContent = withoutHuman === null || withoutHuman === undefined
+    ? '—'
+    : Math.round(withoutHuman) + '%';
+
+  renderDonut($('mixDonut'), mix);
+  renderMixLegend($('mixLegend'), mix);
+  renderThroughput($('throughput'), daily);
+  renderWeeklyBars($('weeklyBars'), (data && data.weekly) || []);
+  renderCapacityBars($('capacityBars'), properties);
+  renderEvents($('recentEvents'), (data && data.recent) || []);
+  renderCommonRequests($('commonRequests'), (data && data.commonRequests) || [], $('commonRequestsStatus'));
+  renderPropertyTable($('propertyAnalytics'), properties);
+
+  const today = (data && data.today) || { inbound: 0, outbound: 0 };
+  const yesterday = (data && data.yesterday) || { inbound: 0, outbound: 0 };
+  const inboundToday = Number(today.inbound || 0);
+  const outboundToday = Number(today.outbound || 0);
+  $('todayIn').textContent = inboundToday.toLocaleString();
+  $('todayOut').textContent = outboundToday.toLocaleString();
+  setDelta($('todayInDelta'), changeSince(inboundToday, Number(yesterday.inbound || 0)), 'vs yesterday');
+  setDelta($('todayOutDelta'), changeSince(outboundToday, Number(yesterday.outbound || 0)), 'vs yesterday');
+
+  renderSparkline($('todayInSpark'), daily.map(function (day) { return day.inbound; }), '#38e1c6', 'sparkInbound');
+  renderSparkline($('todayOutSpark'), daily.map(function (day) { return day.outbound; }), '#8b7cff', 'sparkOutbound');
+  renderSparkline($('escalationSpark'), daily.map(function (day) { return day.escalated || 0; }), '#ff5e8a', 'sparkEscalated');
 }
 
 async function loadOperations() {
