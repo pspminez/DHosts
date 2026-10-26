@@ -2928,6 +2928,12 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .pc-stat span { color:var(--muted); font-size:.58rem; font-weight:700; letter-spacing:.1em;
          text-transform:uppercase; }
   .pc-last { color:var(--muted); font-size:.72rem; margin-top:auto; padding-top:.85rem; }
+  /* The editor header reuses the same tiles, so a number means the same thing on
+     both screens. Three across on a wide card, one across on a phone. */
+  .detail-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem;
+         margin-top:.9rem; max-width:34rem; }
+  .detail-stats .pc-last { grid-column:1 / -1; margin-top:0; padding-top:.15rem; }
+  @media (max-width:560px) { .detail-stats { grid-template-columns:1fr; max-width:none; } }
   .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
   .pill.live { background:rgba(59,130,246,.16); color:#9dbcff; border:1px solid rgba(59,130,246,.45); }
   .pill.pending { background:rgba(255,176,32,.12); color:var(--gold); border:1px solid rgba(255,176,32,.35); }
@@ -3305,7 +3311,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <span class="pill" id="propPill"></span>
       <span class="pill hidden" id="propEsc"></span>
     </div>
-    <div class="stats" id="propStats"></div>
+    <div class="detail-stats" id="propStats"></div>
 
     <div class="card">
       <h2>Settings</h2>
@@ -4226,23 +4232,26 @@ async function openProperty(id) {
 
     const stats = $("propStats");
     stats.textContent = "";
-    const items = [
+    // The same tiles the property cards use: label above the value, so a number
+    // looks and reads the same in the list and in the editor.
+    [
       [current.asked || 0, "questions asked"],
       [current.escalated || 0, "escalated"],
       [current.answerCount || 0, "answers saved"],
-    ];
-    items.forEach((item) => {
+    ].forEach(([value, label]) => {
       const el = document.createElement("div");
-      el.className = "stat";
+      el.className = "pc-stat";
       const b = document.createElement("b");
-      b.textContent = item[0];
-      el.append(b, item[1]);
+      b.textContent = value;
+      const span = document.createElement("span");
+      span.textContent = label;
+      el.append(b, span);
       stats.append(el);
     });
     if (current.lastActivity) {
-      const el = document.createElement("div");
-      el.className = "stat";
-      el.textContent = "last activity " + current.lastActivity.slice(0, 10);
+      const el = document.createElement("p");
+      el.className = "pc-last";
+      el.textContent = "Last guest activity " + String(current.lastActivity).slice(0, 10);
       stats.append(el);
     }
 
