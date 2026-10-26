@@ -2902,21 +2902,32 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .savebar button { margin-top:0; flex:none; }
   .savebar .status { margin-top:0; flex:1; text-align:right; }
   .hidden { display:none; }
+  /* Cards in a grid, like the dashboards' tiles. As full-width rows each card
+     stranded three numbers across a metre of empty surface. */
+  #propList { display:grid; grid-template-columns:repeat(auto-fill,minmax(23rem,1fr));
+         gap:1rem; align-items:start; }
   .propcard { position:relative; border:1px solid var(--border); cursor:pointer;
-         border-radius:14px; padding:1.1rem 1.3rem; margin-top:.9rem;
+         display:flex; flex-direction:column;
+         border-radius:14px; padding:1.15rem 1.25rem;
          background:var(--card);
          box-shadow:0 18px 40px -32px #000;
          transition:border-color .15s ease, box-shadow .15s ease; }
   .propcard:hover { border-color:rgba(59,130,246,.55);
          box-shadow:0 0 0 1px rgba(59,130,246,.2), 0 22px 44px -30px #000; }
   .pc-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding-right:2.4rem; }
-  .pc-head .name { font-weight:800; font-size:1.12rem; letter-spacing:-.01em; }
-  .propcard .meta { color:var(--muted); font-size:.78rem; margin-top:.15rem; }
-  .pc-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9rem 1.2rem; margin-top:.9rem; }
-  .pc-stat b { display:block; font-size:1.4rem; font-weight:800; letter-spacing:-.03em; line-height:1.15;
+  .pc-head .name { font-weight:600; font-size:1.05rem; letter-spacing:-.01em; }
+  .propcard .meta { color:var(--muted); font-size:.75rem; margin-top:.2rem; }
+  /* The same treatment the dashboards give their numbers: a surface tile with the
+     label above the value, so the three read as one block and line up between
+     cards. DOM order is value-then-label, hence column-reverse. */
+  .pc-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; margin-top:1rem; }
+  .pc-stat { display:flex; flex-direction:column-reverse; gap:.15rem; padding:.6rem .7rem;
+         border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+  .pc-stat b { font-size:1.3rem; font-weight:600; letter-spacing:-.02em; line-height:1.1;
          font-variant-numeric:tabular-nums; }
-  .pc-stat span { color:var(--muted); font-size:.68rem; }
-  .pc-last { color:var(--muted); font-size:.72rem; margin-top:.7rem; }
+  .pc-stat span { color:var(--muted); font-size:.58rem; font-weight:700; letter-spacing:.1em;
+         text-transform:uppercase; }
+  .pc-last { color:var(--muted); font-size:.72rem; margin-top:auto; padding-top:.85rem; }
   .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
   .pill.live { background:rgba(59,130,246,.16); color:#9dbcff; border:1px solid rgba(59,130,246,.45); }
   .pill.pending { background:rgba(255,176,32,.12); color:var(--gold); border:1px solid rgba(255,176,32,.35); }

@@ -90,6 +90,32 @@ const DRIVE = {
   analytics: "analyticsSample = true; loadAnalytics();",
   insights: "insightsSample = true; loadInsights();",
   operations: "operationsSample = true; loadOperations();",
+  // Not a tab: the property editor and its knowledge-import card live behind a
+  // card click, so they need the list up first and then the property opened.
+  property: "openProperty('SUNSET');",
+};
+
+// One property in the shape the editor reads back from /admin/api/property.
+const PROPERTY = {
+  id: "SUNSET",
+  name: "Sunset Villa",
+  address: "123 Main St, Davenport, FL 33837",
+  twilioNumber: "+18635550142",
+  hostPhone: "+18635550100",
+  hostEmail: "host@example.com",
+  active: 1,
+  asked: 168,
+  escalated: 14,
+  answerCount: 12,
+  openEscalations: 2,
+  lastActivity: "2026-10-26T09:12:00Z",
+  // Shapes match what the editor reads back: topics/keywords/reply, not
+  // question/answer — the renderer calls .join() on keywords directly.
+  answers: [
+    { topic: "Checkout", keywords: ["checkout", "check out"], reply: "Checkout is 10am. Late checkout is not guaranteed." },
+    { topic: "Trash", keywords: ["bins", "trash"], reply: "Bins go out Tuesday night, at the side of the garage." },
+  ],
+  secrets: [{ keywords: ["gate code", "gate"], reply: "4821" }],
 };
 
 async function waitForDevtools(timeoutMs) {
@@ -160,6 +186,7 @@ function connect(url) {
     "/admin/api/health": HEALTH,
     "/admin/api/features": { insights: true },
     "/admin/api/properties": { properties: PROPERTIES },
+    "/admin/api/property?id=SUNSET": PROPERTY,
     // The real prospect list: a screenshot of empty rows proves nothing.
     "/admin/api/leads": { leads: LEADS, progress: {} },
     "/admin/api/gmail/status": { ready: false, missing: ["GMAIL_CLIENT_ID"], connected: false },
@@ -187,7 +214,7 @@ function connect(url) {
     "function reveal() {",
     "  document.getElementById('login').classList.add('hidden');",
     "  document.getElementById('tabBar').classList.remove('hidden');",
-    "  showTab('" + tab + "');",
+    "  showTab('" + (tab === 'property' ? 'properties' : tab) + "');",
     "}",
     "setTimeout(function () { reveal(); }, 200);",
     "setTimeout(function () { reveal(); " + switchCall + " }, 550);",
