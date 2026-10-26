@@ -4,6 +4,7 @@
 //   node tools/screenshot.cjs <tab> [width] [out] [demo|live]
 //   node tools/screenshot.cjs analytics 1440 analytics-demo
 //   node tools/screenshot.cjs insights 390 insights-phone
+//   node tools/screenshot.cjs login 1440 login-desktop   (the sign-in screen)
 //
 // Why this exists: every check in tools/ui-check.cjs is structural — it proves
 // the script runs and the numbers are right, not that the result looks sane.
@@ -139,6 +140,9 @@ function connect(url) {
   const width = Number(process.argv[3] || 1440);
   const name = process.argv[4] || tab + "-" + width;
   const mode = process.argv[5] || "demo";
+  // "login" is not a tab: it is the state before unlock, so it must NOT be driven
+  // past the password card.
+  const isLogin = tab === "login";
 
   const { sampleAnalytics } = await import("../bot/analytics.js");
   const { sampleOperations } = await import("../bot/operations.js");
@@ -165,6 +169,11 @@ function connect(url) {
   const shim = [
     "<script>",
     "window.fetch = async function (url) {",
+    // Signed out: refuse the session check so the sign-in card stays up instead
+    // of restoreSession() hiding it behind the dashboard.
+    isLogin
+      ? "  return { ok: false, status: 403, statusText: 'Forbidden', json: async function () { return { error: 'unauthorized' }; } };"
+      : "",
     "  var table = " + JSON.stringify(routes) + ";",
     "  var body = Object.prototype.hasOwnProperty.call(table, url) ? table[url] : { error: 'no route ' + url };",
     "  return { ok: true, status: 200, statusText: 'OK', json: async function () { return body; } };",
@@ -173,7 +182,7 @@ function connect(url) {
   ].join("\n");
 
   const switchCall = mode === "demo" ? DRIVE[tab] || "" : "";
-  const drive = [
+  const drive = isLogin ? "" : [
     "<script>",
     "function reveal() {",
     "  document.getElementById('login').classList.add('hidden');",
@@ -234,8 +243,10 @@ function connect(url) {
     // Do not trust the in-page timers: on a narrow, emulated-mobile viewport
     // they sometimes had not run yet and the shot captured the login card.
     // Forcing the same reveal here makes the capture deterministic.
-    await client.send("Runtime.evaluate", { expression: "reveal(); " + switchCall });
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (!isLogin) {
+      await client.send("Runtime.evaluate", { expression: "reveal(); " + switchCall });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
 
     const metrics = await client.send("Page.getLayoutMetrics");
     const size = metrics.cssContentSize || metrics.contentSize;

@@ -3171,6 +3171,26 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .pilot-scorecard-status { color:var(--muted); font-size:.8rem; }
   @media (max-width:560px) { .pilot-scorecard { grid-template-columns:1fr; } .pilot-scorecard .wide { grid-column:auto; } }
   .no-data { font-size:.85rem; color:var(--muted); text-align:center; padding:1rem; }
+
+  /* --- sign-in screen --- */
+  .login-wrap { display:grid; place-items:center; min-height:min(72vh,40rem); padding:.5rem 0 2rem; }
+  .login-panel { width:min(100%,26rem); }
+  .login-brand { display:flex; align-items:center; justify-content:center; gap:.5rem; margin-bottom:1.1rem;
+         font-family:"Poppins","Inter",sans-serif; font-weight:600; font-size:1rem; letter-spacing:-.01em; }
+  .login-card { margin-top:0; padding:1.7rem 1.6rem; }
+  .login-card h2 { font-size:1.3rem; font-weight:600; letter-spacing:-.02em; }
+  .login-sub { margin:.25rem 0 .2rem; color:var(--muted); font-size:.85rem; }
+  .login-card .row { margin-top:.1rem; }
+  .login-card .row .primary { margin-top:0; white-space:nowrap; }
+  .login-card .status { min-height:1.2em; margin-top:.7rem; }
+  .login-foot { margin-top:1rem; text-align:center; color:var(--muted); font-size:.72rem; }
+  .login-foot code { color:#9dbcff; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; }
+  /* Done in CSS because the page script only ever toggles #login's class: the
+     panel heading would otherwise sit above the sign-in card, and the card's
+     wrapper would leave a screen of empty navy behind the dashboard. */
+  body:has(#login:not(.hidden)) .page-head { display:none; }
+  body:has(#login.hidden) .login-wrap { display:none; }
+  @media (max-width:560px) { .login-wrap { min-height:auto; padding-top:1.2rem; } }
 </style>
 </head>
 <body>
@@ -3211,14 +3231,22 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <p class="sub">Our take on AI for your guests during their stay. Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
   </div>
 
-  <div id="login" class="card">
-    <label for="pw">Admin password</label>
-    <div class="row">
-      <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
-      <button class="primary" onclick="unlock()">Unlock</button>
+  <section class="login-wrap">
+    <div class="login-panel">
+      <div class="login-brand"><span class="dot"></span><span>StayXI admin</span></div>
+      <div id="login" class="card login-card">
+        <h2>Sign in</h2>
+        <p class="login-sub">Enter the admin password to manage properties, guest questions and outreach.</p>
+        <label for="pw">Admin password</label>
+        <div class="row">
+          <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
+          <button class="primary" onclick="unlock()">Unlock</button>
+        </div>
+        <p class="status" id="loginStatus"></p>
+      </div>
+      <p class="login-foot">The password is the <code>ADMIN_PASSWORD</code> secret set with <code>wrangler secret put</code>.</p>
     </div>
-    <p class="status" id="loginStatus"></p>
-  </div>
+  </section>
 
   <div id="listView" class="hidden">
     <div class="analytics-head dash-head">
