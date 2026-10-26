@@ -45,6 +45,7 @@ import {
   revokeAdminSession,
 } from "./admin-session.js";
 import { buildAnalytics, sampleAnalytics } from "./analytics.js";
+import { sampleOperations } from "./operations.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -2618,7 +2619,13 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     }
   }
 
+  // Admin API: operational metrics (read-only).
+  // `?sample=1` returns the deterministic demo dataset, health block included,
+  // instead of live figures; the response always carries `sample`.
   if (url.pathname === "/admin/api/operations" && request.method === "GET") {
+    if (url.searchParams.get("sample") === "1") {
+      return adminJson(sampleOperations());
+    }
     try {
       const metrics = await env.DB.prepare(
         `SELECT
@@ -2662,7 +2669,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         avgHostResponseMinutes30d: number | null;
         measuredAt: string;
       }>();
-      return adminJson({ metrics });
+      return adminJson({ sample: false, metrics });
     } catch (err) {
       console.error("Operations metrics query failed:", errorMessage(err) || err);
       return adminJson({ error: "Failed to load operations metrics." }, 500);
@@ -3250,8 +3257,10 @@ const ADMIN_HTML = `<!DOCTYPE html>
       </div>
       <div class="dash-controls">
         <span class="dash-stamp" id="operationsStatus">Loading operational metrics…</span>
+        <button class="ghost dash-toggle" id="operationsToggle" onclick="toggleOperationsSample()">Show demo data</button>
       </div>
     </div>
+    <p class="sample-banner hidden" id="operationsBanner">Demo data — these figures, including the health checks, are generated to show what an operating panel looks like. They are not your activity.</p>
 
     <div class="op-heroes">
       <section class="dash-card">
@@ -4719,6 +4728,7 @@ function closeLeadDetail() {
 }
 
 let analyticsSample = false;
+let operationsSample = false;
 
 function clearNode(node) {
   while (node && node.firstChild) node.removeChild(node.firstChild);
@@ -5225,11 +5235,17 @@ async function loadOperations() {
   metricsContainer.textContent = '';
   status.textContent = 'Loading operational metrics…';
   try {
-    const [operations, propertyData, health] = await Promise.all([
-      api('/admin/api/operations'),
+    const [operations, propertyData, liveHealth] = await Promise.all([
+      api('/admin/api/operations' + (operationsSample ? '?sample=1' : '')),
       api('/admin/api/properties'),
-      api('/admin/api/health'),
+      // Demo mode ships its own health block, so skip the live check entirely.
+      operationsSample ? Promise.resolve(null) : api('/admin/api/health'),
     ]);
+    const sample = Boolean(operations && operations.sample);
+    operationsSample = sample;
+    const health = (sample && operations.health ? operations.health : liveHealth) || {};
+    $('operationsBanner').classList.toggle('hidden', !sample);
+    $('operationsToggle').textContent = sample ? 'Show real data' : 'Show demo data';
     const metrics = operations.metrics || {};
     const percentage = (numerator, denominator) => denominator
       ? Math.round((Number(numerator || 0) / Number(denominator)) * 100) + '%'
@@ -5299,10 +5315,17 @@ async function loadOperations() {
     if ((propertyData.properties || []).some((property) => property.id === previousId)) {
       select.value = previousId;
     }
-    status.textContent = 'Updated ' + (metrics.measuredAt || 'just now') + '.';
+    status.textContent = sample
+      ? 'Demo dataset'
+      : 'Updated ' + (metrics.measuredAt || 'just now') + '.';
   } catch (err) {
     status.textContent = 'Failed to load operations: ' + err.message;
   }
+}
+
+function toggleOperationsSample() {
+  operationsSample = !operationsSample;
+  loadOperations();
 }
 
 async function simulateGuestMessage() {
