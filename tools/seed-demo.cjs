@@ -276,12 +276,18 @@ function main() {
   }
   console.log("seeded the local database");
 
+  // Run the summary from a file: inline SQL loses its quoting when spawned
+  // through a shell on Windows.
+  const checkFile = file.replace(/\.sql$/, "-check.sql");
+  fs.writeFileSync(
+    checkFile,
+    "SELECT (SELECT COUNT(*) FROM messages) AS messages,\n" +
+      "       (SELECT COUNT(*) FROM escalations WHERE status = 'open') AS open_escalations,\n" +
+      "       (SELECT COUNT(*) FROM properties WHERE active = 1) AS live_properties;\n",
+  );
   const check = spawnSync(
     process.platform === "win32" ? "npx.cmd" : "npx",
-    [
-      "wrangler", "d1", "execute", DB, "--local", "--command",
-      "SELECT (SELECT COUNT(*) FROM messages) AS messages, (SELECT COUNT(*) FROM escalations WHERE status='open') AS open_escalations, (SELECT COUNT(*) FROM properties WHERE active=1) AS live_properties",
-    ],
+    ["wrangler", "d1", "execute", DB, "--local", "--file=" + checkFile],
     { encoding: "utf8", shell: true, timeout: 120000 },
   );
   const text = (check.stdout || "") + (check.stderr || "");
