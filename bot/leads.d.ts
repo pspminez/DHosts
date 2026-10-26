@@ -6,7 +6,12 @@ export interface Lead {
   website: string;
   address: string;
   email: string;
+  emailSource: string;
+  emailCheckedAt: string;
+  emailNote: string;
+  contactName: string;
   sources: string[];
+  fit: "A" | "B" | "C";
   confidence: "High" | "Medium";
   propertyType: string;
   scriptTopic: string;

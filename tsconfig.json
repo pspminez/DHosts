@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    // The Worker runs on V8 at Cloudflare's edge, so target the runtime it
+    // actually executes on and pull in the Worker globals (env bindings, KV,
+    // Request/Response, crypto) instead of Node's.
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+
+    // wrangler/esbuild bundles each module separately and resolves the ".js"
+    // specifiers in the imports to the ".ts"/".js" files on disk.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "isolatedModules": true,
+
+    // Logic modules (leads.js, gmail.js, routing.js) stay plain JavaScript and
+    // are type-inferred for their importers; they are not type-checked.
+    "allowJs": true,
+    "checkJs": false,
+
+    "resolveJsonModule": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["bot/**/*.ts", "bot/**/*.js"]
+}
