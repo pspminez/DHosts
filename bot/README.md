@@ -131,18 +131,22 @@ Google Account if you want to revoke Google's authorization.
 
 ## Lead list and outreach rules
 
-`bot/leads.js` is the single source of truth for the admin Leads tab. Only real
-businesses with a public website and business phone belong in it, and an `email`
-is set **only** when the address is published on the company's own site — always
-with `emailSource` and `emailCheckedAt`. `npm test` runs `bot/leads.test.js`,
-which fails if fabricated data (fictional `555` numbers, example or guessed
-emails) or an unsourced email is introduced.
+`bot/leads.js` is the source for the Admin Leads tab. The working list is
+intentionally short and focused on real Central Florida operators. Each lead
+links the official pages used for its public details, and each tailored pitch
+includes `pitchSource` and `pitchCheckedAt` for the opening fact. Recheck them
+before contact. Add an email only when an appropriate business address is
+published by the company itself; record `emailSource` and `emailCheckedAt`, and
+never use a guest/reservation inbox as a management contact. If no suitable
+email is published, leave it blank and use the official form or phone.
 
-Each lead carries a `fit` tier (A = independent Central-Florida operator,
-B = regional, C = large national). The admin Leads tab has a **"With verified
-email"** filter and a live count so you can work only leads you can contact. The
-CSV export includes `fit`, `emailVerified`, `emailSource`, `emailCheckedAt`, and
-`contactName`.
+Pitch drafts are discovery-first, prospect-specific, and do not assert a need or
+promise StayXI capabilities beyond the current pilot. Replace all placeholders,
+check contact preferences, and personalize before any one-to-one send. `npm test`
+runs `bot/leads.test.js` to guard against fabricated contact data, unsafe
+knowledge samples, and missing sources. See [`knowledge/pitch-workflow.md`](knowledge/pitch-workflow.md) for
+research, outreach, and template-safety rules. The CSV export includes `fit`,
+`emailVerified`, `emailSource`, `emailCheckedAt`, and `contactName`.
 
 See [`../LAUNCH_READINESS.md`](../LAUNCH_READINESS.md) for what is still required
 before a pilot property goes live.
@@ -164,15 +168,19 @@ npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO hos
 *Option A (admin UI — easiest):*
 1. Open `https://stayxi.com/admin` once the Pages custom domain is configured (the current temporary URL is `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin`)
 2. Enter your `ADMIN_PASSWORD`
-3. Select the property → edit answers and secrets (start from `bot/knowledge/template.json`) → Save & go live
+3. Select the property → import reviewed `secrets` and `answers` JSON through **Knowledge import** (start with `bot/knowledge/template.json`; copy approved examples into `answers`). Sensitive access and critical answers are staged for review before publishing.
 
-*Option B (CLI):*
+*Option B (CLI — non-critical data only; bypasses critical-item review):*
 ```powershell
+# Copy template.json privately, replace ALL bracketed placeholders with operator-confirmed values,
+# review every answer, and never import the template unchanged into a live property.
 # The KV key is prop:<property id> — the same id as the D1 row, NOT the phone number:
-wrangler kv:key put --binding=PROPERTIES "prop:SUNSET" --path=./bot/knowledge/template.json
+# For live data, prefer Admin > Properties > Knowledge import so critical items are staged for review.
+# A direct KV write bypasses that review; do not use it for access codes or critical answers.
+wrangler kv:key put --binding=PROPERTIES "prop:SUNSET" --path=./private/SUNSET-knowledge.json
 ```
 
-Then text your Twilio number: `what's the gate code` — you should get the code back.
+Then verify an approved, non-sensitive answer on the Twilio number. Test gate or door codes only in a controlled non-guest environment after the critical information has been reviewed and published.
 
 ---
 
@@ -216,13 +224,9 @@ This must exactly match `PUBLIC_URL` in `wrangler.toml` — the signature is com
 
 Each property gets its own **house code** (word, e.g. `FLAMINGO`, `MICKEY`).
 
-1. Copy `bot/knowledge/template.json` → `bot/knowledge/FLAMINGO.json`
-2. Edit: `id`, `name`, `twilioNumber` (can share the same number), `hostPhone`, all the answers
-3. Insert a D1 row for the new property (see "Add your first property"), then write the KV half:
-   ```powershell
-   wrangler kv:key put --binding=PROPERTIES "prop:FLAMINGO" --path=./bot/knowledge/FLAMINGO.json
-   ```
-   (If using a shared number, the `twilioNumber` is the same; the `id` (`FLAMINGO`) is what distinguishes them.)
+1. Create the property and host rows in D1 (see "Add your first property").
+2. In Admin, open the property and import its reviewed knowledge JSON through **Knowledge import**; do not put private property data in the repository or write critical answers directly to KV, which bypasses staged review.
+3. If using a shared number, keep the same `twilioNumber`; the property ID distinguishes the homes.
 
 ---
 

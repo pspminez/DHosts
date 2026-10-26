@@ -10,13 +10,13 @@ This file answers one question: **what is actually left before StayXI can take a
 
 | Piece | Where | State |
 |---|---|---|
-| Guest SMS bot (webhook, routing, escalation, STOP/HELP) | `bot/worker.ts` | Working, `npm test` = 26/26 pass |
+| Guest SMS bot (webhook, routing, escalation, STOP/HELP) | `bot/worker.ts` | Working, `npm test` = 69/69 pass |
 | Property answer library + secrets (gate codes) | D1 + `PROPERTIES` KV | Working |
 | Admin panel (Properties / Leads / Analytics / Operations / Pilot) | inlined in `bot/worker.ts` | Working |
 | One-to-one Gmail outreach (send-only, unsubscribe, suppression) | admin Leads tab | Built, **not connected** (needs Google OAuth) |
 | Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Ready to deploy to Pages |
 | Pilot program + terms | `PILOT_PROGRAM.md` | Written |
-| Lead list | `bot/leads.js` | Cleaned; **12 of 49 have a verified public email** |
+| Lead list | `bot/leads.js` | Re-checked 2026-10-26; **5 of 8 have a verified public email** |
 
 Run `npm test` to confirm the bot logic and lead-data rules before any deploy.
 
@@ -71,15 +71,15 @@ You asked for the best *free* way. The honest answer splits into two parts: **re
 - `email` is set **only** when a business email is published on the company's own site; every such entry carries `emailSource` and `emailCheckedAt`.
 - Never guess an email from a domain or company name.
 
-**Currently 12 of 49 leads have a verified public email** (re-checked 2026-10-26): Orlando Rent A Villa, Global Vacation Rentals, Florida Spirit Vacation Homes, Casiola, Florida Vacation Homes, Orlando Vacation Homes, Homes4uu, RealJoy Vacations, Stay on 30A, The Listing Tampa, Holiday Isle Properties, and Vacation Rentals Florida.
+**Currently 5 of the 8 checked leads have a verified public email** (re-checked 2026-10-26): Orlando Rent A Villa, Florida Spirit Vacation Homes, FunStay Florida, Grand Welcome of Greater Orlando, and RevaVista Vacation Homes.
 
-Most of the remaining operators publish **no email at all** — they use a contact form, or obfuscate the address (`name(at)domain(dotted)com`). That is a deliberate anti-automation signal, so reaching those leads means their published phone or web form, not a scraped address.
+The other three — Reunion Vacation Homes, McCormack Realty, and An Owners Dream Management — publish **no owner-facing email**: their official contact pages list phone lines, an office address, and a web form. An Owners Dream's public Visit Central Florida listing does show a reservation inbox, but that is guest-facing, so it is deliberately not used for outreach. Reaching these leads means their published phone or their site's form, not a scraped address.
 
 One lead (Florida Realty Marketplace) was **removed** because its public contact page asks not to be contacted with solicitations. Honor signals like that rather than working around them. Some sites also publish their email only in an obfuscated form (for example `info(at)example(dotted)com`); those were left out as an anti-automation signal — add them only if you judge it appropriate.
 
 **To verify the rest:** open the company's own `/contact` page, and only add an address you can see there. Record the source URL and the date. If there is no published email, use the published phone or the site's contact form instead — or drop the lead.
 
-**Fit matters more than count.** The list is tagged `fit` A/B/C. Fit **A** (independent Central-Florida operators) is the real target for a $49 one-property pilot; fit **C** (national firms like Vacasa, VTrips, FirstService) will almost never respond to a pilot this small. Spend your outreach hours on fit A and B. Thirty well-researched fit-A leads will outperform all fifty mixed ones.
+**Fit matters more than count.** The list is tagged `fit` A/B/C. Fit **A** (independent Central-Florida operators) is the real target for a $49 one-property pilot; fit **C** (national firms like Vacasa, VTrips, FirstService) will almost never respond to a pilot this small. Spend your outreach hours on fit A and B. Six of the eight checked leads are fit A; a handful of well-researched fit-A operators will outperform a long mixed list.
 
 The admin Leads tab now has a **"With verified email" filter** and a live count, so you can work only the leads you can actually contact.
 
