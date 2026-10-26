@@ -2778,17 +2778,22 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .savebar button { margin-top:0; flex:none; }
   .savebar .status { margin-top:0; flex:1; text-align:right; }
   .hidden { display:none; }
-  .list-head { display:flex; align-items:center; justify-content:space-between; margin-top:1.5rem; }
-  .list-head h2 { font-size:1.15rem; font-weight:700; margin:0; }
-  .list-head button { margin-top:0; flex:none; }
-  .propcard { position:relative; border:1px solid var(--border); background:var(--card);
-         border-radius:16px; padding:1.1rem 1.3rem; margin-top:.9rem; cursor:pointer;
-         transition:border-color .15s ease; }
-  .propcard:hover { border-color:var(--pool); }
+  .propcard { position:relative; border:1px solid var(--border); cursor:pointer;
+         border-radius:16px; padding:1.1rem 1.3rem; margin-top:.9rem;
+         background:radial-gradient(120% 80% at 0% 0%,rgba(56,225,198,.08),transparent 62%),
+                    linear-gradient(160deg,rgba(20,38,66,.97),rgba(11,22,41,.99));
+         box-shadow:inset 0 1px 0 rgba(190,214,255,.06), 0 22px 44px -30px #000;
+         transition:border-color .15s ease, box-shadow .15s ease; }
+  .propcard:hover { border-color:rgba(56,225,198,.55);
+         box-shadow:inset 0 1px 0 rgba(190,214,255,.06), 0 0 0 1px rgba(56,225,198,.18), 0 22px 44px -30px #000; }
   .pc-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding-right:2.4rem; }
-  .pc-head .name { font-weight:700; font-size:1.05rem; }
-  .propcard .meta { color:var(--muted); font-size:.8rem; margin-top:.15rem; }
-  .propcard .statline { margin-top:.55rem; font-size:.82rem; color:var(--muted); }
+  .pc-head .name { font-weight:800; font-size:1.12rem; letter-spacing:-.01em; }
+  .propcard .meta { color:var(--muted); font-size:.78rem; margin-top:.15rem; }
+  .pc-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9rem 1.2rem; margin-top:.9rem; }
+  .pc-stat b { display:block; font-size:1.4rem; font-weight:800; letter-spacing:-.03em; line-height:1.15;
+         font-variant-numeric:tabular-nums; }
+  .pc-stat span { color:var(--muted); font-size:.68rem; }
+  .pc-last { color:var(--muted); font-size:.72rem; margin-top:.7rem; }
   .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
   .pill.live { background:rgba(56,225,198,.15); color:var(--pool); border:1px solid rgba(56,225,198,.4); }
   .pill.pending { background:rgba(255,209,102,.12); color:var(--gold); border:1px solid rgba(255,209,102,.35); }
@@ -2822,6 +2827,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .lead-row { grid-template-columns:1.2fr 1fr 1fr 1fr; }
     .lead-phone, .lead-email { font-size:.72rem; }
     .leads-header { flex-direction:column; }
+    .pc-stats { grid-template-columns:1fr 1fr; }
   }
   .tab-bar { display:flex; gap:.75rem; margin:1.4rem 0 1rem; }
   .tab-bar.hidden { display:none; }
@@ -2846,13 +2852,18 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .leads-header button { margin-top:0; flex:none; }
   .leads-filter { display:flex; align-items:center; gap:.4rem; color:var(--muted); font-size:.8rem; white-space:nowrap; cursor:pointer; }
   .leads-filter input { width:auto; margin:0; }
-  .leads-summary { color:var(--muted); font-size:.8rem; margin:0 0 1rem; }
-  .lead-email.verified { color:var(--pool); font-weight:600; }
+  .lead-email.verified { color:var(--pool); font-weight:700; text-shadow:0 0 18px rgba(56,225,198,.28); }
   .lead-email.missing { opacity:.55; }
-  .lead-row { display:grid; grid-template-columns:1.9fr 1fr 1fr 1.3fr auto; gap:.7rem; padding:.85rem 1.1rem; border:1px solid var(--border); background:var(--card); border-radius:14px; cursor:pointer; align-items:center; }
-  .lead-row:hover { border-color:var(--pool); }
-  .lead-name { font-size:.75rem; font-weight:700; cursor:pointer; }
-  .lead-city, .lead-phone, .lead-email { color:var(--muted); font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lead-row { display:grid; grid-template-columns:1.9fr 1fr 1fr 1.3fr auto; gap:.7rem; padding:.85rem 1.1rem;
+         border:1px solid var(--border); cursor:pointer; align-items:center; border-radius:16px; margin-top:.6rem;
+         background:radial-gradient(120% 80% at 0% 0%,rgba(56,225,198,.06),transparent 62%),
+                    linear-gradient(160deg,rgba(20,38,66,.97),rgba(11,22,41,.99));
+         box-shadow:inset 0 1px 0 rgba(190,214,255,.06);
+         transition:border-color .15s ease, box-shadow .15s ease; }
+  .lead-row:hover { border-color:rgba(56,225,198,.55);
+         box-shadow:inset 0 1px 0 rgba(190,214,255,.06), 0 0 0 1px rgba(56,225,198,.16); }
+  .lead-name { font-size:.95rem; font-weight:800; letter-spacing:-.01em; cursor:pointer; }
+  .lead-city, .lead-phone, .lead-email { color:var(--muted); font-size:.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .lead-email { white-space:nowrap; }
   .status-select { padding:.35rem .7rem; border-radius:999px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.75rem; font-weight:700; cursor:pointer; }
   .lead-detail .card { margin-top:1rem; }
@@ -3016,9 +3027,15 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="listView" class="hidden">
-    <div class="list-head">
-      <h2>Properties</h2>
-      <button class="ghost" onclick="showAdd()">+ New property</button>
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Properties</h2>
+        <p>Every property the text line answers for. Open one to edit its answers and gate codes.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="listStamp"></span>
+        <button class="ghost dash-toggle" onclick="showAdd()">+ New property</button>
+      </div>
     </div>
     <div id="propList"></div>
     <p class="status" id="listStatus"></p>
@@ -3151,12 +3168,20 @@ const ADMIN_HTML = `<!DOCTYPE html>
         <button class="ghost hidden" id="gmailDisconnectButton" onclick="disconnectGmail()">Disconnect</button>
       </div>
     </div>
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Leads</h2>
+        <p>Independent Central Florida operators, with contact details checked on their own sites.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="leadsSummary"></span>
+        <label class="leads-filter"><input type="checkbox" id="leadVerifiedOnly" onchange="renderLeads()"> With verified email</label>
+        <button class="ghost dash-toggle" id="exportBtn" onclick="exportLeads()">Export to CSV</button>
+      </div>
+    </div>
     <div class="leads-header">
       <input class="search-box" id="leadSearch" placeholder="Search leads by name, city, or email..." oninput="renderLeads()">
-      <label class="leads-filter"><input type="checkbox" id="leadVerifiedOnly" onchange="renderLeads()"> With verified email</label>
-      <button class="ghost" id="exportBtn" onclick="exportLeads()">Export to CSV</button>
     </div>
-    <p class="leads-summary" id="leadsSummary"></p>
     <div id="leadList"></div>
     <p class="status" id="leadsStatus"></p>
   </div>
@@ -3685,6 +3710,10 @@ function renderList() {
   const list = $("propList");
   list.textContent = "";
   $("listStatus").textContent = properties.length ? "" : "No properties yet. Create your first one.";
+  $("listStamp").textContent = properties.length
+    ? properties.length + (properties.length === 1 ? " property · " : " properties · ") +
+      properties.filter((p) => p.active).length + " live"
+    : "";
   properties.forEach((p) => {
     const card = document.createElement("div");
     card.className = "propcard";
@@ -3714,12 +3743,32 @@ function renderList() {
     meta.textContent = p.id + (p.twilioNumber ? " · " + p.twilioNumber : "");
     card.append(meta);
 
-    const statline = document.createElement("div");
-    statline.className = "statline";
-    statline.textContent = p.asked + " questions · " + p.escalated + " escalated · " +
-      p.answerCount + " answers saved · " +
-      (p.lastActivity ? "last activity " + p.lastActivity.slice(0, 10) : "no activity yet");
-    card.append(statline);
+    // Tiles rather than one run-on line: these are the numbers a host compares
+    // between properties, so they get the same treatment as the dashboard.
+    const tiles = document.createElement("div");
+    tiles.className = "pc-stats";
+    [
+      [p.asked, "guest questions"],
+      [p.escalated, "escalated to you"],
+      [p.answerCount, "answers saved"],
+    ].forEach(([value, label]) => {
+      const tile = document.createElement("div");
+      tile.className = "pc-stat";
+      const number = document.createElement("b");
+      number.textContent = Number(value || 0).toLocaleString();
+      const caption = document.createElement("span");
+      caption.textContent = label;
+      tile.append(number, caption);
+      tiles.append(tile);
+    });
+    card.append(tiles);
+
+    const last = document.createElement("div");
+    last.className = "pc-last";
+    last.textContent = p.lastActivity
+      ? "Last guest activity " + String(p.lastActivity).slice(0, 10)
+      : "No guest activity yet";
+    card.append(last);
 
     const del = document.createElement("button");
     del.className = "del";
