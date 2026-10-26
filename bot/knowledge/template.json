@@ -57,6 +57,6 @@
       "reply": "Storm shutters are in the garage, labeled by window."
     }
   ],
-  "unknownReply": "Good question — let me check with your host and get right back to you.",
-  "rateLimitReply": "Let me get the host to help you with this."
+  "unknownReply": "I can't confirm that from the property's information. Please contact your host directly.",
+  "rateLimitReply": "I can't reply to more messages right now. Please contact your host directly."
 }

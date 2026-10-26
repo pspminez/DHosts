@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Davenport Host Co. — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a1526; --card:#0f1e36; --surface:rgba(148,180,255,.05);
+          --border:rgba(148,180,255,.14); --text:#f2f6ff; --muted:#93a5c9;
+          --sun:#ff9e4a; --pool:#38e1c6; --pink:#ff5e8a; --gold:#ffd166;
+          --sunset:linear-gradient(96deg,#ffd166,#ff9e4a 45%,#ff5e8a); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+         font:15px/1.6 "Bricolage Grotesque",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+         max-width:46rem; margin:0 auto; padding:2.5rem 1.5rem 7rem; }
+  body::before { content:""; position:fixed; top:-18rem; left:50%; translate:-50% 0;
+         width:46rem; height:46rem; pointer-events:none;
+         background:radial-gradient(circle,rgba(255,94,138,.12),transparent 60%); filter:blur(40px); }
+  .badge { display:inline-flex; align-items:center; gap:.5rem; padding:.3rem .8rem; margin-bottom:1rem;
+         border:1px solid var(--border); border-radius:999px; background:var(--surface);
+         font-size:.75rem; color:var(--muted); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--pool); box-shadow:0 0 10px var(--pool); }
+  h1 { font-size:1.7rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.3rem; }
+  .sub { color:var(--muted); font-size:.9rem; margin-bottom:2rem; }
+  label { display:block; font-size:.8rem; font-weight:600; color:var(--muted); margin:1rem 0 .4rem; }
+  input, select, textarea { width:100%; padding:.6rem .8rem; border-radius:12px;
+         border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--pool); outline-offset:1px; }
+  textarea { min-height:4.5rem; resize:vertical; }
+  .card { border:1px solid var(--border); background:var(--card); border-radius:18px;
+         padding:1.4rem; margin-top:1.25rem; }
+  .card h2 { font-size:1.05rem; font-weight:700; }
+  .hint { font-size:.78rem; color:var(--muted); margin:.3rem 0 .2rem; }
+  .secret { border-color:rgba(255,158,74,.4); }
+  .secret h2 { color:var(--sun); }
+  .row { display:flex; gap:.75rem; align-items:flex-end; }
+  .row > * { flex:1; }
+  .row button { flex:none; }
+  .entry { border:1px solid var(--border); border-radius:14px; padding:1rem;
+         margin-top:.9rem; background:var(--surface); }
+  .entry .top { display:grid; grid-template-columns:1fr 1fr auto; gap:.75rem; }
+  .entry textarea { margin-top:.75rem; }
+  .remove { width:2.1rem; height:2.1rem; padding:0; border-radius:10px; border:1px solid var(--border);
+         background:transparent; color:var(--muted); font:inherit; font-size:1rem; line-height:1;
+         cursor:pointer; }
+  .remove:hover { color:var(--pink); border-color:var(--pink); }
+  .add { width:100%; margin-top:.9rem; padding:.7rem; border-radius:12px; border:1px dashed var(--pool);
+         background:rgba(56,225,198,.05); color:var(--pool); font:inherit; font-weight:700; cursor:pointer; }
+  .add:hover { background:rgba(56,225,198,.12); }
+  button.primary { margin-top:1.5rem; padding:.75rem 1.4rem; border-radius:12px; border:0;
+         background:var(--sunset); color:#1c0b06; font:inherit; font-weight:700; cursor:pointer; }
+  button.primary.live { background:var(--pool); }
+  button.ghost { margin-top:1.5rem; padding:.75rem 1.3rem; border-radius:12px; border:1px solid var(--border);
+         background:transparent; color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
+  .status { margin-top:1rem; font-size:.85rem; color:var(--muted); min-height:1.2em; }
+  .savebar { position:fixed; bottom:0; left:0; right:0; border-top:1px solid var(--border);
+         background:rgba(10,21,38,.94); padding:.9rem 1.5rem; }
+  .savebar .inner { max-width:46rem; margin:0 auto; display:flex; gap:.75rem; align-items:center; }
+  .savebar button { margin-top:0; flex:none; }
+  .savebar .status { margin-top:0; flex:1; text-align:right; }
+  .hidden { display:none; }
+  .list-head { display:flex; align-items:center; justify-content:space-between; margin-top:1.5rem; }
+  .list-head h2 { font-size:1.15rem; font-weight:700; margin:0; }
+  .list-head button { margin-top:0; flex:none; }
+  .propcard { position:relative; border:1px solid var(--border); background:var(--card);
+         border-radius:16px; padding:1.1rem 1.3rem; margin-top:.9rem; cursor:pointer;
+         transition:border-color .15s ease; }
+  .propcard:hover { border-color:var(--pool); }
+  .pc-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding-right:2.4rem; }
+  .pc-head .name { font-weight:700; font-size:1.05rem; }
+  .propcard .meta { color:var(--muted); font-size:.8rem; margin-top:.15rem; }
+  .propcard .statline { margin-top:.55rem; font-size:.82rem; color:var(--muted); }
+  .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .pill.live { background:rgba(56,225,198,.15); color:var(--pool); border:1px solid rgba(56,225,198,.4); }
+  .pill.pending { background:rgba(255,209,102,.12); color:var(--gold); border:1px solid rgba(255,209,102,.35); }
+  .pill.paused { background:var(--surface); color:var(--muted); border:1px solid var(--border); }
+  .pill.open-esc { background:rgba(255,94,138,.12); color:var(--pink); border:1px solid rgba(255,94,138,.4); }
+  .del { position:absolute; top:1rem; right:1rem; width:2.1rem; height:2.1rem; padding:0;
+         border-radius:10px; border:1px solid var(--border); background:transparent;
+         color:var(--muted); font:inherit; font-size:1rem; line-height:1; cursor:pointer; }
+  .del:hover { color:var(--pink); border-color:var(--pink); }
+  .stats { display:flex; gap:1.75rem; flex-wrap:wrap; margin-top:.9rem; }
+  .stat { color:var(--muted); font-size:.8rem; }
+  .stat b { color:var(--text); font-size:1.05rem; margin-right:.3rem; }
+  .chips { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.8rem; }
+  .chip { padding:.4rem .95rem; border-radius:999px; border:1px solid var(--border);
+         background:transparent; color:var(--muted); font:inherit; font-size:.8rem;
+         font-weight:600; cursor:pointer; }
+  .chip.on { background:rgba(56,225,198,.14); border-color:var(--pool); color:var(--pool); }
+  .back { margin-top:1.5rem; padding:.45rem 1rem; font-size:.85rem; }
+  .prop-head { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-top:.5rem; }
+  .prop-head h2 { font-size:1.4rem; font-weight:800; letter-spacing:-.01em; margin:0; }
+  .check { display:flex; align-items:center; gap:.6rem; margin-top:1.2rem; }
+  .check input { width:auto; }
+  .check span { font-size:.9rem; color:var(--text); }
+  @media (max-width:560px) {
+    .entry .top { grid-template-columns:1fr; }
+    .savebar .inner { flex-wrap:wrap; }
+    .savebar .status { text-align:left; }
+    .tab-bar { flex-direction:column; }
+    .lead-row { grid-template-columns:1.2fr 1fr 1fr 1fr; }
+    .lead-phone, .lead-email { font-size:.72rem; }
+    .leads-header { flex-direction:column; }
+  }
+  .tab-bar { display:flex; gap:.75rem; margin:1.4rem 0 1rem; }
+  .tab-bar.hidden { display:none; }
+  .tab { flex:1; padding:.7rem 1rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
+  .tab.active { background:var(--sun); color:#1c0b06; }
+  .tab-bar .tab:not(.active):hover { border-color:var(--sun); color:var(--sun); }
+  .leads-header { display:flex; gap:.75rem; align-items:center; margin-bottom:1rem; }
+  .leads-header .search-box { margin-bottom:0; flex:1; }
+  .leads-header button { margin-top:0; flex:none; }
+  .lead-row { display:grid; grid-template-columns:1.9fr 1fr 1fr 1.3fr auto; gap:.7rem; padding:.85rem 1.1rem; border:1px solid var(--border); background:var(--card); border-radius:14px; cursor:pointer; align-items:center; }
+  .lead-row:hover { border-color:var(--pool); }
+  .lead-name { font-size:.75rem; font-weight:700; cursor:pointer; }
+  .lead-city, .lead-phone, .lead-email { color:var(--muted); font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lead-email { white-space:nowrap; }
+  .status-select { padding:.35rem .7rem; border-radius:999px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.75rem; font-weight:700; cursor:pointer; }
+  .lead-detail .card { margin-top:1rem; }
+  .lead-detail textarea { min-height:5rem; }
+  .stat { display:flex; flex-direction:column; gap:.25rem; padding:.9rem 1.1rem; border-radius:14px; border:1px solid var(--border); background:var(--card); min-width:8.5rem; }
+  .stat .num { font-size:1.75rem; font-weight:800; line-height:1; color:var(--sun); }
+  .stat .label { font-size:.75rem; color:var(--muted); }
+  .stat.pink .num { color:var(--pink); }
+  .stat.blue .num { color:var(--pool); }
+  .stat.gold .num { color:var(--gold); }
+  .stat-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+  .res-bar { height:.35rem; border-radius:99px; background:var(--bg); overflow:hidden; display:flex; }
+  .res-fill { height:100%; }
+  .res-fill.ai { background:var(--pool); }
+  .res-fill.human { background:var(--sun); }
+  .res-bar span { font-size:.72rem; color:var(--muted); line-height:.35rem; margin-left:.35rem; }
+  .activity-item { padding:.75rem 1rem; border:1px solid var(--border); background:var(--card); border-radius:12px; margin-bottom:.5rem; }
+  .activity-item:last-child { margin-bottom:0; }
+  .activity-item h4 { margin:0 0 .3rem; font-size:.9rem; }
+  .activity-item p { margin:0; font-size:.8rem; color:var(--muted); }
+  .activity-item .time { font-size:.72rem; color:var(--muted); }
+  .no-data { font-size:.85rem; color:var(--muted); text-align:center; padding:1rem; }
+</style>
+</head>
+<body>
+  <div class="badge"><span class="dot"></span> Davenport Host Co. admin</div>
+  <h1 id="pageTitle">Admin panel</h1>
+  <p class="sub">Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
+
+  <div id="login" class="card">
+    <label for="pw">Admin password</label>
+    <div class="row">
+      <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
+      <button class="primary" onclick="unlock()">Unlock</button>
+    </div>
+    <p class="status" id="loginStatus"></p>
+  </div>
+
+  <div class="tab-bar hidden" id="tabBar">
+    <button class="tab active" onclick="showTab('properties')">Properties</button>
+    <button class="tab" onclick="showTab('leads')">Leads</button>
+    <button class="tab" onclick="showTab('analytics')">Analytics</button>
+  </div>
+
+  <div id="listView" class="hidden">
+    <div class="list-head">
+      <h2>Properties</h2>
+      <button class="ghost" onclick="showAdd()">+ New property</button>
+    </div>
+    <div id="propList"></div>
+    <p class="status" id="listStatus"></p>
+
+    <div id="addForm" class="card hidden">
+      <h2>New property</h2>
+      <label for="newId">House code</label>
+      <input id="newId" placeholder="SUNSET" spellcheck="false" autocomplete="off">
+      <p class="hint">Short uppercase code — letters, numbers, dashes.</p>
+      <label for="newName">Property name</label>
+      <input id="newName" placeholder="Sunset Villa" autocomplete="off">
+      <label for="newNumber">Text line number (E.164)</label>
+      <input id="newNumber" placeholder="+18005551234" autocomplete="off">
+      <label for="newHostPhone">Escalate to this phone</label>
+      <input id="newHostPhone" placeholder="+18635551234" autocomplete="off">
+      <button class="primary" onclick="createProperty()">Create property</button>
+      <button class="ghost" onclick="hideAdd()">Cancel</button>
+      <p class="status" id="addStatus"></p>
+    </div>
+  </div>
+
+  <div id="propView" class="hidden">
+    <button class="ghost back" onclick="showList()">← Back to properties</button>
+    <div class="prop-head">
+      <h2 id="propName"></h2>
+      <span class="pill" id="propPill"></span>
+      <span class="pill hidden" id="propEsc"></span>
+    </div>
+    <div class="stats" id="propStats"></div>
+
+    <div class="card" style="margin-top:1.25rem;">
+      <h2>Conversion Checklist</h2>
+      <p class="hint">Check off items to confirm property is fully configured.</p>
+      <div class="checklist">
+        <label><input type="checkbox" class="check-item" data-item="name"> Property name set</label><br>
+        <label><input type="checkbox" class="check-item" data-item="twilioNumber"> Twilio number configured</label><br>
+        <label><input type="checkbox" class="check-item" data-item="active"> Property is live</label><br>
+        <label><input type="checkbox" class="check-item" data-item="answers"> Answers configured</label><br>
+        <label><input type="checkbox" class="check-item" data-item="secrets"> Gate codes set</label><br>
+        <label><input type="checkbox" class="check-item" data-item="addons"> Add-ons enabled</label><br>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Services</h2>
+      <p class="hint">Premium add-ons enabled for this property. Tap to toggle, then save.</p>
+      <div class="chips" id="addonChips"></div>
+    </div>
+
+    <div class="card">
+      <h2>Settings</h2>
+      <label for="name">Property name</label>
+      <input id="name">
+      <label for="twilioNumber">Text line number (the guest-facing number, E.164)</label>
+      <input id="twilioNumber" placeholder="+18635551234">
+      <label for="hostPhone">Escalate to this phone</label>
+      <input id="hostPhone" placeholder="+18635551234">
+      <label for="rateLimitReply">Rate limit reply</label>
+      <input id="rateLimitReply" placeholder="Let me get the host to help you with this.">
+      <label for="unknownReply">Unknown question reply</label>
+      <input id="unknownReply" placeholder="Good question — let me check with your host and get right back to you.">
+      <div class="check">
+        <input type="checkbox" id="active">
+        <span>Property is live — the text line answers guests</span>
+      </div>
+    </div>
+
+    <div class="card secret">
+      <h2>Gate &amp; door codes</h2>
+      <p class="hint">Released only on an exact keyword match — never sent to the AI, never logged. Empty rows are skipped on save.</p>
+      <div id="secretsList"></div>
+      <button class="add" onclick="addSecret()">+ Add a code</button>
+    </div>
+
+    <div class="card">
+      <h2>Answers</h2>
+      <p class="hint">Canned replies matched by keyword — instant, and free. One row per topic. Empty rows are skipped on save.</p>
+      <div id="answersList"></div>
+      <button class="add" onclick="addAnswer()">+ Add an answer</button>
+    </div>
+
+    <div class="savebar" id="savebar">
+      <div class="inner">
+        <button id="saveButton" class="primary" onclick="save()">Save &amp; go live</button>
+        <button class="ghost" onclick="openProperty(current.id)">Reload</button>
+        <p class="status" id="saveStatus"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="leadsView" class="hidden">
+    <div class="leads-header">
+      <input class="search-box" id="leadSearch" placeholder="Search leads by name, city, or email..." oninput="renderLeads()">
+      <button class="ghost" id="exportBtn" onclick="exportLeads()">Export to CSV</button>
+    </div>
+    <div id="leadList"></div>
+    <p class="status" id="leadsStatus"></p>
+  </div>
+
+  <div id="analyticsView" class="hidden">
+    <div class="stat-row">
+      <div class="stat blue"><div class="num" id="propCount">0</div><div class="label">Properties</div></div>
+      <div class="stat pink"><div class="num" id="hostCount">0</div><div class="label">Hosts</div></div>
+      <div class="stat gold"><div class="num" id="msgCount">0</div><div class="label">Messages</div></div>
+      <div class="stat"><div class="num" id="escCount">0</div><div class="label">Escalations</div></div>
+    </div>
+    <div class="res-bar">
+      <div class="res-fill ai" style="width:0%"><span>AI: 0%</span></div>
+      <div class="res-fill human" style="width:0%"><span>Human: 0%</span></div>
+    </div>
+    <p class="no-data" id="noAnalytics" style="display:none">No analytics data available.</p>
+    <div class="activity-list" id="activityList"></div>
+  </div>
+
+  <div id="leadDetailView" class="hidden">
+    <button class="ghost back" onclick="closeLeadDetail()">← Back to leads</button>
+    <div class="lead-detail" id="leadDetailContent"></div>
+    <p class="status" id="leadDetailMsg"></p>
+
+    <div class="card" style="margin-top:1.25rem;">
+      <h2>Conversion Checklist</h2>
+      <p class="hint">Check off items to confirm lead is fully qualified.</p>
+      <div class="checklist">
+        <label><input type="checkbox" class="check-item" data-item="name"> Lead name set</label><br>
+        <label><input type="checkbox" class="check-item" data-item="phone"> Phone number provided</label><br>
+        <label><input type="checkbox" class="check-item" data-item="email"> Email address provided</label><br>
+        <label><input type="checkbox" class="check-item" data-item="propertyType"> Property type assigned</label><br>
+        <label><input type="checkbox" class="check-item" data-item="leadStatus"> Lead status set</label><br>
+        <label><input type="checkbox" class="check-item" data-item="pitchEmail"> Custom pitch email configured</label><br>
+        <label><input type="checkbox" class="check-item" data-item="followUpEmail"> Follow-up email configured</label><br>
+      </div>
+    </div>
+</div>
+
+<script>
+let password = "";
+let properties = [];
+let current = null;
+let leads = [];
+let detailIndex = -1;
+
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Inject PRICING_SERVICES at build time so the browser JS has it.
+const PRICING_SERVICES = [{"key":"weather","keywords":["weather","storm","hurricane","forecast","rain","temperature","alerts","wind"],"name":"Live Weather & Alerts","price":"$15/mo"},{"key":"events","keywords":["events","dining","restaurant","reservations","things to do","attraction","tickets","shows","concerts"],"name":"Local Events & Dining","price":"$20/mo"},{"key":"grocery","keywords":["grocery","groceries","essentials","stock","fridge","delivery","supplies","beach gear"],"name":"Grocery & Essentials Delivery","price":"$25/mo"},{"key":"concierge","keywords":["concierge","24/7","host backup","maintenance","personal assistant"],"name":"Full Concierge","price":"$49/mo"}];
+const ADDONS = PRICING_SERVICES.map((s) => [s.key, s.name]);
+
+const $ = (id) => document.getElementById(id);
+
+function setButtonState(isDirty) {
+  const saveButton = $("saveButton");
+  if (isDirty) {
+    saveButton.textContent = "Save & go live";
+    saveButton.classList.remove("live");
+  } else {
+    saveButton.textContent = "LIVE!";
+    saveButton.classList.add("live");
+  }
+}
+
+function markDirty() {
+  setButtonState(true);
+  $("saveStatus").textContent = "";
+}
+
+// Any typing or change anywhere in the dashboard marks it dirty (rows included)
+document.body.addEventListener("input", markDirty);
+document.body.addEventListener("change", markDirty);
+
+// Conversion checklist tracking
+function updateConversionChecklist() {
+  const checkItems = document.querySelectorAll('.check-item');
+  let allFilled = true;
+  checkItems.forEach((item) => {
+    const id = item.dataset.item;
+    let filled = false;
+    switch(id) {
+      case 'name': filled = ($("name").value.trim().length > 0); break;
+      case 'twilioNumber': filled = ($("twilioNumber").value.trim().length > 0); break;
+      case 'active': filled = $("active").checked; break;
+      case 'answers': filled = ($("answersList").children.length > 0); break;
+      case 'secrets': filled = ($("secretsList").children.length > 0); break;
+      case 'addons': filled = (Array.from(document.querySelectorAll('#addonChips .chip.on')).length > 0); break;
+    }
+    item.checked = filled;
+    if (!filled) allFilled = false;
+  });
+  // Optional: show a summary status
+  const allFilledEl = $("saveStatus");
+  if (allFilledEl) {
+    allFilledEl.textContent = allFilled ? "All checklist items complete!" : "";
+  }
+}
+
+// Lead conversion checklist tracking
+function updateLeadConversionChecklist() {
+  const l = leads[detailIndex];
+  if (!l) return;
+  const checkItems = document.querySelectorAll('#leadDetailView .check-item');
+  let allFilled = true;
+  checkItems.forEach((item) => {
+    const id = item.dataset.item;
+    let filled = false;
+    switch(id) {
+      case 'name': filled = (l.name && l.name.trim().length > 0); break;
+      case 'phone': filled = (l.phone && l.phone.trim().length > 0); break;
+      case 'email': filled = (l.email && l.email.trim().length > 0); break;
+      case 'propertyType': filled = (l.propertyType && l.propertyType.trim().length > 0); break;
+      case 'leadStatus': filled = (l.leadStatus && l.leadStatus.trim().length > 0); break;
+      case 'pitchEmail': filled = (l.pitchEmail && l.pitchEmail.subject && l.pitchEmail.subject.trim().length > 0); break;
+      case 'followUpEmail': filled = (l.followUpEmail && l.followUpEmail.subject && l.followUpEmail.subject.trim().length > 0); break;
+    }
+    item.checked = filled;
+    if (!filled) allFilled = false;
+  });
+  // Optional: show a summary status
+  const allFilledEl = $("leadDetailMsg");
+  if (allFilledEl) {
+    allFilledEl.textContent = allFilled ? "Lead is fully qualified!" : "";
+  }
+}
+
+// Run checklist update when lead detail is opened or data changes
+document.addEventListener("input", updateLeadConversionChecklist);
+document.addEventListener("change", updateLeadConversionChecklist);
+
+function parseKeywords(str) {
+  return str.split(",").map((k) => k.trim()).filter((k) => k.length);
+}
+
+function removeButton(row) {
+  const rm = document.createElement("button");
+  rm.className = "remove";
+  rm.type = "button";
+  rm.title = "Remove";
+  rm.textContent = "×";
+  rm.onclick = () => { row.remove(); markDirty(); };
+  return rm;
+}
+
+function addSecret(keywords, reply) {
+  const row = document.createElement("div");
+  row.className = "entry";
+  const top = document.createElement("div");
+  top.className = "top";
+  const kw = document.createElement("input");
+  kw.className = "kw";
+  kw.placeholder = "Trigger words — gate, gate code";
+  kw.value = keywords || "";
+  const rp = document.createElement("input");
+  rp.className = "rp";
+  rp.placeholder = "Reply — Gate code is 4321, then press #";
+  rp.value = reply || "";
+  top.append(kw, rp, removeButton(row));
+  row.append(top);
+  $("secretsList").append(row);
+}
+
+function addAnswer(topic, keywords, reply) {
+  const row = document.createElement("div");
+  row.className = "entry";
+  const top = document.createElement("div");
+  top.className = "top";
+  const tp = document.createElement("input");
+  tp.className = "tp";
+  tp.placeholder = "Topic — Trash day";
+  tp.value = topic || "";
+  const kw = document.createElement("input");
+  kw.className = "kw";
+  kw.placeholder = "Keywords, comma separated — trash, garbage, bins";
+  kw.value = keywords || "";
+  top.append(tp, kw, removeButton(row));
+  const rp = document.createElement("textarea");
+  rp.className = "rp";
+  rp.placeholder = "Reply sent to the guest…";
+  rp.value = reply || "";
+  row.append(top, rp);
+  $("answersList").append(row);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { "x-admin-password": password, "Content-Type": "application/json", ...(options.headers || {}) },
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+  return res.json();
+}
+
+async function unlock() {
+  password = $("pw").value;
+  try {
+    await api("/admin/api/properties");
+    // Persist auth cookie so subsequent visits skip the login form
+    document.cookie = "admin_auth=" + btoa(password) + "; Path=/; Max-Age=259200";
+    $("login").classList.add("hidden");
+    $("tabBar").classList.remove("hidden");
+    showList();
+  } catch (err) {
+    $("loginStatus").textContent = err.message;
+  }
+}
+
+function pillFor(p) {
+  if (!p.active) return ["Paused", "paused"];
+  if (!p.answerCount) return ["Awaiting setup", "pending"];
+  return ["Live", "live"];
+}
+
+function escLabel(n) {
+  return n + " open escalation" + (n === 1 ? "" : "s");
+}
+
+async function showList() {
+  $("propView").classList.add("hidden");
+  $("listView").classList.remove("hidden");
+  hideAdd();
+  try {
+    const data = await api("/admin/api/properties");
+    properties = data.properties || [];
+    renderList();
+  } catch (err) {
+    $("listStatus").textContent = err.message;
+  }
+}
+
+function renderList() {
+  const list = $("propList");
+  list.textContent = "";
+  $("listStatus").textContent = properties.length ? "" : "No properties yet. Create your first one.";
+  properties.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = "propcard";
+    card.onclick = () => openProperty(p.id);
+
+    const head = document.createElement("div");
+    head.className = "pc-head";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = p.name || p.id;
+    head.append(name);
+    const pill = document.createElement("span");
+    const status = pillFor(p);
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
+    head.append(pill);
+    if (p.openEscalations > 0) {
+      const esc = document.createElement("span");
+      esc.className = "pill open-esc";
+      esc.textContent = escLabel(p.openEscalations);
+      head.append(esc);
+    }
+    card.append(head);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = p.id + (p.twilioNumber ? " · " + p.twilioNumber : "");
+    card.append(meta);
+
+    const statline = document.createElement("div");
+    statline.className = "statline";
+    statline.textContent = p.asked + " questions · " + p.escalated + " escalated · " +
+      p.answerCount + " answers saved · " +
+      (p.lastActivity ? "last activity " + p.lastActivity.slice(0, 10) : "no activity yet");
+    card.append(statline);
+
+    const del = document.createElement("button");
+    del.className = "del";
+    del.type = "button";
+    del.title = "Delete property";
+    del.textContent = "×";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      deleteProperty(p.id, p.name || p.id);
+    };
+    card.append(del);
+
+    list.append(card);
+  });
+}
+
+function showAdd() {
+  $("addForm").classList.remove("hidden");
+  $("addStatus").textContent = "";
+  $("newId").focus();
+}
+
+function hideAdd() {
+  $("addForm").classList.add("hidden");
+}
+
+async function createProperty() {
+  try {
+    const data = await api("/admin/api/property", {
+      method: "POST",
+      body: JSON.stringify({
+        id: $("newId").value,
+        name: $("newName").value,
+        twilioNumber: $("newNumber").value,
+        hostPhone: $("newHostPhone").value,
+      }),
+    });
+    showList();
+    openProperty(data.id);
+  } catch (err) {
+    $("addStatus").textContent = err.message;
+  }
+}
+
+async function deleteProperty(id, name) {
+  if (!confirm("Delete " + name + "? Messages and escalation history go with it.")) return;
+  try {
+    await api("/admin/api/property?id=" + encodeURIComponent(id), { method: "DELETE" });
+    showList();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function openProperty(id) {
+  try {
+    current = await api("/admin/api/property?id=" + encodeURIComponent(id));
+
+    $("propName").textContent = current.name || current.id;
+    const status = pillFor(current);
+    const pill = $("propPill");
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
+    const esc = $("propEsc");
+    if (current.openEscalations > 0) {
+      esc.className = "pill open-esc";
+      esc.textContent = escLabel(current.openEscalations);
+    } else {
+      esc.className = "pill hidden";
+      esc.textContent = "";
+    }
+
+    const stats = $("propStats");
+    stats.textContent = "";
+    const items = [
+      [current.asked || 0, "questions asked"],
+      [current.escalated || 0, "escalated"],
+      [current.answerCount || 0, "answers saved"],
+      [(current.addons || []).length, "add-ons on"],
+      [current.resolutionAI || 0, "AI resolved"],
+      [current.resolutionHuman || 0, "Human resolved"],
+    ];
+    items.forEach((item) => {
+      const el = document.createElement("div");
+      el.className = "stat";
+      const b = document.createElement("b");
+      b.textContent = item[0];
+      el.append(b, item[1]);
+      stats.append(el);
+    });
+    if (current.lastActivity) {
+      const el = document.createElement("div");
+      el.className = "stat";
+      el.textContent = "last activity " + current.lastActivity.slice(0, 10);
+      stats.append(el);
+    }
+    // Show resolution bar
+    const total = (current.resolutionAI || 0) + (current.resolutionHuman || 0);
+    if (total > 0) {
+      const resBar = document.createElement("div");
+      resBar.className = "res-bar";
+      const pct = Math.round((current.resolutionAI || 0) / total * 100);
+      resBar.innerHTML = `
+        <div class="res-fill ai" style="width:${pct}%"><span>AI: ${pct}%</span></div>
+        <div class="res-fill human" style="width:${100-pct}%"><span>Human: ${100-pct}%</span></div>
+      `;
+      stats.append(resBar);
+    }
+
+    $("active").checked = current.active != 0;
+    $("name").value = current.name || "";
+    $("twilioNumber").value = current.twilioNumber || "";
+    $("hostPhone").value = current.hostPhone || "";
+    $("rateLimitReply").value = current.rateLimitReply || "";
+    $("unknownReply").value = current.unknownReply || "";
+
+    renderAddons();
+    $("secretsList").textContent = "";
+    (current.secrets || []).forEach((s) => addSecret((s.keywords || []).join(", "), s.reply || ""));
+    if (!(current.secrets || []).length) addSecret();
+
+    $("answersList").textContent = "";
+    (current.answers || []).forEach((a) => addAnswer(a.topic || "", (a.keywords || []).join(", "), a.reply || ""));
+    if (!(current.answers || []).length) addAnswer();
+
+    $("listView").classList.add("hidden");
+    $("propView").classList.remove("hidden");
+    $("saveStatus").textContent = "";
+    setButtonState(false);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function renderAddons() {
+  const box = $("addonChips");
+  box.textContent = "";
+  const on = current.addons || [];
+  PRICING_SERVICES.forEach((s) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (on.indexOf(s.key) >= 0 ? " on" : "");
+    chip.textContent = s.name + " - " + s.price;
+    chip.dataset.key = s.key;
+    chip.onclick = () => {
+      chip.classList.toggle("on");
+      markDirty();
+    };
+    box.append(chip);
+  });
+}
+
+function collect(selector, mapRow) {
+  return Array.from(document.querySelectorAll(selector)).map(mapRow)
+    .filter((r) => r.keywords.length && r.reply);
+}
+
+async function save() {
+  if (!current || !current.id) return;
+  const secrets = collect("#secretsList .entry", (row) => ({
+    keywords: parseKeywords(row.querySelector(".kw").value),
+    reply: row.querySelector(".rp").value.trim(),
+  }));
+  const answers = collect("#answersList .entry", (row) => ({
+    topic: row.querySelector(".tp").value.trim(),
+    keywords: parseKeywords(row.querySelector(".kw").value),
+    reply: row.querySelector(".rp").value.trim(),
+  }));
+  const addons = Array.from(document.querySelectorAll("#addonChips .chip.on"))
+    .map((c) => c.dataset.key);
+  try {
+    await api("/admin/api/property?id=" + encodeURIComponent(current.id), {
+      method: "PUT",
+      body: JSON.stringify({
+        name: $("name").value,
+        twilioNumber: $("twilioNumber").value,
+        hostPhone: $("hostPhone").value,
+        rateLimitReply: $("rateLimitReply").value,
+        unknownReply: $("unknownReply").value,
+        active: $("active").checked ? 1 : 0,
+        secrets,
+        answers,
+        addons,
+      }),
+    });
+    current.active = $("active").checked ? 1 : 0;
+    const status = pillFor({ active: current.active, answerCount: answers.length });
+    const pill = $("propPill");
+    pill.className = "pill " + status[1];
+    pill.textContent = status[0];
+    $("saveStatus").textContent = "Saved. Live now.";
+    setButtonState(false);
+  } catch (err) {
+    $("saveStatus").textContent = err.message;
+  }
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab-bar .tab').forEach((t) => {
+    t.classList.toggle('active', t.textContent.trim() === (tab === 'properties' ? 'Properties' : tab === 'leads' ? 'Leads' : 'Analytics'));
+  });
+  // Only one view is visible at a time
+  $('listView').classList.toggle('hidden', tab !== 'properties');
+  $('leadsView').classList.toggle('hidden', tab !== 'leads');
+  $('analyticsView').classList.toggle('hidden', tab !== 'analytics');
+  $('leadDetailView').classList.add('hidden');
+  $('propView').classList.add('hidden');
+
+  if (tab === 'leads') {
+    document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
+    $('pageTitle').classList.add('hidden');
+  } else if (tab === 'analytics') {
+    document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
+    $('pageTitle').classList.add('hidden');
+  } else {
+    document.querySelectorAll('.sub').forEach((s) => s.classList.remove('hidden'));
+    $('pageTitle').classList.remove('hidden');
+  }
+  if (tab === 'properties') showList();
+  else if (tab === 'leads') loadLeads();
+  else loadAnalytics();
+}
+
+async function loadLeads() {
+  try {
+    leads = (await api('/admin/api/leads')).leads || [];
+    renderLeads();
+  } catch (err) {
+    $('leadsStatus').textContent = err.message;
+  }
+}
+
+function renderLeads() {
+  const list = $('leadList');
+  list.textContent = '';
+  const q = ($('leadSearch').value || '').toLowerCase();
+  let n = 0;
+  leads.forEach((l, i) => {
+    const key = (l.name + ' ' + (l.location || '') + ' ' + (l.email || '')).toLowerCase();
+    if (q && !key.includes(q)) return;
+    n++;
+    const row = document.createElement('div');
+    row.className = 'lead-row';
+    row.onclick = () => openLeadDetail(i);
+
+    const name = document.createElement('span');
+    name.className = 'lead-name';
+    name.textContent = esc(l.name);
+    name.onclick = () => openLeadDetail(i);
+
+    const city = document.createElement('span');
+    city.className = 'lead-city';
+    city.textContent = esc(l.location);
+
+    const phone = document.createElement('span');
+    phone.className = 'lead-phone';
+    phone.textContent = esc(l.phone || '-');
+
+    const email = document.createElement('span');
+    email.className = 'lead-email';
+    email.textContent = esc(l.email || '-');
+
+    row.append(name, city, phone, email, statusSelectCell(i, l.leadStatus));
+    list.appendChild(row);
+  });
+  if (!n) {
+    const p = document.createElement('p');
+    p.className = 'status';
+    p.textContent = q ? 'No leads match that search.' : 'No leads yet.';
+    list.appendChild(p);
+  }
+}
+
+function statusSelectCell(i, cur) {
+  const statuses = ['new', 'contacted', 'interested', 'closed'];
+  const sel = document.createElement('select');
+  sel.className = 'status-select';
+  sel.onchange = (e) => {
+    e.stopPropagation();
+    toggleLeadStatus(i, e.target.value);
+  };
+  const def = document.createElement('option');
+  def.textContent = cur ? cur.charAt(0).toUpperCase() + cur.slice(1) : 'status';
+  def.disabled = true;
+  if (!cur) def.selected = true;
+  sel.appendChild(def);
+  statuses.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    if (s === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function openLeadDetail(i) {
+  detailIndex = i;
+  const l = leads[i];
+  const d = $('leadDetailContent');
+  d.textContent = '';
+
+  const card1 = document.createElement('div');
+  card1.className = 'card';
+  const head = document.createElement('div');
+  head.className = 'prop-head';
+  const h2 = document.createElement('h2');
+  h2.textContent = esc(l.name);
+  head.append(h2);
+  const pill = document.createElement('span');
+  pill.className = 'pill' + (l.leadStatus === 'new' ? ' live' : '');
+  pill.textContent = l.leadStatus;
+  head.append(pill);
+  card1.append(head);
+
+  const stats = document.createElement('div');
+  stats.className = 'stats';
+  stats.append(makeStat(esc(l.location) + ' · ' + esc(l.propertyType)));
+  stats.append(makeStat(esc(l.phone || '-')));
+  stats.append(makeStat(esc(l.email || '-')));
+  stats.append(makeStat(esc(l.address || '-')));
+  card1.append(stats);
+  d.append(card1);
+
+  const card2 = document.createElement('div');
+  card2.className = 'card lead-detail';
+  card2.append(makeHeading('Lead status'));
+  card2.append(makeHint('Local only — tracks your outreach progress for this lead.'));
+  card2.append(statusSelectCell(i, l.leadStatus));
+  d.append(card2);
+
+  const card3 = document.createElement('div');
+  card3.className = 'card lead-detail';
+  card3.append(makeHeading('📧 Custom pitch email'));
+  card3.append(makeHint('Subject: ' + esc(l.pitchEmail.subject)));
+  const area1 = document.createElement('textarea');
+  area1.readOnly = true;
+  area1.textContent = esc(l.pitchEmail.body);
+  card3.append(area1);
+  d.append(card3);
+
+  const card4 = document.createElement('div');
+  card4.className = 'card lead-detail';
+  card4.append(makeHeading('📞 Custom pitch phone'));
+  card4.append(makeHint('Say this in a 30–45 second intro call'));
+  const area2 = document.createElement('textarea');
+  area2.readOnly = true;
+  area2.textContent = esc(l.pitchPhone);
+  card4.append(area2);
+  d.append(card4);
+
+  const card5 = document.createElement('div');
+  card5.className = 'card lead-detail';
+  card5.append(makeHeading('🔁 Follow-up email'));
+  card5.append(makeHint('Subject: ' + esc(l.followUpEmail.subject)));
+  const area3 = document.createElement('textarea');
+  area3.readOnly = true;
+  area3.textContent = esc(l.followUpEmail.body);
+  card5.append(area3);
+  d.append(card5);
+
+  $('listView').classList.add('hidden');
+  $('leadsView').classList.add('hidden');
+  $('leadDetailView').classList.remove('hidden');
+  updateLeadConversionChecklist();
+}
+
+function makeStat(text) {
+  const el = document.createElement('div');
+  el.className = 'stat';
+  const b = document.createElement('b');
+  b.textContent = text;
+  el.append(b, ' · ');
+  return el;
+}
+
+function makeHeading(text) {
+  const h = document.createElement('h2');
+  h.textContent = text;
+  return h;
+}
+
+function makeHint(text) {
+  const p = document.createElement('p');
+  p.className = 'hint';
+  p.textContent = text;
+  return p;
+}
+
+function closeLeadDetail() {
+  detailIndex = -1;
+  $('leadDetailView').classList.add('hidden');
+  showTab('leads');
+}
+
+async function loadAnalytics() {
+  try {
+    const data = await api('/admin/api/analytics');
+    renderAnalytics(data);
+  } catch (err) {
+    $('activityList').textContent = '';
+    $('noAnalytics').textContent = 'Failed to load analytics: ' + err.message;
+    $('noAnalytics').style.display = 'block';
+  }
+}
+
+function renderAnalytics(data) {
+  const s = data.statistics || {};
+  $('propCount').textContent = s.properties ?? 0;
+  $('hostCount').textContent = s.hosts ?? 0;
+  $('msgCount').textContent = s.messages ?? 0;
+  $('escCount').textContent = data.statistics?.escalations ?? 0;
+
+  const ai = data.resolution?.ai ?? 0;
+  const human = data.resolution?.human ?? 0;
+  const total = data.resolution?.total ?? 0;
+  const pct = total > 0 ? Math.round(ai / total * 100) : 0;
+  const resBar = document.querySelector('.res-bar');
+  resBar.innerHTML = '';
+  const aiFill = document.createElement('div');
+  aiFill.className = 'res-fill ai';
+  aiFill.style.width = pct + '%';
+  const aiSpan = document.createElement('span');
+  aiSpan.textContent = 'AI: ' + pct + '%';
+  aiFill.appendChild(aiSpan);
+  resBar.appendChild(aiFill);
+  const humanFill = document.createElement('div');
+  humanFill.className = 'res-fill human';
+  humanFill.style.width = (100 - pct) + '%';
+  const humanSpan = document.createElement('span');
+  humanSpan.textContent = 'Human: ' + (100 - pct) + '%';
+  humanFill.appendChild(humanSpan);
+  resBar.appendChild(humanFill);
+
+  const list = $('activityList');
+  list.textContent = '';
+  const recent = data.recent || {};
+  const items = [];
+  (recent.leads || []).forEach((l) => items.push({
+    h: 'New lead',
+    p: (l.email || '—') + ' · ' + new Date(l.created_at).toLocaleString(),
+    time: l.created_at,
+    tag: 'lead'
+  }));
+  (recent.questions || []).forEach((q) => items.push({
+    h: 'Guest question',
+    p: (q.from_number || 'Unknown') + ' · ' + (q.body || '').slice(0, 120),
+    time: q.created_at,
+    tag: 'message'
+  }));
+  (recent.escalations || []).forEach((e) => items.push({
+    h: 'Escalation',
+    p: (e.guest_number || 'Unknown') + ' · ' + (e.reason || 'no reason'),
+    time: e.created_at,
+    tag: 'escalation'
+  }));
+  items.sort((a, b) => new Date(b.time) - new Date(a.time));
+  items.slice(0, 20).forEach((item) => {
+    const el = document.createElement('div');
+    el.className = 'activity-item';
+    const h = document.createElement('h4');
+    h.textContent = item.h;
+    const p = document.createElement('p');
+    p.textContent = item.p;
+    const t = document.createElement('div');
+    t.className = 'time';
+    t.textContent = new Date(item.time).toLocaleString();
+    el.append(h, p, t);
+    list.appendChild(el);
+  });
+  if (!items.length) {
+    $('noAnalytics').style.display = 'block';
+    $('noAnalytics').textContent = 'No activity recorded yet.';
+  } else {
+    $('noAnalytics').style.display = 'none';
+  }
+}
+
+function toggleLeadStatus(i, status) {
+  leads[i].leadStatus = status;
+  renderLeadDetail();
+}
+
+function renderLeadDetail() {
+  if (detailIndex < 0) return;
+  openLeadDetail(detailIndex);
+}
+
+function exportLeads() {
+  const escField = (v) => {
+    const s = String(v ?? '').replace(/"/g, '""');
+    return /[,\n"]/.test(s) ? '"' + s + '"' : s;
+  };
+  const rows = [['name', 'phone', 'email', 'location', 'propertyType', 'status', 'pitchEmailSubject', 'pitchEmailBody', 'pitchPhone', 'followUpEmailSubject', 'followUpEmailBody']];
+  leads.forEach((l) => {
+    rows.push([
+      escField(l.name), escField(l.phone), escField(l.email), escField(l.location), escField(l.propertyType),
+      escField(l.leadStatus), escField(l.pitchEmail.subject), escField(l.pitchEmail.body), escField(l.pitchPhone),
+      escField(l.followUpEmail.subject), escField(l.followUpEmail.body),
+    ]);
+  });
+  const csv = rows.map((r) => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'leads.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+$("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
+</script>
+</body>
+</html>

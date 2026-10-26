@@ -1,6 +1,10 @@
 // site/api.js
 
-const API_BASE_URL = window.location.hostname === 'davenport-host-co.pages.dev'
+// Hosted Pages deployments (production alias and every per-commit preview like
+// <hash>.davenport-host-co.pages.dev) talk to the Worker's workers.dev URL,
+// because api.stayxi.com is not configured yet. Once the custom domain is live,
+// only the real custom domain should use it.
+const API_BASE_URL = window.location.hostname.endsWith('davenport-host-co.pages.dev')
   ? 'https://davenport-host-co-bot.davenport-host-co-bot.workers.dev'
   : 'https://api.stayxi.com';
 

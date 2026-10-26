@@ -1,9 +1,9 @@
 {
   "answerPhone": {
-    "greeting": "Davenport Host Co., this is [HOST_NAME] speaking.",
-    "afterHours": "Hi, you've reached Davenport Host Co. Our office is closed — please leave a message and we'll return your call during business hours.",
+    "greeting": "StayXI, this is [HOST_NAME] speaking.",
+    "afterHours": "Hi, you've reached StayXI. Our office is closed — please leave a message and we'll return your call during business hours.",
     "takingMessage": "I'm unable to take your call right now. Please leave your name, number, and a brief message after the beep, and we'll get back to you as soon as possible.",
-    "thankYou": "Thank you for calling Davenport Host Co. Have a great day!"
+    "thankYou": "Thank you for calling StayXI. Have a great day!"
   },
   "gateCodeInquiry": {
     "reply": "Your gate code is 4821. Please enter it on the keypad and press enter.",
@@ -26,7 +26,7 @@
     "alternative": "Late checkout is not available, but if you have a special circumstance, text us 'late checkout' and we'll check with the host."
   },
   "helpInquiry": {
-    "reply": "Davenport Host Co. guest text line — text your question any time (gate code, WiFi, checkout, pool). Reply STOP to opt out.",
+    "reply": "StayXI guest text line — our take on AI for your guests during their stay. Text your question any time. Reply STOP to opt out.",
     "alternative": "If you'd like to opt out of messages, reply STOP. If you need help with something specific, just ask!"
   },
   "stopInquiry": {
@@ -34,7 +34,7 @@
     "alternative": "None — STOP opt-out is automatic and final."
   },
   "helpInfoInquiry": {
-    "reply": "Davenport Host Co. guest text line — text your question any time (gate code, WiFi, checkout, pool). Reply STOP to opt out.",
+    "reply": "StayXI guest text line — our take on AI for your guests during their stay. Text your question any time. Reply STOP to opt out.",
     "alternative": "Text HELP or INFO for property information."
   }
 }

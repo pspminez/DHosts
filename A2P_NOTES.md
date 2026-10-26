@@ -27,7 +27,7 @@ The A2P 10DLC campaign was rejected. We will switch to a Toll-Free Number approa
 3. **Enable SMS on the Toll-Free Number:**
    - In Twilio Console, navigate to the purchased number
    - Under "Messaging", configure the webhook URL to point to your Cloudflare Worker
-   - Set webhook URL: `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms`
+   - Planned webhook URL after domain setup: `https://api.stayxi.com/sms`
    - This must exactly match `PUBLIC_URL` in `wrangler.toml` (signature validation is ON and computed over this URL)
    - HTTP method: POST (Twilio signs every request with `X-Twilio-Signature`; the worker validates it)
 
@@ -53,7 +53,7 @@ The A2P 10DLC campaign was rejected. We will switch to a Toll-Free Number approa
 ## Previous 10DLC Attempt Details
 
 ### What We Submitted:
-- Brand: Davenport Host Co.
+- Brand: StayXI (make sure the public brand and legal business details match the registration submitted to Twilio)
 - Use Case: Property management / guest communications
 - Sample messages: Gate codes, WiFi, checkout info, etc.
 

@@ -1,0 +1,7 @@
+# Cloudflare Pages redirects.
+# The admin panel is served by the Worker, not by Pages — the Pages project only
+# hosts the marketing site. Send /admin requests to the Worker so the old
+# pages.dev/admin page can never be reached by mistake.
+/admin     https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin            301
+/admin/    https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin            301
+/admin/*   https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin/:splat    301

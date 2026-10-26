@@ -3,7 +3,11 @@
   "name": "davenport-host-co-bot",
   "version": "0.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --test bot/*.test.js"
+  },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261012.1",
     "wrangler": "^4.147.0"
   },
   "dependencies": {
