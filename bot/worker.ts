@@ -3536,7 +3536,7 @@ function convertLeadToProperty(index) {
   convertingLeadId = lead.id;
   showTab("properties");
   showAdd();
-  const slug = lead.name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+  const slug = lead.name.normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
     .toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 20).replace(/-$/g, "");
   const rawPhone = String(lead.phone || "").trim();
   const digits = rawPhone.replace(/\\D/g, "");
@@ -3631,7 +3631,7 @@ async function openProperty(id) {
     $("wifiSsid").value = current.wifiSsid || "";
     $("accessInstructions").value = current.accessInstructions || "";
     $("emergencyContacts").value = current.emergencyContacts || "";
-    $("policies").value = (current.policies || []).map((policy) => policy.key + "=" + policy.value).join("\n");
+    $("policies").value = (current.policies || []).map((policy) => policy.key + "=" + policy.value).join("\\n");
     const escalationNote = (level) =>
       (current.escalationRules || []).find((rule) => rule.riskLevel === level)?.instructions || "";
     $("lowEscalationNote").value = escalationNote("low");
@@ -3737,7 +3737,7 @@ async function save() {
     keywords: parseKeywords(row.querySelector(".kw").value),
     reply: row.querySelector(".rp").value.trim(),
   }));
-  const policyLines = $("policies").value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const policyLines = $("policies").value.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
   const policies = policyLines.map((line) => {
     const separator = line.indexOf("=");
     return separator < 0 ? null : {
@@ -4011,7 +4011,7 @@ async function sendPilotPitch(index) {
     status.textContent = 'Recheck the public source and confirm the recipient before sending.';
     return;
   }
-  if (/\[[^\]]+\]/.test(subject + '\n' + message)) {
+  if (/\\[[^\\]]+\\]/.test(subject + '\\n' + message)) {
     status.textContent = 'Replace every bracketed placeholder with accurate sender details before sending.';
     return;
   }
@@ -4310,7 +4310,7 @@ function openLeadDetail(i) {
   if (l.phone) {
     const callLink = document.createElement('a');
     callLink.className = 'lead-action-secondary';
-    callLink.href = 'tel:' + l.phone.replace(/[^\d+]/g, '');
+    callLink.href = 'tel:' + l.phone.replace(/[^\\d+]/g, '');
     callLink.textContent = 'Call manually';
     card4.append(callLink);
   }
