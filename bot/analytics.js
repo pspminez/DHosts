@@ -24,6 +24,49 @@ const FROM_ANSWERS = new Set(["keyword", "kb"]);
 const BY_AI = new Set(["ai"]);
 const ESCALATED = new Set(["escalated", "escalate", "emergency"]);
 
+// Human names for the router's intent keys. Anything missing is prettified, so a
+// new intent never reaches the screen as raw snake_case. Lives here rather than
+// in insights.js because this module has no imports of its own, and the page
+// needs the label baked into the payload: the browser cannot see server exports.
+const THEME_LABELS = {
+  wifi: "Wi-Fi",
+  wifi_password: "Wi-Fi",
+  checkout: "Checkout",
+  checkin: "Check-in",
+  check_in: "Check-in",
+  early_checkin: "Early check-in",
+  late_checkout: "Late checkout",
+  gate: "Gate code",
+  gate_code: "Gate code",
+  door_code: "Door code",
+  lock: "Door lock",
+  lockout: "Locked out",
+  trash: "Trash and bins",
+  pool: "Pool",
+  pool_heat: "Pool heater",
+  parking: "Parking",
+  pets: "Pets",
+  rules: "House rules",
+  ac: "Air conditioning",
+  thermostat: "Thermostat",
+  tv: "TV",
+  internet: "Internet",
+  noise: "Noise complaint",
+  maintenance: "Maintenance",
+  emergency: "Emergency",
+  rate_limit: "Rate limited",
+  unknown: "Unclassified",
+};
+
+export function themeLabel(intentKey) {
+  const key = String(intentKey == null ? "" : intentKey).trim().toLowerCase();
+  if (!key) return "Unclassified";
+  if (THEME_LABELS[key]) return THEME_LABELS[key];
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 export const MIX_KEYS = ["fromAnswers", "byAi", "escalated", "other"];
 
 export const MIX_LABELS = {
@@ -195,7 +238,12 @@ export function buildAnalytics(input, now = new Date()) {
     today: { inbound: Number(today.inbound || 0), outbound: Number(today.outbound || 0) },
     yesterday: { inbound: Number(yesterday.inbound || 0), outbound: Number(yesterday.outbound || 0) },
     recent: (input && input.recent) || [],
-    commonRequests: (input && input.commonRequests) || [],
+    // The label travels with the count so the page never has to know the map.
+    commonRequests: ((input && input.commonRequests) || []).map((row) => ({
+      intentKey: row.intentKey,
+      label: themeLabel(row.intentKey),
+      total: Number(row.total || 0),
+    })),
   };
 }
 
@@ -284,6 +332,8 @@ export function sampleAnalytics(now = new Date()) {
       text: event.text,
       at: new Date(now.getTime() - event.minutesAgo * 60000).toISOString(),
     })),
+    // Mapped through themeLabel so the demo payload has the same shape as the
+    // live one — otherwise the demo is the only place a raw key shows up.
     commonRequests: [
       { intentKey: "wifi", total: 96 },
       { intentKey: "checkout", total: 71 },
@@ -291,6 +341,6 @@ export function sampleAnalytics(now = new Date()) {
       { intentKey: "trash", total: 38 },
       { intentKey: "pool_heat", total: 27 },
       { intentKey: "parking", total: 19 },
-    ],
+    ].map((row) => ({ intentKey: row.intentKey, label: themeLabel(row.intentKey), total: row.total })),
   };
 }

@@ -157,7 +157,8 @@ test("compares the last 30 days against the 30 before it", () => {
   assert.equal(snapshot.today.inbound, 2);
   assert.equal(snapshot.yesterday.inbound, 2);
   assert.equal(snapshot.totals.answeredWithoutHuman, 100);
-  assert.deepEqual(snapshot.commonRequests, [{ intentKey: "wifi", total: 4 }]);
+  // The label rides along so the page never has to know the intent map.
+  assert.deepEqual(snapshot.commonRequests, [{ intentKey: "wifi", label: "Wi-Fi", total: 4 }]);
 });
 
 test("the demo dataset is labelled, complete, and deterministic", () => {

@@ -46,7 +46,7 @@ import {
 } from "./admin-session.js";
 import { buildAnalytics, sampleAnalytics } from "./analytics.js";
 import { sampleOperations } from "./operations.js";
-import { buildInsights, sampleInsights, themeLabel } from "./insights.js";
+import { buildInsights, sampleInsights } from "./insights.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -2780,8 +2780,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
           --sunset:linear-gradient(96deg,#ffd166,#ff9e4a 45%,#ff5e8a); }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:linear-gradient(180deg,#0e1c32 0,var(--bg) 26rem); color:var(--text); -webkit-font-smoothing:antialiased;
-         font:15px/1.6 "Bricolage Grotesque",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
-         max-width:64rem; margin:0 auto; padding:2.5rem 2rem 7rem; }
+         font:15px/1.6 "Bricolage Grotesque",ui-sans-serif,system-ui,"Segoe UI",sans-serif; }
   body::before { content:""; position:fixed; top:-18rem; left:50%; translate:-50% 0;
          width:46rem; height:46rem; pointer-events:none;
          background:radial-gradient(circle,rgba(255,94,138,.12),transparent 60%); filter:blur(40px); }
@@ -2872,32 +2871,51 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .check input { width:auto; }
   .check span { font-size:.9rem; color:var(--text); }
   @media (max-width:560px) {
-    body { padding:1.5rem 1rem 6rem; }
+    .main { padding:1rem 1rem 6rem; }
     .card { padding:1.1rem; }
     .entry .top { grid-template-columns:1fr; }
     .savebar .inner { flex-wrap:wrap; }
     .savebar .status { text-align:left; }
-    .tab-bar { flex-direction:column; }
-    /* Otherwise sign-out floats alone, right-aligned under the stack. */
-    .tab.sign-out { margin-left:0; }
     .lead-row { grid-template-columns:1.2fr 1fr 1fr 1fr; }
     .lead-phone, .lead-email { font-size:.72rem; }
     .leads-header { flex-direction:column; }
   }
-  .tab-bar { display:flex; gap:.75rem; margin:1.4rem 0 1rem; }
-  .tab-bar.hidden { display:none; }
-  .tab { flex:1; padding:.7rem .85rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer;
-         white-space:nowrap; }
-  /* Six tabs plus sign-out no longer fit on one line everywhere: let them wrap
-     onto a second row rather than squeezing a label onto two lines. */
-  @media (min-width:561px) {
-    .tab-bar { flex-wrap:wrap; }
-    .tab { flex:1 1 8rem; }
+  /* --- shell: fixed sidebar, full-width content --- */
+  /* Flex rather than grid so that a hidden sidebar leaves no empty column on
+     the login screen. */
+  .shell { display:flex; align-items:flex-start; min-height:100vh; }
+  .sidebar { flex:0 0 15.5rem; position:sticky; top:0; height:100vh; display:flex; flex-direction:column;
+         padding:1.2rem 1rem 1.4rem; border-right:1px solid var(--border);
+         background:linear-gradient(180deg,rgba(15,30,54,.97),rgba(9,19,34,.99)); }
+  .sidebar.hidden { display:none; }
+  .brand { display:flex; align-items:center; gap:.55rem; padding:.3rem .55rem 1.1rem;
+         font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+  .nav { display:flex; flex-direction:column; gap:.15rem; }
+  .nav-group { font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+         font-weight:700; margin:.9rem .6rem .35rem; }
+  .nav-item { display:flex; align-items:center; gap:.65rem; width:100%; padding:.58rem .7rem;
+         border-radius:10px; border:1px solid transparent; background:transparent; color:var(--muted);
+         font:inherit; font-weight:600; font-size:.88rem; text-align:left; cursor:pointer; }
+  .nav-item svg { width:1.05rem; height:1.05rem; flex:none; opacity:.8; }
+  .nav-item:hover { color:var(--text); background:var(--surface); }
+  .nav-item.active { color:var(--pool); background:rgba(56,225,198,.1);
+         border-color:rgba(56,225,198,.3); }
+  .nav-item.active svg { opacity:1; }
+  .sidebar .sign-out { margin-top:auto; }
+  .main { flex:1 1 auto; min-width:0; width:100%; max-width:80rem; margin:0 auto;
+         padding:2rem 2.25rem 7rem; }
+  .page-head { margin-bottom:1rem; }
+  @media (min-width:861px) { .savebar { left:15.5rem; } }
+  @media (max-width:860px) {
+    .shell { display:block; }
+    .sidebar { position:static; height:auto; flex:none; border-right:none;
+           border-bottom:1px solid var(--border); padding:.85rem 1rem 1rem; }
+    .nav { flex-direction:row; flex-wrap:wrap; gap:.4rem; }
+    .nav-group { display:none; }
+    .nav-item { width:auto; font-size:.8rem; padding:.45rem .7rem; }
+    .sidebar .sign-out { margin-top:.6rem; align-self:flex-start; }
+    .main { padding:1.25rem 1rem 6rem; }
   }
-  .tab.active { background:var(--pool); border-color:var(--pool); color:#071a1b; }
-  .tab.sign-out { margin-left:auto; flex:0 0 auto; }
-  .tab-bar .tab:not(.active):hover { border-color:var(--sun); color:var(--sun); }
-  .tab { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
   button { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
   button:hover { transform:translateY(-1px); }
   button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid var(--pool); outline-offset:2px; }
@@ -3090,9 +3108,42 @@ const ADMIN_HTML = `<!DOCTYPE html>
 </style>
 </head>
 <body>
-  <div class="badge"><span class="dot"></span> StayXI admin</div>
-  <h1 id="pageTitle">Admin panel</h1>
-  <p class="sub">Our take on AI for your guests during their stay. Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
+<div class="shell">
+  <aside class="sidebar hidden" id="tabBar">
+    <div class="brand"><span class="dot"></span><span>StayXI admin</span></div>
+    <nav class="nav">
+      <p class="nav-group">Manage</p>
+      <button class="nav-item active" data-tab="properties" onclick="showTab('properties')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Properties
+      </button>
+      <button class="nav-item" data-tab="leads" onclick="showTab('leads')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5.2a3.2 3.2 0 0 1 0 5.6"/></svg>Leads
+      </button>
+      <p class="nav-group">Activity</p>
+      <button class="nav-item" data-tab="analytics" onclick="showTab('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-6"/></svg>Analytics
+      </button>
+      <button class="nav-item" data-tab="insights" id="navInsights" onclick="showTab('insights')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/><path d="M9 10h6" stroke-linecap="round"/></svg>Insights
+      </button>
+      <button class="nav-item" data-tab="operations" onclick="showTab('operations')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></svg>Operations
+      </button>
+      <p class="nav-group">Program</p>
+      <button class="nav-item" data-tab="pilot" onclick="showTab('pilot')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-1.5 4L16 12H5z"/></svg>Pilot Program
+      </button>
+    </nav>
+    <button class="nav-item sign-out" onclick="signOut()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/><path d="M15 8l4 4-4 4"/><path d="M9 12h10"/></svg>Sign out
+    </button>
+  </aside>
+
+  <main class="main">
+  <div class="page-head">
+    <h1 id="pageTitle">Admin panel</h1>
+    <p class="sub">Our take on AI for your guests during their stay. Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
+  </div>
 
   <div id="login" class="card">
     <label for="pw">Admin password</label>
@@ -3101,16 +3152,6 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <button class="primary" onclick="unlock()">Unlock</button>
     </div>
     <p class="status" id="loginStatus"></p>
-  </div>
-
-  <div class="tab-bar hidden" id="tabBar">
-    <button class="tab active" onclick="showTab('properties')">Properties</button>
-    <button class="tab" onclick="showTab('leads')">Leads</button>
-    <button class="tab" onclick="showTab('analytics')">Analytics</button>
-    <button class="tab" onclick="showTab('insights')">Insights</button>
-    <button class="tab" onclick="showTab('operations')">Operations</button>
-    <button class="tab" onclick="showTab('pilot')">Pilot Program</button>
-    <button class="tab sign-out" onclick="signOut()">Sign out</button>
   </div>
 
   <div id="listView" class="hidden">
@@ -3258,7 +3299,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <div class="analytics-head dash-head">
       <div>
         <h2>Leads</h2>
-        <p>Independent Central Florida operators, with contact details checked on their own sites.</p>
+        <p>Independent Central Florida operators, with linked public sources to recheck before contact.</p>
       </div>
       <div class="dash-controls">
         <span class="dash-stamp" id="leadsSummary"></span>
@@ -4318,9 +4359,10 @@ async function importKnowledge(input) {
 }
 
 function showTab(tab) {
-  const tabLabels = { properties: 'Properties', leads: 'Leads', analytics: 'Analytics', insights: 'Insights', operations: 'Operations', pilot: 'Pilot Program' };
-  document.querySelectorAll('.tab-bar .tab').forEach((t) => {
-    t.classList.toggle('active', t.textContent.trim() === tabLabels[tab]);
+  // Nav items carry data-tab, so the active state no longer depends on the label
+  // text matching exactly.
+  document.querySelectorAll('[data-tab]').forEach((t) => {
+    t.classList.toggle('active', t.getAttribute('data-tab') === tab);
   });
   // Only one view is visible at a time
   $('listView').classList.toggle('hidden', tab !== 'properties');
@@ -5303,7 +5345,9 @@ function renderCommonRequests(container, rows, statusNode) {
     const line = document.createElement('div');
     line.className = 'req-row';
     const label = document.createElement('span');
-    label.textContent = themeLabel(row.intentKey);
+    // The server bakes the label into the row; this script cannot see server
+    // exports, so it must never call one from in here.
+    label.textContent = row.label || String(row.intentKey || 'unknown');
     const track = document.createElement('div');
     track.className = 'cap-track';
     const fill = document.createElement('div');
@@ -5763,5 +5807,7 @@ async function restoreSession() {
 restoreSession();
 $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
 </script>
+  </main>
+</div>
 </body>
 </html>`;

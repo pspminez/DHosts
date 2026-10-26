@@ -12,50 +12,13 @@
 //   * A theme with no previous period reports a null delta, never 0% — the panel
 //     shows no arrow rather than inventing a comparison.
 
-import { percentDelta } from "./analytics.js";
+import { percentDelta, themeLabel } from "./analytics.js";
+
+// Shared with the analytics payload; kept as a re-export so callers of this
+// module do not have to know where the map lives.
+export { themeLabel };
 
 export const INSIGHTS_WINDOW_DAYS = 30;
-
-// Human names for the router's intent keys. Anything missing is prettified, so
-// a newly routed question never appears on the panel as raw snake_case.
-const THEME_LABELS = {
-  wifi: "Wi-Fi",
-  wifi_password: "Wi-Fi",
-  checkout: "Checkout",
-  checkin: "Check-in",
-  check_in: "Check-in",
-  early_checkin: "Early check-in",
-  late_checkout: "Late checkout",
-  gate: "Gate code",
-  gate_code: "Gate code",
-  door_code: "Door code",
-  lock: "Door lock",
-  lockout: "Locked out",
-  trash: "Trash and bins",
-  pool: "Pool",
-  pool_heat: "Pool heater",
-  parking: "Parking",
-  pets: "Pets",
-  rules: "House rules",
-  ac: "Air conditioning",
-  thermostat: "Thermostat",
-  tv: "TV",
-  internet: "Internet",
-  noise: "Noise complaint",
-  maintenance: "Maintenance",
-  emergency: "Emergency",
-  rate_limit: "Rate limited",
-  unknown: "Unclassified",
-};
-
-export function themeLabel(intentKey) {
-  const key = String(intentKey == null ? "" : intentKey).trim().toLowerCase();
-  if (!key) return "Unclassified";
-  if (THEME_LABELS[key]) return THEME_LABELS[key];
-  return key
-    .replace(/[_-]+/g, " ")
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
-}
 
 const round1 = (value) => Math.round(value * 10) / 10;
 

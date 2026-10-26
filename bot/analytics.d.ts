@@ -41,10 +41,20 @@ export interface RecentEvent {
   at: string;
 }
 
+// What the SQL returns.
+export interface CommonRequestRow {
+  intentKey: string;
+  total: number | string | null;
+}
+
+// What the payload carries: the label travels with the count.
 export interface CommonRequest {
   intentKey: string;
+  label: string;
   total: number;
 }
+
+export function themeLabel(intentKey: unknown): string;
 
 export interface AnalyticsTotals {
   inbound: number;
@@ -82,7 +92,7 @@ export interface AnalyticsInput {
     lastActivity?: string | null;
   }[];
   recent: RecentEvent[];
-  commonRequests: CommonRequest[];
+  commonRequests: CommonRequestRow[];
 }
 
 export function bucketResolution(resolution: unknown): string;
