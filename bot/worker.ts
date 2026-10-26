@@ -35,6 +35,15 @@ import {
 import { previewDemoMessage } from "./demo-routing.js";
 import { redactForAudit, validateGroundedAnswer } from "./grounding.js";
 import { parseHostReply } from "./host-replies.js";
+import {
+  adminSessionClearCookie,
+  adminSessionSetCookie,
+  adminSessionValid,
+  createAdminSession,
+  getCookieValue,
+  randomSessionToken,
+  revokeAdminSession,
+} from "./admin-session.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -1644,52 +1653,6 @@ function timingSafeEqualStr(a: string, b: string) {
   return diff === 0;
 }
 
-function base64Utf8(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-// Admin sessions are random bearer tokens stored hashed in KV, so a copied cookie
-// never reveals the admin password and the cookie can be HttpOnly.
-const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 24 * 3; // 3 days
-
-function randomSessionToken() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function sha256Hex(value: string) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function adminSessionValid(env: Env, token: string) {
-  if (!token) return false;
-  try {
-    return (await env.PROPERTIES.get(`admin:session:${await sha256Hex(token)}`)) === "1";
-  } catch (err) {
-    console.error("Admin session lookup failed:", errorMessage(err) || err);
-    return false;
-  }
-}
-
-function adminSessionSetCookie(token: string) {
-  return `admin_session=${token}; Path=/; Max-Age=${ADMIN_SESSION_TTL_SECONDS}; HttpOnly; Secure; SameSite=Strict`;
-}
-
-function adminSessionClearCookie() {
-  return "admin_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict";
-}
-
-function getCookieValue(cookieHeader: string, name: string) {
-  const prefix = `${name}=`;
-  const cookie = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith(prefix));
-  return cookie ? cookie.slice(prefix.length) : "";
-}
-
 async function handleAdmin(request: Request, env: Env, url: URL) {
   // Login logger - tracks all admin access attempts
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -1732,7 +1695,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     // cookie is a random token validated against KV, never the password itself.
     const got = request.headers.get("x-admin-password") || "";
     const headerOk = timingSafeEqualStr(got, expected);
-    const sessionOk = !headerOk && await adminSessionValid(env, adminSessionCookie);
+    const sessionOk = !headerOk && await adminSessionValid(env.PROPERTIES, adminSessionCookie);
     if (!headerOk && !sessionOk) {
       console.log(`[${timestamp}] AUTH FAILURE: ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method} header=${authHeaderPresent} session=${adminSessionCookie ? 'present' : 'absent'}`);
       return adminJson({ error: "Unauthorized" }, 401);
@@ -1753,7 +1716,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       return adminJson({ error: "Unauthorized" }, 401);
     }
     const token = randomSessionToken();
-    await env.PROPERTIES.put(`admin:session:${await sha256Hex(token)}`, "1", { expirationTtl: ADMIN_SESSION_TTL_SECONDS });
+    await createAdminSession(env.PROPERTIES, token);
     const headers = new Headers(corsHeaders as Record<string, string>);
     headers.append("Set-Cookie", adminSessionSetCookie(token));
     headers.append("Set-Cookie", "admin_auth=; Path=/; Max-Age=0; Secure; SameSite=Strict");
@@ -1764,7 +1727,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   // End the session: delete the stored token and clear the cookie.
   if (url.pathname === "/admin/api/logout" && request.method === "POST") {
     if (adminSessionCookie) {
-      await env.PROPERTIES.delete(`admin:session:${await sha256Hex(adminSessionCookie)}`);
+      await revokeAdminSession(env.PROPERTIES, adminSessionCookie);
     }
     const headers = new Headers(corsHeaders as Record<string, string>);
     headers.append("Set-Cookie", adminSessionClearCookie());
@@ -3258,7 +3221,6 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 
 <script>
-let password = "";
 let properties = [];
 let current = null;
 let leads = [];
@@ -3392,8 +3354,12 @@ function addAnswer(topic, keywords, reply) {
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
+    // The session cookie is HttpOnly, so the page cannot read it (or the
+    // password) and does not need to: the browser attaches it automatically.
+    // Only unlock() sends the password, and only to establish a session.
+    credentials: "same-origin",
     ...options,
-    headers: { "x-admin-password": password, "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -3406,10 +3372,13 @@ async function api(path, options = {}) {
 }
 
 async function unlock() {
-  password = $("pw").value;
+  const pw = $("pw").value;
   try {
-    // The Worker verifies the password and sets a random HttpOnly session cookie.
-    await api("/admin/api/login", { method: "POST", body: "{}" });
+    // The Worker verifies the password and sets a random HttpOnly session
+    // cookie. This is the only request that carries the password; the input is
+    // cleared straight after and every later call uses the cookie.
+    await api("/admin/api/login", { method: "POST", body: "{}", headers: { "x-admin-password": pw } });
+    $("pw").value = "";
     $("loginStatus").textContent = "";
     $("login").classList.add("hidden");
     $("tabBar").classList.remove("hidden");
@@ -3425,7 +3394,6 @@ async function signOut() {
   } catch (err) {
     // The cookie is cleared on the server; reload either way.
   }
-  password = "";
   window.location.reload();
 }
 
