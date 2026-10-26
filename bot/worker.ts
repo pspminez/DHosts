@@ -46,6 +46,7 @@ import {
 } from "./admin-session.js";
 import { buildAnalytics, sampleAnalytics } from "./analytics.js";
 import { sampleOperations } from "./operations.js";
+import { buildInsights, sampleInsights, themeLabel } from "./insights.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -2676,6 +2677,59 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     }
   }
 
+  // Admin API: guest-question insights (read-only, aggregate counts only).
+  // `?sample=1` returns the deterministic demo dataset.
+  if (url.pathname === "/admin/api/insights" && request.method === "GET") {
+    if (url.searchParams.get("sample") === "1") {
+      return adminJson(sampleInsights());
+    }
+    try {
+      const [current, previous, properties] = await Promise.all([
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(intent_key, ''), 'unknown') AS intentKey,
+                  COUNT(*) AS total,
+                  SUM(CASE WHEN resolution IN ('escalated','escalate','emergency') THEN 1 ELSE 0 END) AS escalated,
+                  SUM(CASE WHEN resolution IS NULL OR resolution IN ('unrouted','blocked') THEN 1 ELSE 0 END) AS unresolved
+           FROM messages
+           WHERE direction = 'in' AND created_at >= datetime('now', '-30 days')
+           GROUP BY intentKey ORDER BY total DESC LIMIT 12`
+        ).all<{ intentKey: string; total: number; escalated: number; unresolved: number }>(),
+        // The 30 days before, for a trend that is actually comparable.
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(intent_key, ''), 'unknown') AS intentKey, COUNT(*) AS total
+           FROM messages
+           WHERE direction = 'in'
+             AND created_at >= datetime('now', '-60 days')
+             AND created_at < datetime('now', '-30 days')
+           GROUP BY intentKey`
+        ).all<{ intentKey: string; total: number }>(),
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(p.display_name, ''), p.id) AS name,
+                  COUNT(m.id) AS total,
+                  COALESCE(SUM(CASE WHEN m.resolution IS NULL
+                       OR m.resolution IN ('escalated','escalate','emergency','unrouted','blocked')
+                     THEN 1 ELSE 0 END), 0) AS unresolved
+           FROM properties p
+           LEFT JOIN messages m
+             ON m.property_id = p.id AND m.direction = 'in' AND m.created_at >= datetime('now', '-30 days')
+           WHERE p.active = 1
+           GROUP BY p.id
+           ORDER BY total DESC`
+        ).all<{ name: string; total: number; unresolved: number }>(),
+      ]);
+      return adminJson(
+        buildInsights({
+          current: current.results || [],
+          previous: previous.results || [],
+          properties: properties.results || [],
+        }),
+      );
+    } catch (err) {
+      console.error("Admin insights query failed:", errorMessage(err) || err);
+      return adminJson({ error: "Failed to load insights." }, 500);
+    }
+  }
+
   if (url.pathname === "/admin/api/health" && request.method === "GET") {
     try {
       const [, , propertyConfig] = await Promise.all([
@@ -2824,16 +2878,24 @@ const ADMIN_HTML = `<!DOCTYPE html>
     .savebar .inner { flex-wrap:wrap; }
     .savebar .status { text-align:left; }
     .tab-bar { flex-direction:column; }
+    /* Otherwise sign-out floats alone, right-aligned under the stack. */
+    .tab.sign-out { margin-left:0; }
     .lead-row { grid-template-columns:1.2fr 1fr 1fr 1fr; }
     .lead-phone, .lead-email { font-size:.72rem; }
     .leads-header { flex-direction:column; }
-    .pc-stats { grid-template-columns:1fr 1fr; }
   }
   .tab-bar { display:flex; gap:.75rem; margin:1.4rem 0 1rem; }
   .tab-bar.hidden { display:none; }
-  .tab { flex:1; padding:.7rem 1rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
+  .tab { flex:1; padding:.7rem .85rem; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--muted); font:inherit; font-weight:700; cursor:pointer;
+         white-space:nowrap; }
+  /* Six tabs plus sign-out no longer fit on one line everywhere: let them wrap
+     onto a second row rather than squeezing a label onto two lines. */
+  @media (min-width:561px) {
+    .tab-bar { flex-wrap:wrap; }
+    .tab { flex:1 1 8rem; }
+  }
   .tab.active { background:var(--pool); border-color:var(--pool); color:#071a1b; }
-  .tab.sign-out { margin-left:auto; }
+  .tab.sign-out { margin-left:auto; flex:0 0 auto; }
   .tab-bar .tab:not(.active):hover { border-color:var(--sun); color:var(--sun); }
   .tab { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
   button { transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease; }
@@ -2885,9 +2947,13 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
   /* --- analytics dashboard --- */
   .dash-head { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
-  .dash-controls { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; }
+  /* Pushed right even when a long description forces the controls to wrap. */
+  .dash-controls { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-left:auto; }
   .dash-stamp { color:var(--muted); font-size:.72rem; }
   .dash-toggle { font-size:.78rem; white-space:nowrap; }
+  /* button.ghost carries a 1.5rem top margin meant for forms; inside a head it
+     just opens a gap between the title and the banner. */
+  .dash-controls button { margin-top:0; }
   .sample-banner { margin:0 0 1rem; padding:.6rem .9rem; border-radius:12px; font-size:.78rem;
          color:var(--gold); border:1px solid rgba(255,209,102,.35); background:rgba(255,209,102,.08); }
   .dash-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2.05fr) minmax(0,1fr);
@@ -2959,7 +3025,12 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
   /* --- operations tab --- */
   .op-heroes { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
-  .op-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1rem; margin-bottom:1rem; }
+  /* Only the four-up layout squeezes a label onto a second line, and a wrapped
+     label would push its number below its neighbours'. Narrower layouts fit one
+     line, so reserving the height there just leaves dead space. */
+  @media (min-width:1081px) { .op-heroes .dash-label { min-height:3.1em; } }
+  .op-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1rem; margin-bottom:1rem;
+         align-items:start; }
   .op-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem 1.2rem; margin-top:.9rem; }
   .op-stat b { display:block; font-size:1.4rem; font-weight:800; letter-spacing:-.03em; line-height:1.15; }
   .op-stat span { color:var(--muted); font-size:.68rem; }
@@ -2973,6 +3044,21 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .op-health b.warn { color:var(--sun); }
   .op-hint { color:var(--muted); font-size:.76rem; margin-top:.4rem; }
   .op-form { display:grid; gap:.15rem; margin:.6rem 0 1rem; }
+
+  /* --- insights tab --- */
+  .insight-row { display:grid; grid-template-columns:minmax(0,9rem) minmax(0,1fr) auto 4.4rem;
+         gap:.7rem; align-items:center; font-size:.76rem; }
+  .insight-row b { font-variant-numeric:tabular-nums; }
+  .insight-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .insight-trend { font-size:.7rem; font-weight:700; text-align:right; color:var(--muted);
+         font-variant-numeric:tabular-nums; }
+  .insight-trend.up { color:#8b7cff; }
+  .cap-fill.warn { background:linear-gradient(90deg,#ff9e4a,#ff5e8a);
+         box-shadow:0 0 12px rgba(255,94,138,.42); }
+  @media (max-width:720px) {
+    .insight-row { grid-template-columns:minmax(0,1fr) auto 3.6rem; }
+    .insight-row .cap-track { grid-column:1 / -1; }
+  }
   @media (max-width:1080px) { .op-heroes { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:720px) { .op-heroes, .op-grid, .op-stats { grid-template-columns:1fr; } }
   .pilot-content { display:grid; gap:1rem; }
@@ -3021,6 +3107,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <button class="tab active" onclick="showTab('properties')">Properties</button>
     <button class="tab" onclick="showTab('leads')">Leads</button>
     <button class="tab" onclick="showTab('analytics')">Analytics</button>
+    <button class="tab" onclick="showTab('insights')">Insights</button>
     <button class="tab" onclick="showTab('operations')">Operations</button>
     <button class="tab" onclick="showTab('pilot')">Pilot Program</button>
     <button class="tab sign-out" onclick="signOut()">Sign out</button>
@@ -3270,6 +3357,62 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <section class="dash-card">
         <div class="dash-label">By property · 30 days</div>
         <div class="prop-table" id="propertyAnalytics"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="insightsView" class="hidden">
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Guest questions</h2>
+        <p>What guests actually ask, and where the answers run out. Counts only — no guest names, numbers or message text.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="insightsStamp"></span>
+        <button class="ghost dash-toggle" id="insightsToggle" onclick="toggleInsightsSample()">Show demo data</button>
+      </div>
+    </div>
+    <p class="sample-banner hidden" id="insightsBanner">Demo data — these themes are generated to show what the report looks like. They are not your guests' questions.</p>
+
+    <div class="op-heroes">
+      <section class="dash-card">
+        <div class="dash-label">Guest questions · 30 days</div>
+        <div class="dash-hero" id="insightTotal">—</div>
+        <div class="dash-sub">inbound messages</div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Needed a human · 30 days</div>
+        <div class="dash-hero" id="insightNeedsHuman">—</div>
+        <div class="dash-sub" id="insightNeedsHumanShare">share of guest questions</div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Question types</div>
+        <div class="dash-hero" id="insightThemes">—</div>
+        <div class="dash-sub">distinct themes seen</div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Worst theme</div>
+        <div class="dash-hero small" id="insightWorst">—</div>
+        <div class="dash-sub" id="insightWorstShare">nothing needs a human yet</div>
+      </section>
+    </div>
+
+    <div class="dash-stack">
+      <section class="dash-card">
+        <div class="dash-label-row">
+          <span class="dash-label">Most asked · 30 days</span>
+          <span class="dash-legend">change vs the 30 days before</span>
+        </div>
+        <div id="insightThemesList" class="req-list"></div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Where the answers run out</div>
+        <p class="op-hint">Ranked by how often a question escalated or was never routed to an answer — the themes to write answers for next.</p>
+        <div id="insightUnanswered" class="req-list"></div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">By property · 30 days</div>
+        <div class="prop-table" id="insightProperties"></div>
       </section>
     </div>
   </div>
@@ -4175,7 +4318,7 @@ async function importKnowledge(input) {
 }
 
 function showTab(tab) {
-  const tabLabels = { properties: 'Properties', leads: 'Leads', analytics: 'Analytics', operations: 'Operations', pilot: 'Pilot Program' };
+  const tabLabels = { properties: 'Properties', leads: 'Leads', analytics: 'Analytics', insights: 'Insights', operations: 'Operations', pilot: 'Pilot Program' };
   document.querySelectorAll('.tab-bar .tab').forEach((t) => {
     t.classList.toggle('active', t.textContent.trim() === tabLabels[tab]);
   });
@@ -4183,6 +4326,7 @@ function showTab(tab) {
   $('listView').classList.toggle('hidden', tab !== 'properties');
   $('leadsView').classList.toggle('hidden', tab !== 'leads');
   $('analyticsView').classList.toggle('hidden', tab !== 'analytics');
+  $('insightsView').classList.toggle('hidden', tab !== 'insights');
   $('operationsView').classList.toggle('hidden', tab !== 'operations');
   $('pilotView').classList.toggle('hidden', tab !== 'pilot');
   $('leadDetailView').classList.add('hidden');
@@ -4191,7 +4335,7 @@ function showTab(tab) {
   if (tab === 'leads') {
     document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
     $('pageTitle').classList.add('hidden');
-  } else if (tab === 'analytics' || tab === 'operations' || tab === 'pilot') {
+  } else if (tab === 'analytics' || tab === 'insights' || tab === 'operations' || tab === 'pilot') {
     document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
     $('pageTitle').classList.add('hidden');
   } else {
@@ -4201,6 +4345,7 @@ function showTab(tab) {
   if (tab === 'properties') showList();
   else if (tab === 'leads') loadLeads();
   else if (tab === 'analytics') loadAnalytics();
+  else if (tab === 'insights') loadInsights();
   else if (tab === 'operations') loadOperations();
 }
 
@@ -4778,6 +4923,8 @@ function closeLeadDetail() {
 
 let analyticsSample = false;
 let operationsSample = false;
+let operationsRequest = 0;
+let insightsSample = false;
 
 function clearNode(node) {
   while (node && node.firstChild) node.removeChild(node.firstChild);
@@ -5156,7 +5303,7 @@ function renderCommonRequests(container, rows, statusNode) {
     const line = document.createElement('div');
     line.className = 'req-row';
     const label = document.createElement('span');
-    label.textContent = String(row.intentKey || 'unknown').split('_').join(' ');
+    label.textContent = themeLabel(row.intentKey);
     const track = document.createElement('div');
     track.className = 'cap-track';
     const fill = document.createElement('div');
@@ -5278,10 +5425,161 @@ function renderAnalytics(data) {
   renderSparkline($('escalationSpark'), daily.map(function (day) { return day.escalated || 0; }), '#ff5e8a', 'sparkEscalated');
 }
 
+async function loadInsights() {
+  const status = $('insightsStamp');
+  status.textContent = 'Loading insights…';
+  try {
+    const data = await api('/admin/api/insights' + (insightsSample ? '?sample=1' : ''));
+    renderInsights(data);
+  } catch (err) {
+    status.textContent = 'Could not load insights: ' + err.message;
+  }
+}
+
+function toggleInsightsSample() {
+  insightsSample = !insightsSample;
+  loadInsights();
+}
+
+function renderInsights(data) {
+  const sample = Boolean(data && data.sample);
+  insightsSample = sample;
+  $('insightsBanner').classList.toggle('hidden', !sample);
+  $('insightsToggle').textContent = sample ? 'Show real data' : 'Show demo data';
+  $('insightsStamp').textContent = sample
+    ? 'Demo dataset'
+    : 'Updated ' + new Date().toLocaleTimeString();
+
+  const totals = (data && data.totals) || {};
+  const themes = (data && data.themes) || [];
+  const unanswered = (data && data.unanswered) || [];
+
+  $('insightTotal').textContent = Number(totals.messages || 0).toLocaleString();
+  $('insightThemes').textContent = Number(totals.themes || 0).toLocaleString();
+  $('insightNeedsHuman').textContent = Number(totals.needsHuman || 0).toLocaleString();
+  $('insightNeedsHumanShare').textContent = totals.needsHumanShare === null || totals.needsHumanShare === undefined
+    ? 'share of guest questions'
+    : totals.needsHumanShare + '% of guest questions';
+
+  const worst = unanswered.length ? unanswered[0] : null;
+  $('insightWorst').textContent = worst ? worst.label : '—';
+  $('insightWorstShare').textContent = worst
+    ? worst.needsHuman.toLocaleString() + ' of ' + worst.total.toLocaleString() + ' needed a human'
+    : 'nothing needs a human yet';
+
+  renderInsightThemes($('insightThemesList'), themes);
+  renderInsightUnanswered($('insightUnanswered'), unanswered);
+  renderInsightProperties($('insightProperties'), (data && data.properties) || []);
+}
+
+function renderInsightThemes(container, themes) {
+  clearNode(container);
+  if (!themes || !themes.length) {
+    container.appendChild(emptyNote('No guest questions in the last 30 days.'));
+    return;
+  }
+  const peak = Math.max.apply(null, themes.map(function (theme) { return Number(theme.total || 0); }));
+  themes.forEach(function (theme) {
+    const row = document.createElement('div');
+    row.className = 'insight-row';
+    const label = document.createElement('span');
+    label.textContent = theme.label;
+    label.title = theme.label + ' · ' + theme.share + '% of questions';
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill';
+    fill.style.width = Math.max(4, Math.round((Number(theme.total || 0) / Math.max(1, peak)) * 100)) + '%';
+    track.appendChild(fill);
+    const count = document.createElement('b');
+    count.textContent = Number(theme.total || 0).toLocaleString();
+    const trend = document.createElement('span');
+    trend.className = 'insight-trend';
+    if (theme.deltaPct === null || theme.deltaPct === undefined) {
+      trend.textContent = '—';
+      trend.title = 'No previous period to compare with';
+    } else if (!theme.deltaPct) {
+      trend.textContent = 'flat';
+    } else {
+      if (theme.deltaPct > 0) trend.classList.add('up');
+      trend.textContent = (theme.deltaPct > 0 ? '▲ ' : '▼ ') + Math.abs(theme.deltaPct) + '%';
+      trend.title = 'vs the 30 days before';
+    }
+    row.append(label, track, count, trend);
+    container.appendChild(row);
+  });
+}
+
+function renderInsightUnanswered(container, rows) {
+  clearNode(container);
+  if (!rows || !rows.length) {
+    container.appendChild(emptyNote('Nothing in this period needed a human.'));
+    return;
+  }
+  const peak = Math.max.apply(null, rows.map(function (row) { return Number(row.needsHuman || 0); }));
+  rows.forEach(function (row) {
+    const line = document.createElement('div');
+    line.className = 'insight-row';
+    const label = document.createElement('span');
+    label.textContent = row.label;
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill warn';
+    fill.style.width = Math.max(4, Math.round((Number(row.needsHuman || 0) / Math.max(1, peak)) * 100)) + '%';
+    track.appendChild(fill);
+    const count = document.createElement('b');
+    count.textContent = Number(row.needsHuman || 0).toLocaleString();
+    const share = document.createElement('span');
+    share.className = 'insight-trend';
+    share.textContent = row.shareOfTheme + '%';
+    share.title = row.needsHuman + ' of ' + row.total + ' ' + row.label + ' questions needed a human';
+    line.append(label, track, count, share);
+    container.appendChild(line);
+  });
+}
+
+function renderInsightProperties(container, properties) {
+  clearNode(container);
+  if (!properties || !properties.length) {
+    container.appendChild(emptyNote('No live properties yet.'));
+    return;
+  }
+  const table = document.createElement('table');
+  const head = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  [['Property', ''], ['Questions', 'num'], ['Needed a human', 'num'], ['Share', 'num']].forEach(function (labels) {
+    const th = document.createElement('th');
+    th.textContent = labels[0];
+    if (labels[1]) th.className = labels[1];
+    headRow.appendChild(th);
+  });
+  head.appendChild(headRow);
+  const body = document.createElement('tbody');
+  properties.forEach(function (property) {
+    const row = document.createElement('tr');
+    const name = document.createElement('td');
+    name.textContent = property.name;
+    const total = document.createElement('td');
+    total.className = 'num';
+    total.textContent = Number(property.total || 0).toLocaleString();
+    const needs = document.createElement('td');
+    needs.className = 'num';
+    needs.textContent = Number(property.needsHuman || 0).toLocaleString() + ' (' + property.needsHumanShare + '%)';
+    const share = document.createElement('td');
+    share.className = 'num';
+    share.textContent = property.share + '%';
+    row.append(name, total, needs, share);
+    body.appendChild(row);
+  });
+  table.append(head, body);
+  container.appendChild(table);
+}
+
 async function loadOperations() {
   const metricsContainer = $('operationMetrics');
   const status = $('operationsStatus');
-  metricsContainer.textContent = '';
+  const request = ++operationsRequest;
   status.textContent = 'Loading operational metrics…';
   try {
     const [operations, propertyData, liveHealth] = await Promise.all([
@@ -5290,6 +5588,11 @@ async function loadOperations() {
       // Demo mode ships its own health block, so skip the live check entirely.
       operationsSample ? Promise.resolve(null) : api('/admin/api/health'),
     ]);
+    // A tab switch and a toggle click can leave two loads in flight. Clearing the
+    // containers before the fetch let both renders append, which showed every
+    // stat tile twice; only the newest request may write, and it clears as it
+    // writes.
+    if (request !== operationsRequest) return;
     const sample = Boolean(operations && operations.sample);
     operationsSample = sample;
     const health = (sample && operations.health ? operations.health : liveHealth) || {};
@@ -5311,6 +5614,7 @@ async function loadOperations() {
       ? 'no guest messages yet'
       : escalationRate + ' of guest messages';
 
+    metricsContainer.textContent = '';
     [
       [percentage(metrics.aiAnswers24h, metrics.aiInteractions24h), 'AI answer rate · 24h'],
       [measured(metrics.avgAILatencyMs24h, ' ms'), 'Average AI latency · 24h'],
