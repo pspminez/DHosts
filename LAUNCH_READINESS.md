@@ -16,7 +16,7 @@ This file answers one question: **what is actually left before StayXI can take a
 | One-to-one Gmail outreach (send-only, unsubscribe, suppression) | admin Leads tab | Built, **not connected** (needs Google OAuth) |
 | Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Ready to deploy to Pages |
 | Pilot program + terms | `PILOT_PROGRAM.md` | Written |
-| Lead list | `bot/leads.js` | Cleaned; **11 of 49 have a verified public email** |
+| Lead list | `bot/leads.js` | Cleaned; **12 of 49 have a verified public email** |
 
 Run `npm test` to confirm the bot logic and lead-data rules before any deploy.
 
@@ -71,7 +71,9 @@ You asked for the best *free* way. The honest answer splits into two parts: **re
 - `email` is set **only** when a business email is published on the company's own site; every such entry carries `emailSource` and `emailCheckedAt`.
 - Never guess an email from a domain or company name.
 
-**Currently 11 of 49 leads have a verified public email** (re-checked 2026-10-26): Orlando Rent A Villa, Global Vacation Rentals, Florida Spirit Vacation Homes, Casiola, Florida Vacation Homes, Orlando Vacation Homes, Homes4uu, RealJoy Vacations, Stay on 30A, The Listing Tampa, and Holiday Isle Properties.
+**Currently 12 of 49 leads have a verified public email** (re-checked 2026-10-26): Orlando Rent A Villa, Global Vacation Rentals, Florida Spirit Vacation Homes, Casiola, Florida Vacation Homes, Orlando Vacation Homes, Homes4uu, RealJoy Vacations, Stay on 30A, The Listing Tampa, Holiday Isle Properties, and Vacation Rentals Florida.
+
+Most of the remaining operators publish **no email at all** — they use a contact form, or obfuscate the address (`name(at)domain(dotted)com`). That is a deliberate anti-automation signal, so reaching those leads means their published phone or web form, not a scraped address.
 
 One lead (Florida Realty Marketplace) was **removed** because its public contact page asks not to be contacted with solicitations. Honor signals like that rather than working around them. Some sites also publish their email only in an obfuscated form (for example `info(at)example(dotted)com`); those were left out as an anti-automation signal — add them only if you judge it appropriate.
 

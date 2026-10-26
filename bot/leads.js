@@ -25,7 +25,7 @@ const prospects = [
   ["orlando-vacation-homes", "Orlando Vacation Homes", "Davenport", "877-866-7368", "https://www.orlandovacationhomes.com/", "7569 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.orlandovacationhomes.com/", "https://www.orlandovacationhomes.com/about-us/contact-information/"]],
   ["homes4uu", "Homes4uu", "Kissimmee", "877-228-6357", "https://www.homes4uu.com/", "Kissimmee / Disney area, FL", "A", ["https://www.homes4uu.com/", "https://www.homes4uu.com/contact-us/"]],
   ["tropical-escape-vacation-homes", "Tropical Escape Vacation Homes", "Orlando", "866-409-8598", "https://www.tropicalescapevacationhomes.com/", "Orlando, FL", "A", ["https://www.tropicalescapevacationhomes.com/", "https://www.tropicalescapevacationhomes.com/property-management/contact-us/"]],
-  ["vacation-rentals-florida", "Vacation Rentals Florida", "Orlando", "407-326-0370", "https://www.vacationrentalsflorida.com/", "Orlando, FL", "A", ["https://www.vacationrentalsflorida.com/"]],
+  ["vacation-rentals-florida", "Vacation Rentals Florida", "Davenport", "407-326-0370", "https://www.vacationrentalsflorida.com/", "7535 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.vacationrentalsflorida.com/", "https://vacationrentalsflorida.com/contact/"]],
 
   // --- Fit B: regional Florida operators ---
   ["casiola", "Casiola", "Orlando", "800-464-4104", "https://www.casiola.com/", "Orlando, FL", "B", ["https://www.casiola.com/", "https://www.casiola.com/contact/"]],
@@ -136,6 +136,12 @@ const publicContacts = {
     email: "customersupport@holidayisle.net",
     source: "https://www.holidayisle.net/contact-us",
     checkedAt: "2026-10-26",
+  },
+  "vacation-rentals-florida": {
+    email: "guests@vacationrentalsflorida.com",
+    source: "https://vacationrentalsflorida.com/contact/",
+    checkedAt: "2026-10-26",
+    note: "Shares its Davenport address with Florida Vacation Homes, so the two may be the same operator — avoid pitching both as if they were separate. Published inbox is guests@.",
   },
 };
 
