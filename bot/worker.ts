@@ -2938,6 +2938,25 @@ const ADMIN_HTML = `<!DOCTYPE html>
   @media (max-width:1080px) { .dash-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
   @media (max-width:720px) { .dash-grid { grid-template-columns:1fr; } .req-row { grid-template-columns:minmax(0,1fr) auto; }
          .req-row .cap-track { grid-column:1 / -1; } }
+
+  /* --- operations tab --- */
+  .op-heroes { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
+  .op-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1rem; margin-bottom:1rem; }
+  .op-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem 1.2rem; margin-top:.9rem; }
+  .op-stat b { display:block; font-size:1.4rem; font-weight:800; letter-spacing:-.03em; line-height:1.15; }
+  .op-stat span { color:var(--muted); font-size:.68rem; }
+  .op-health { list-style:none; display:grid; gap:.62rem; margin-top:.9rem; }
+  .op-health li { display:flex; align-items:center; gap:.55rem; font-size:.78rem; }
+  .op-dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .op-dot.ok { background:var(--pool); box-shadow:0 0 10px var(--pool); }
+  .op-dot.warn { background:var(--sun); box-shadow:0 0 10px var(--sun); }
+  .op-health b { margin-left:auto; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; }
+  .op-health b.ok { color:var(--pool); }
+  .op-health b.warn { color:var(--sun); }
+  .op-hint { color:var(--muted); font-size:.76rem; margin-top:.4rem; }
+  .op-form { display:grid; gap:.15rem; margin:.6rem 0 1rem; }
+  @media (max-width:1080px) { .op-heroes { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:720px) { .op-heroes, .op-grid, .op-stats { grid-template-columns:1fr; } }
   .pilot-content { display:grid; gap:1rem; }
   .pilot-content .card { margin-top:0; }
   .pilot-content h2 { font-size:1.1rem; }
@@ -3224,21 +3243,59 @@ const ADMIN_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="operationsView" class="hidden">
-    <section class="card">
-      <h2>Operational overview</h2>
-      <p class="hint">Guest and AI activity over the last 24 hours; host response time over the last 30 days. Guest phone numbers and message contents are not shown here.</p>
-      <div class="stats" id="operationMetrics"></div>
-      <h3>Health checks</h3>
-      <div class="chips" id="operationHealth" aria-live="polite"></div>
-      <p class="status" id="operationsStatus"></p>
-    </section>
-    <section class="card">
-      <h2>Test a guest message</h2>
-      <p class="hint">Simulation only: this does not call AI, send SMS, or write message logs.</p>
-      <label for="testProperty">Property</label>
-      <select id="testProperty"></select>
-      <label for="testGuestMessage">Guest message</label>
-      <textarea id="testGuestMessage" rows="3" maxlength="2000" placeholder="Where do I put the bins?"></textarea>
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Operations</h2>
+        <p>Guest and AI activity over the last 24 hours; host reply time over 30 days. Guest numbers and message contents are never shown here.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="operationsStatus">Loading operational metrics…</span>
+      </div>
+    </div>
+
+    <div class="op-heroes">
+      <section class="dash-card">
+        <div class="dash-label">Guest messages · 24h</div>
+        <div class="dash-hero" id="opGuest24h">—</div>
+        <div class="dash-sub">inbound from guests</div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Answered without a human · 24h</div>
+        <div class="dash-hero" id="opResolved">—</div>
+        <div class="dash-sub">share of guest messages</div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Escalated · 24h</div>
+        <div class="dash-hero" id="opEscalated">—</div>
+        <div class="dash-sub" id="opEscalatedRate"></div>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">Open escalations</div>
+        <div class="dash-hero" id="opOpen">—</div>
+        <div class="dash-sub">waiting on a host reply</div>
+      </section>
+    </div>
+
+    <div class="op-grid">
+      <section class="dash-card">
+        <div class="dash-label">Health checks</div>
+        <ul class="op-health" id="operationHealth" aria-live="polite"></ul>
+      </section>
+      <section class="dash-card">
+        <div class="dash-label">AI and delivery · 24h</div>
+        <div class="op-stats" id="operationMetrics"></div>
+      </section>
+    </div>
+
+    <section class="dash-card">
+      <div class="dash-label">Test a guest message</div>
+      <p class="op-hint">Simulation only: this does not call AI, send SMS, or write message logs.</p>
+      <div class="op-form">
+        <label for="testProperty">Property</label>
+        <select id="testProperty"></select>
+        <label for="testGuestMessage">Guest message</label>
+        <textarea id="testGuestMessage" rows="3" maxlength="2000" placeholder="Where do I put the bins?"></textarea>
+      </div>
       <button class="primary" id="testMessageButton" onclick="simulateGuestMessage()">Simulate message</button>
       <div id="testMessageResult" class="entry hidden" aria-live="polite"></div>
       <p class="status" id="testMessageStatus"></p>
@@ -5177,33 +5234,36 @@ async function loadOperations() {
     const percentage = (numerator, denominator) => denominator
       ? Math.round((Number(numerator || 0) / Number(denominator)) * 100) + '%'
       : '—';
-    const values = [
-      [Number(metrics.guestMessages24h || 0).toLocaleString(), 'Guest messages · 24h'],
-      [percentage(metrics.resolvedGuestMessages24h, metrics.guestMessages24h), 'Automated resolution rate · 24h'],
-      [percentage(metrics.escalations24h, metrics.guestMessages24h), 'Escalation rate · 24h'],
-      [Number(metrics.openEscalations || 0).toLocaleString(), 'Open escalations'],
-      [Number(metrics.escalations24h || 0).toLocaleString(), 'Escalations · 24h'],
-      [Number(metrics.rateLimitedMessages24h || 0).toLocaleString(), 'Rate-limit triggers · 24h'],
-      [Number(metrics.failedHostNotifications24h || 0).toLocaleString(), 'Failed host SMS · 24h'],
+    const count = (value) => Number(value || 0).toLocaleString();
+    const measured = (value, suffix) => (value === null || value === undefined ? '—' : count(value) + suffix);
+
+    $('opGuest24h').textContent = count(metrics.guestMessages24h);
+    $('opResolved').textContent = percentage(metrics.resolvedGuestMessages24h, metrics.guestMessages24h);
+    $('opEscalated').textContent = count(metrics.escalations24h);
+    $('opOpen').textContent = count(metrics.openEscalations);
+    const escalationRate = percentage(metrics.escalations24h, metrics.guestMessages24h);
+    $('opEscalatedRate').textContent = escalationRate === '—'
+      ? 'no guest messages yet'
+      : escalationRate + ' of guest messages';
+
+    [
       [percentage(metrics.aiAnswers24h, metrics.aiInteractions24h), 'AI answer rate · 24h'],
-      [Number(metrics.failedAI24h || 0).toLocaleString(), 'Failed AI interactions · 24h'],
-      [metrics.avgAILatencyMs24h === null || metrics.avgAILatencyMs24h === undefined
-        ? '—'
-        : Number(metrics.avgAILatencyMs24h).toLocaleString() + ' ms',
-      'Average AI latency · 24h'],
-      [metrics.avgHostResponseMinutes30d === null || metrics.avgHostResponseMinutes30d === undefined
-        ? '—'
-        : Number(metrics.avgHostResponseMinutes30d).toLocaleString() + ' min',
-      'Average host reply · 30d'],
-    ];
-    values.forEach(([value, label]) => {
+      [measured(metrics.avgAILatencyMs24h, ' ms'), 'Average AI latency · 24h'],
+      [count(metrics.failedAI24h), 'Failed AI interactions · 24h'],
+      [measured(metrics.avgHostResponseMinutes30d, ' min'), 'Average host reply · 30d'],
+      [count(metrics.rateLimitedMessages24h), 'Rate-limit triggers · 24h'],
+      [count(metrics.failedHostNotifications24h), 'Failed host SMS · 24h'],
+    ].forEach(([value, label]) => {
       const item = document.createElement('div');
-      item.className = 'stat';
+      item.className = 'op-stat';
       const number = document.createElement('b');
       number.textContent = value;
-      item.append(number, label);
+      const caption = document.createElement('span');
+      caption.textContent = label;
+      item.append(number, caption);
       metricsContainer.append(item);
     });
+
     const healthContainer = $('operationHealth');
     healthContainer.textContent = '';
     [
@@ -5215,11 +5275,18 @@ async function loadOperations() {
       ['Active properties missing host phone', !health.missingHostPhone],
       ['Active properties missing text number', !health.missingTextNumber],
     ].forEach(([label, healthy]) => {
-      const indicator = document.createElement('span');
-      indicator.className = 'pill ' + (healthy ? 'live' : 'pending');
-      indicator.textContent = label + ': ' + (healthy ? 'OK' : 'check');
-      healthContainer.append(indicator);
+      const item = document.createElement('li');
+      const dot = document.createElement('span');
+      dot.className = 'op-dot ' + (healthy ? 'ok' : 'warn');
+      const name = document.createElement('span');
+      name.textContent = label;
+      const state = document.createElement('b');
+      state.className = healthy ? 'ok' : 'warn';
+      state.textContent = healthy ? 'OK' : 'Check';
+      item.append(dot, name, state);
+      healthContainer.append(item);
     });
+
     const select = $('testProperty');
     const previousId = select.value;
     select.textContent = '';
