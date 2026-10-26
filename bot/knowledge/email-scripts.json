@@ -1,22 +1,24 @@
 {
+  "status": "reference_only_not_sent_by_stayxi",
+  "reviewBeforeUse": "These are drafts for an operator to personalize and send manually. StayXI does not currently send guest emails. Replace every bracketed field with property-approved details, or remove that line. Do not promise a response time or service that the operator has not confirmed.",
   "welcomeEmail": {
-    "subject": "Welcome to StayXI — Your stay starts here 🌴",
-    "body": "Hi there!\n\nWelcome to your vacation rental! We're so excited to have you stay with us.\n\nBefore you arrive, here's everything you need to know:\n\n• Gate code: [GATE_CODE]\n• WiFi network: [WIFI_NETWORK]\n• WiFi password: [WIFI_PASSWORD]\n• Checkout time: 10:00 AM\n• Trash day: Bins go out Monday night\n• Pool heater: Grey panel on lanai wall — press HEAT, set to 86°\n\nWe've also included a welcome card at the property with these details physically.\n\nIf you have any questions before or during your stay, just text us — we're here to help!\n\nEnjoy your stay!\n\nBest regards,\nStayXI Team"
+    "subject": "Your stay at [PROPERTY_NAME] — arrival information",
+    "body": "Hello [GUEST_NAME],\n\nWe look forward to welcoming you to [PROPERTY_NAME].\n\nArrival: [HOST_APPROVED_CHECK_IN_TIME_AND_INSTRUCTIONS]\nGuest text line: [CONFIRMED_GUEST_TEXT_NUMBER_AND_HOURS]\n\nPlease use the contact details in your booking confirmation for urgent or safety concerns. For immediate danger, call 911.\n\nYour host,\n[HOST_OR_OPERATOR_NAME]"
   },
   "checkoutReminderEmail": {
-    "subject": "Checkout reminder — Tomorrow is departure day 🏠",
-    "body": "Hi!\n\nJust a friendly reminder that checkout is tomorrow at 10:00 AM.\n\nPlease remember:\n• Return keys to the box by the front door\n• Strip the beds (or we'll do it for you)\n• Take trash to the curb if your pickup is tomorrow\n• Leave the AC at 78° while you're away\n\nHave a safe trip home! We hope you had a wonderful stay.\n\nStayXI Team"
+    "subject": "Checkout information for [PROPERTY_NAME]",
+    "body": "Hello [GUEST_NAME],\n\nYour host-approved checkout time is [CHECKOUT_TIME].\n\nBefore leaving: [HOST_APPROVED_CHECKOUT_STEPS]\n\nIf you have a question, use [CONFIRMED_HOST_CONTACT_METHOD].\n\nThank you,\n[HOST_OR_OPERATOR_NAME]"
   },
   "emergencyContactEmail": {
-    "subject": "We're here if you need us — Host contact info",
-    "body": "Hi!\n\nIf anything comes up during your stay, we're just a text away.\n\n• For immediate issues: Text us anytime\n• For non-urgent questions: We'll reply within a few hours\n• If we don't respond quickly: Call the host directly at [HOST_PHONE]\n\nWe want your stay to be perfect, but we understand things come up.\n\nStayXI"
+    "subject": "Contact information for your stay at [PROPERTY_NAME]",
+    "body": "Hello [GUEST_NAME],\n\nFor urgent property concerns, contact [CONFIRMED_HOST_OR_OPERATOR_CONTACT]. StayXI is not an emergency service and does not guarantee a human response. If anyone is in immediate danger, call 911.\n\n[HOST_OR_OPERATOR_NAME]"
   },
   "specialRequestEmail": {
-    "subject": "Special request confirmation — Received ✓",
-    "body": "Hi!\n\nWe received your special request: [REQUEST_DETAILS]\n\nWe'll do our best to accommodate! Here's what we can confirm:\n• [CONFIRMATIONS]\n\nIf you have any questions or need to modify your request, just text us back.\n\nBest,\nStayXI Team"
+    "subject": "We received your request about [PROPERTY_NAME]",
+    "body": "Hello [GUEST_NAME],\n\nWe received your request: [REQUEST_DETAILS]. This message confirms receipt only; it does not confirm that the request can be accommodated. We will contact you using [CONFIRMED_CONTACT_METHOD] if we can confirm it.\n\n[HOST_OR_OPERATOR_NAME]"
   },
   "feedbackRequestEmail": {
-    "subject": "How was your stay? 🌟",
-    "body": "Hi!\n\nWe hope you had a wonderful stay!\n\nWe'd love to hear your feedback — what did you love, and what could we improve?\n\nJust reply to this message or text us any time.\n\nThanks for choosing StayXI!\n\n— The Team"
+    "subject": "Feedback about your stay at [PROPERTY_NAME]",
+    "body": "Hello [GUEST_NAME],\n\nThank you for staying at [PROPERTY_NAME]. If you would like to share feedback, reply using [CONFIRMED_CONTACT_METHOD].\n\n[HOST_OR_OPERATOR_NAME]"
   }
 }

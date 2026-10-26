@@ -9,6 +9,8 @@ export interface Lead {
   emailSource: string;
   emailCheckedAt: string;
   emailNote: string;
+  pitchSource: string;
+  pitchCheckedAt: string;
   contactName: string;
   sources: string[];
   fit: "A" | "B" | "C";

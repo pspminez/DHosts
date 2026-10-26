@@ -14,14 +14,23 @@ test("every lead carries the fields the admin panel renders", () => {
     assert.ok(["A", "B", "C"].includes(lead.fit), `invalid fit for ${lead.id}`);
     assert.ok(lead.pitchEmail.subject, `missing pitch subject for ${lead.id}`);
     assert.ok(lead.pitchEmail.body, `missing pitch body for ${lead.id}`);
+    assert.match(lead.pitchSource, /^https:\/\//, `missing pitch source for ${lead.id}`);
+    assert.ok(lead.sources.includes(lead.pitchSource), `pitch source must be in public sources for ${lead.id}`);
+    assert.match(lead.pitchCheckedAt, /^\d{4}-\d{2}-\d{2}$/, `missing pitch check date for ${lead.id}`);
+    assert.ok(["High", "Medium"].includes(lead.confidence), `invalid confidence for ${lead.id}`);
     assert.ok(lead.pitchPhone, `missing phone script for ${lead.id}`);
     assert.ok(lead.followUpEmail.subject && lead.followUpEmail.body, `missing follow-up email for ${lead.id}`);
   }
 });
 
-test("lead ids are unique", () => {
+test("lead ids are unique and every email has a tailored pitch", () => {
   const ids = LEADS.map((lead) => lead.id);
   assert.equal(new Set(ids).size, ids.length);
+  for (const lead of LEADS) {
+    assert.match(lead.pitchEmail.body, new RegExp(lead.name.split(" ")[0], "i"), `pitch does not refer to ${lead.name}`);
+    assert.match(lead.pitchEmail.body, /not assum|not propos|not calling to suggest/i, `pitch should not invent a need for ${lead.id}`);
+    assert.doesNotMatch(lead.pitchEmail.body, /after.hours gap|your guests frequently|your team struggles/i);
+  }
 });
 
 test("no fabricated contact data is present", () => {
@@ -31,7 +40,11 @@ test("no fabricated contact data is present", () => {
   for (const lead of LEADS) {
     assert.doesNotMatch(lead.phone, fictionalPhone, `placeholder phone number for ${lead.id}`);
     assert.doesNotMatch(lead.email, /example|\.pm$|\.test$/i, `suspicious email for ${lead.id}`);
+    assert.ok(lead.sources.every((source) => /^https:\/\//.test(source)), `invalid source URL for ${lead.id}`);
+    assert.equal(new URL(lead.website).protocol, "https:", `website must use HTTPS for ${lead.id}`);
   }
+  assert.equal(LEADS.find((lead) => lead.id === "an-owners-dream-management")?.email, "", "do not use the guest-facing reservation inbox for outreach");
+  assert.equal(LEADS.find((lead) => lead.id === "an-owners-dream-management")?.confidence, "Medium");
 });
 
 test("a verified email always carries a public source and a check date", () => {
@@ -47,13 +60,31 @@ test("a verified email always carries a public source and a check date", () => {
   }
 });
 
+test("property knowledge templates and reference scripts contain no sample credentials or claims of live features", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const template = JSON.parse(await readFile(new URL("./knowledge/template.json", import.meta.url), "utf8"));
+  const emailScripts = JSON.parse(await readFile(new URL("./knowledge/email-scripts.json", import.meta.url), "utf8"));
+  const phoneScripts = JSON.parse(await readFile(new URL("./knowledge/phone-scripts.json", import.meta.url), "utf8"));
+  assert.equal(template.status, "TEMPLATE_ONLY_NOT_FOR_LIVE_USE");
+  assert.deepEqual(template.secrets, []);
+  assert.deepEqual(template.answers, [], "unconfirmed sample answers must not be importable as active property knowledge");
+  assert.ok(template.answerExamples.every((answer) => /\[[A-Z0-9_]+\]/.test(answer.reply)), "example answers must contain a host-confirmed placeholder");
+  assert.equal(emailScripts.status, "reference_only_not_sent_by_stayxi");
+  assert.equal(phoneScripts.status, "reference_only_not_live");
+  const sampleText = JSON.stringify({ emailScripts, phoneScripts });
+  assert.doesNotMatch(sampleText, /4821|9911|SUNSHINE2026|KIDS-SWIMMING/i);
+  assert.match(emailScripts.reviewBeforeUse, /does not currently send guest emails/i);
+  assert.match(phoneScripts.reviewBeforeUse, /does not provide phone answering/i);
+});
+
 test("pitch emails use only the allowed sender placeholders", () => {
-  const allowed = new Set(["[Your Name]", "[Your callback number]", "[Name]"]);
+  const allowed = new Set(["[Your Name]", "[Your callback number]"]);
   for (const lead of LEADS) {
     const text = lead.pitchEmail.subject + "\n" + lead.pitchEmail.body;
-    assert.ok(text.includes(lead.name), `pitch does not name ${lead.id}`);
     for (const match of text.matchAll(/\[[^\]]+\]/g)) {
       assert.ok(allowed.has(match[0]), `unexpected placeholder ${match[0]} in ${lead.id}`);
     }
+    if (!lead.email) assert.match(lead.pitchEmail.body, /contact-form draft/i, `no-email pitch should be labeled as form-only for ${lead.id}`);
+    assert.match(lead.followUpEmail.body, /Following up once|Following up once on/i);
   }
 });

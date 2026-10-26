@@ -144,8 +144,10 @@ async function runPage({ html, script, routes }) {
   };
 
   const calls = [];
-  const fetchStub = async (url) => {
+  const requests = [];
+  const fetchStub = async (url, init) => {
     calls.push(url);
+    requests.push(((init && init.method) || "GET") + " " + url);
     if (!(url in routes)) {
       return { ok: false, status: 404, statusText: "Not Found", json: async () => ({ error: "no route " + url }) };
     }
@@ -169,10 +171,12 @@ async function runPage({ html, script, routes }) {
     "showTab: showTab",
     "setProperties: (v) => { properties = v; }",
     "setLeads: (v) => { leads = v; }",
+    "setCurrent: (v) => { current = v; }",
+    "importKnowledge: importKnowledge",
   ].join(", ");
 
   const factory = new Function(
-    "document", "window", "location", "localStorage", "navigator", "Blob", "URL", "fetch", "console", "globalThis",
+    "document", "window", "location", "localStorage", "navigator", "Blob", "URL", "fetch", "console", "confirm", "globalThis",
     script + "\n;globalThis.__exports = {" + exported + "};",
   );
   factory(
@@ -185,12 +189,13 @@ async function runPage({ html, script, routes }) {
     { createObjectURL: () => "blob:x", revokeObjectURL() {} },
     fetchStub,
     console,
+    () => true,
     globalThis,
   );
 
   const helpers = globalThis.__exports;
   delete globalThis.__exports;
-  return { registry, navItems, calls, helpers };
+  return { registry, navItems, calls, requests, helpers };
 }
 
 const checks = [];
@@ -251,6 +256,34 @@ const PROPERTIES = [
   { id: "sunset", name: "Sunset Villa", active: true, asked: 168, escalated: 14, answerCount: 12, twilioNumber: "+18635550142", openEscalations: 2, lastActivity: "2026-10-26T09:00:00Z" },
   { id: "harbor", name: "Harbor House", active: false, asked: 0, escalated: 0, answerCount: 0, twilioNumber: "", openEscalations: 0, lastActivity: null },
 ];
+const SUNSET_PROPERTY = {
+  id: "SUNSET",
+  name: "Sunset Villa",
+  address: "",
+  hostId: "host_dana",
+  twilioNumber: "+18635550142",
+  rateLimitReply: "Let me get the host to help you with this.",
+  unknownReply: "Good question — let me check with your host and get right back to you.",
+  active: 1,
+  secrets: [{ topic: "Gate code", keywords: ["gate"], reply: "Your gate code is 4821." }],
+  answers: [{ topic: "Bins", keywords: ["bins"], reply: "Bins go out Monday night." }],
+  answerCount: 1,
+  checkinTime: "16:00",
+  checkoutTime: "10:00",
+  wifiSsid: "SunsetGuest",
+  accessInstructions: "Gate code at the keypad.",
+  emergencyContacts: "911",
+  policies: [],
+  escalationRules: [],
+  asked: 168,
+  escalated: 14,
+  openEscalations: 2,
+  lastActivity: "2026-10-26T09:00:00Z",
+  hostPhone: "+18635550100",
+  hostEmail: "host@example.com",
+  criticalChangesPending: true,
+};
+
 const LEADS = [
   { name: "Real Joy Vacations", location: "Destin, FL", phone: "+18505551234", email: "stay@realjoy.com", website: "https://www.realjoy.com", leadStatus: "new", fit: "A", contactName: "Dana", propertyType: "Vacation rental operator", address: "1 Main St" },
   { name: "No Email Co", location: "Davenport, FL", phone: "", email: "", website: "https://x.com", leadStatus: "contacted", fit: "C", contactName: "", propertyType: "Vacation rental operator", address: "" },
@@ -277,6 +310,7 @@ const LEADS = [
     "/admin/api/features": { insights: true },
     "/admin/api/health": HEALTH,
     "/admin/api/properties": { properties: PROPERTIES },
+    "/admin/api/property?id=SUNSET": SUNSET_PROPERTY,
   };
 
   // ---- shell: every view has a nav item, and showTab marks exactly one -----
@@ -315,6 +349,72 @@ const LEADS = [
   page.helpers.renderLeads();
   check("lead rows rendered", page.registry.leadList.children.length, 2);
   check("lead summary", page.registry.leadsSummary.textContent, "1 of 2 leads have a verified public email");
+
+  // ---- knowledge import ---------------------------------------------------
+  // This path had no coverage at all. A wrong shape here replaces a property's
+  // knowledge, and the staged-critical-changes rule is the only thing standing
+  // between an import and a guest getting a stale gate code.
+  const importFile = (payload, size) => {
+    const input = {
+      files: [
+        {
+          name: "sunset-knowledge.json",
+          size: size === undefined ? 200 : size,
+          text: async () => (typeof payload === "string" ? payload : JSON.stringify(payload)),
+        },
+      ],
+      value: "C:\\fakepath\\sunset-knowledge.json",
+    };
+    return input;
+  };
+
+  const importer = await runPage({ html, script, routes });
+  importer.helpers.setCurrent({ id: "SUNSET", name: "Sunset Villa" });
+  const stagedFile = importFile({
+    secrets: [],
+    answers: [{ topic: "Bins", keywords: ["bins"], reply: "Bins go out Monday night." }],
+  });
+  await importer.helpers.importKnowledge(stagedFile);
+  check(
+    "import sends secrets and answers to the property endpoint",
+    importer.requests.includes("PUT /admin/api/property?id=SUNSET"),
+    true,
+  );
+  check(
+    "import tells the host critical knowledge is staged",
+    importer.registry.knowledgeStatus.textContent,
+    "Imported. Critical knowledge is staged and requires review before publishing.",
+  );
+  check("import clears the file input so the same file can be picked again", stagedFile.value, "");
+
+  const savedImport = await runPage({
+    html,
+    script,
+    routes: { ...routes, "/admin/api/property?id=SUNSET": { ...SUNSET_PROPERTY, criticalChangesPending: false } },
+  });
+  savedImport.helpers.setCurrent({ id: "SUNSET", name: "Sunset Villa" });
+  await savedImport.helpers.importKnowledge(importFile({ secrets: [], answers: [] }));
+  check("import says so when nothing needed staging", savedImport.registry.knowledgeStatus.textContent, "Imported and saved.");
+
+  const badImport = await runPage({ html, script, routes });
+  badImport.helpers.setCurrent({ id: "SUNSET", name: "Sunset Villa" });
+  await badImport.helpers.importKnowledge(importFile({ secrets: {}, answers: [] }));
+  check(
+    "import rejects a file without secrets and answers arrays",
+    badImport.registry.knowledgeStatus.textContent,
+    "Expected a JSON object with secrets and answers arrays.",
+  );
+  check(
+    "a rejected import sends nothing to the server",
+    badImport.requests.filter((request) => request.startsWith("PUT")).length,
+    0,
+  );
+  await badImport.helpers.importKnowledge(importFile({ secrets: [], answers: [] }, 2 * 1024 * 1024));
+  check(
+    "import refuses a file over 1 MB",
+    badImport.registry.knowledgeStatus.textContent,
+    "Knowledge file must be 1 MB or smaller.",
+  );
 
   // ---- analytics ----------------------------------------------------------
   // Added after a screenshot showed "themeLabel is not defined": the page script

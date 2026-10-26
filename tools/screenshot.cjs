@@ -143,6 +143,7 @@ function connect(url) {
   const { sampleAnalytics } = await import("../bot/analytics.js");
   const { sampleOperations } = await import("../bot/operations.js");
   const { sampleInsights } = await import("../bot/insights.js");
+  const { LEADS } = await import("../bot/leads.js");
   const now = new Date();
 
   const routes = {
@@ -155,6 +156,9 @@ function connect(url) {
     "/admin/api/health": HEALTH,
     "/admin/api/features": { insights: true },
     "/admin/api/properties": { properties: PROPERTIES },
+    // The real prospect list: a screenshot of empty rows proves nothing.
+    "/admin/api/leads": { leads: LEADS, progress: {} },
+    "/admin/api/gmail/status": { ready: false, missing: ["GMAIL_CLIENT_ID"], connected: false },
   };
 
   // Shim before the page script so its boot-time calls see it.

@@ -16,62 +16,14 @@
 
 // [id, name, location, phone, website, address, fit, sources]
 const prospects = [
-  // --- Fit A: independent / small Central Florida operators ---
-  ["orlando-rent-a-villa", "Orlando Rent A Villa", "Davenport", "863-420-3332", "https://www.orlandorentavilla.com/", "Davenport, FL", "A", ["https://www.orlandorentavilla.com/", "https://www.orlandorentavilla.com/contact-us/"]],
-  ["global-vacation-rentals", "Global Vacation Rentals", "Winter Garden", "407-387-3030", "https://www.globalresorthomes.com/", "12601 Avalon Road, Winter Garden, FL 34787", "A", ["https://www.globalresorthomes.com/", "https://www.globalresorthomes.com/contact/"]],
-  ["florida-spirit-vacation-homes", "Florida Spirit Vacation Homes", "ChampionsGate", "407-396-4441", "https://www.floridaspiritvacationhome.com/", "1503 Legends Blvd., ChampionsGate, FL 33896", "A", ["https://www.floridaspiritvacationhome.com/", "https://www.floridaspiritvacationhome.com/contact-us/"]],
-  ["magical-vacation-homes", "Magical Vacation Homes", "Davenport", "407-891-4323", "https://www.magicalvacationhomes.com/", "7555 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.magicalvacationhomes.com/", "https://www.magicalvacationhomes.com/contact/"]],
-  ["florida-vacation-homes", "Florida Vacation Homes", "Davenport", "407-988-0710", "https://www.floridavacationhomes.com/", "7535 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.floridavacationhomes.com/", "https://www.floridavacationhomes.com/contact/"]],
-  ["orlando-vacation-homes", "Orlando Vacation Homes", "Davenport", "877-866-7368", "https://www.orlandovacationhomes.com/", "7569 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.orlandovacationhomes.com/", "https://www.orlandovacationhomes.com/about-us/contact-information/"]],
-  ["homes4uu", "Homes4uu", "Kissimmee", "877-228-6357", "https://www.homes4uu.com/", "Kissimmee / Disney area, FL", "A", ["https://www.homes4uu.com/", "https://www.homes4uu.com/contact-us/"]],
-  ["tropical-escape-vacation-homes", "Tropical Escape Vacation Homes", "Orlando", "866-409-8598", "https://www.tropicalescapevacationhomes.com/", "Orlando, FL", "A", ["https://www.tropicalescapevacationhomes.com/", "https://www.tropicalescapevacationhomes.com/property-management/contact-us/"]],
-  ["vacation-rentals-florida", "Vacation Rentals Florida", "Davenport", "407-326-0370", "https://www.vacationrentalsflorida.com/", "7535 Osceola Polk Line Rd., Davenport, FL 33896", "A", ["https://www.vacationrentalsflorida.com/", "https://vacationrentalsflorida.com/contact/"]],
-
-  // --- Fit B: regional Florida operators ---
-  ["casiola", "Casiola", "Orlando", "800-464-4104", "https://www.casiola.com/", "Orlando, FL", "B", ["https://www.casiola.com/", "https://www.casiola.com/contact/"]],
-  ["rentyl-resorts", "Rentyl Resorts", "Orlando", "321-888-3509", "https://www.rentylresorts.com/", "Orlando, FL", "B", ["https://www.rentylresorts.com/"]],
-  ["top-villas", "Top Villas", "Orlando", "407-495-2595", "https://www.topvillas.com/", "Orlando, FL", "B", ["https://www.topvillas.com/"]],
-  ["sunhost-resorts", "SunHost Resorts", "Madeira Beach", "800-997-1457", "https://www.sunhostresorts.com/", "Madeira Beach, FL", "B", ["https://www.sunhostresorts.com/"]],
-  ["resort-rentals", "Resort Rentals", "St. Pete Beach", "727-363-3336", "https://www.resortrentals.us/", "St. Pete Beach, FL", "B", ["https://www.resortrentals.us/"]],
-  ["southern-vacation-rentals", "Southern Vacation Rentals", "Gulf Breeze", "800-406-5714", "https://www.southernresorts.com/", "Gulf Breeze, FL", "B", ["https://www.southernresorts.com/"]],
-  ["royal-destinations", "Royal Destinations", "Santa Rosa Beach", "850-534-0841", "https://www.royaldestinations.com/", "Santa Rosa Beach, FL", "B", ["https://www.royaldestinations.com/"]],
-  ["realjoy-vacations", "RealJoy Vacations", "Destin", "850-974-0974", "https://www.realjoy.com/", "1008 Airport Rd STE F, Destin, FL 32541", "B", ["https://www.realjoy.com/", "https://www.realjoy.com/realjoy-contact-us"]],
-  ["ocean-reef-resorts", "Ocean Reef Resorts", "Destin", "800-782-8736", "https://www.oceanreefresorts.com/", "Destin, FL", "B", ["https://www.oceanreefresorts.com/"]],
-  ["holiday-isle-properties", "Holiday Isle Properties", "Destin", "800-837-5102", "https://www.holidayisle.net/", "Destin, FL", "B", ["https://www.holidayisle.net/"]],
-  ["newman-dailey-resort-properties", "Newman-Dailey Resort Properties", "Destin", "850-837-1071", "https://www.destinvacation.com/", "Destin, FL", "B", ["https://www.destinvacation.com/"]],
-  ["benchmark-management", "Benchmark Management", "Santa Rosa Beach", "850-745-4555", "https://www.benchmark30a.com/", "Santa Rosa Beach, FL", "B", ["https://www.benchmark30a.com/"]],
-  ["stay-on-30a", "Stay on 30A", "Santa Rosa Beach", "850-739-1365", "https://www.stayon30a.com/", "Santa Rosa Beach, FL", "B", ["https://www.stayon30a.com/"]],
-  ["best-beach-getaways", "Best Beach Getaways", "Panama City Beach", "888-567-5150", "https://www.bestbeachgetaways.com/", "Panama City Beach, FL", "B", ["https://www.bestbeachgetaways.com/"]],
-  ["panhandle-getaways", "Panhandle Getaways", "Panama City Beach", "850-588-8125", "https://www.panhandlegetaways.com/", "Panama City Beach, FL", "B", ["https://www.panhandlegetaways.com/"]],
-  ["royal-shell", "Royal Shell", "Fort Myers", "866-341-7799", "https://www.royalshell.com/", "Fort Myers, FL", "B", ["https://www.royalshell.com/"]],
-  ["naples-vacation-properties", "Naples Vacation Properties", "Naples", "239-206-3375", "https://www.naplesvacationproperties.com/", "Naples, FL", "B", ["https://www.naplesvacationproperties.com/"]],
-  ["siesta-key-luxury-rental-properties", "Siesta Key Luxury Rental Properties", "Sarasota", "941-349-1125", "https://www.siestakeyluxuryrentalproperties.com/", "Sarasota, FL", "B", ["https://www.siestakeyluxuryrentalproperties.com/"]],
-  ["anna-maria-island-accommodations", "Anna Maria Island Accommodations", "Holmes Beach", "941-779-0733", "https://www.annamariaislandaccommodations.com/", "Holmes Beach, FL", "B", ["https://www.annamariaislandaccommodations.com/"]],
-  ["beachside-management", "Beachside Management", "Siesta Key", "941-203-8058", "https://www.beachsidemanagement.com/", "Siesta Key, FL", "B", ["https://www.beachsidemanagement.com/"]],
-  ["sand-key-realty", "Sand Key Realty", "Clearwater", "727-443-0032", "https://www.sandkey.com/", "Clearwater, FL", "B", ["https://www.sandkey.com/"]],
-  ["rent-key-west-vacations", "Rent Key West Vacations", "Key West", "800-833-7368", "https://www.rentkeywest.com/", "Key West, FL", "B", ["https://www.rentkeywest.com/"]],
-  ["last-key-realty", "Last Key Realty", "Key West", "305-292-6266", "https://www.lastkeyrealty.com/", "Key West, FL", "B", ["https://www.lastkeyrealty.com/"]],
-  ["key-west-hideaways", "Key West Hideaways", "Key West", "305-296-9090", "https://www.keywesthideaways.com/", "Key West, FL", "B", ["https://www.keywesthideaways.com/"]],
-  ["florida-rental-by-owners", "Florida Rental By Owners", "Bradenton", "877-735-2726", "https://www.floridarentalbyowners.com/", "Bradenton, FL", "B", ["https://www.floridarentalbyowners.com/"]],
-  // Florida Realty Marketplace (Lakeland) was removed: its contact page asks not to be
-  // contacted with solicitations, so it is excluded from outreach.
-  ["watson-realty", "Watson Realty Corp.", "Jacksonville", "866-243-8193", "https://www.watsonrealtycorp.com/", "Jacksonville, FL", "B", ["https://www.watsonrealtycorp.com/"]],
-  ["rent-with-integrity", "Rent with Integrity", "Tallahassee", "850-778-2010", "https://www.rentwithintegrity.com/", "Tallahassee, FL", "B", ["https://www.rentwithintegrity.com/"]],
-  ["tampa-property-management", "The Listing Tampa", "Tampa", "813-796-5200", "https://www.tampapropertymanagement.net/", "401 E. Jackson St. Suite 3300, Tampa, FL 33602", "B", ["https://www.tampapropertymanagement.net/", "https://tampapropertymanagement.net/contact-us/"]],
-  ["homevest", "Homevest", "Orlando", "407-897-5400", "https://www.homevest.com/", "Orlando, FL", "B", ["https://www.homevest.com/"]],
-  ["the-realty-medics", "The Realty Medics", "Orlando", "321-947-7653", "https://www.therealtymedics.com/", "Orlando, FL", "B", ["https://www.therealtymedics.com/"]],
-
-  // --- Fit C: large national / institutional operators (low priority) ---
-  ["vacasa-orlando", "Vacasa", "Orlando", "800-544-0300", "https://www.vacasa.com/", "Orlando, FL", "C", ["https://www.vacasa.com/", "https://www.vacasa.com/usa/Florida/Orlando"]],
-  ["vtrips", "VTrips", "St. Augustine", "844-334-4588", "https://www.vtrips.com/", "St. Augustine, FL", "C", ["https://www.vtrips.com/"]],
-  ["firstservice-residential", "FirstService Residential", "Miami", "855-333-5149", "https://www.fsresidential.com/", "Miami, FL", "C", ["https://www.fsresidential.com/"]],
-  ["kw-property-management", "KW Property Management & Consulting", "Miami", "305-476-9188", "https://www.kwpmc.com/", "Miami, FL", "C", ["https://www.kwpmc.com/"]],
-  ["campbell-property-management", "Campbell Property Management", "Boca Raton", "954-427-8770", "https://www.campbellpropertymanagement.com/", "Boca Raton, FL", "C", ["https://www.campbellpropertymanagement.com/"]],
-  ["all-county-medallion", "All County Medallion Property Management", "Fort Myers", "239-204-4171", "https://www.allcountymedallion.com/", "Fort Myers, FL", "C", ["https://www.allcountymedallion.com/"]],
-  ["tricon-residential", "Tricon Residential", "Miami", "844-874-2661", "https://www.triconresidential.com/", "Miami, FL", "C", ["https://www.triconresidential.com/"]],
-  ["wrightdavis-property-management", "WrightDavis Property Management", "Tampa", "813-251-0001", "https://www.wrightdavis.com/", "Tampa, FL", "C", ["https://www.wrightdavis.com/"]],
-  ["rent-solutions", "Rent Solutions", "Tampa", "813-579-5597", "https://www.rentsolutions.com/", "Tampa, FL", "C", ["https://www.rentsolutions.com/"]],
-  ["sentry-management", "Sentry Management", "Longwood", "844-550-0336", "https://www.sentrymgt.com/", "Longwood, FL", "C", ["https://www.sentrymgt.com/"]],
+  ["orlando-rent-a-villa", "Orlando Rent A Villa", "Davenport / Central Florida", "863-420-3332 ext. 7001", "https://www.orlandorentavilla.com/", "", "A", ["https://www.orlandorentavilla.com/property-management/", "https://www.orlandorentavilla.com/contact-us/"]],
+  ["florida-spirit-vacation-homes", "Florida Spirit Vacation Homes", "ChampionsGate / Central Florida", "407-396-4441", "https://www.floridaspiritvacationhome.com/", "1503 Legends Blvd., ChampionsGate, FL 33896", "A", ["https://www.floridaspiritvacationhome.com/about-us/", "https://www.floridaspiritvacationhome.com/contact-us/"]],
+  ["funstay-florida", "FunStay Florida", "Davenport / Central Florida", "321-430-8681", "https://www.funstayflorida.com/", "", "A", ["https://www.funstayflorida.com/property-management/", "https://www.funstayflorida.com/contact/"]],
+  ["grand-welcome-greater-orlando", "Grand Welcome of Greater Orlando", "Davenport / Orlando / Kissimmee", "407-698-5870", "https://www.orlandohost.com/", "194 Laurel Ridge Pass, Davenport, FL 33897", "A", ["https://www.orlandohost.com/contact", "https://www.orlandohost.com/about"]],
+  ["an-owners-dream-management", "An Owners Dream Management", "Davenport / Disney area", "863-588-3944", "https://anownersdream.com/", "", "A", ["https://anownersdream.com/aboutus.aspx", "https://anownersdream.com/contactus.aspx", "https://visitcentralflorida.org/featured/an-owners-dream-management/"]],
+  ["revavista-vacation-homes", "RevaVista Vacation Homes", "Orlando / Davenport / ChampionsGate", "407-978-0478", "https://revavista.com/", "924 N Magnolia Avenue, Suite 202, Orlando, FL 32803", "A", ["https://revavista.com/contact/", "https://revavista.com/"]],
+  ["reunion-vacation-homes", "Reunion Vacation Homes", "Davenport / Reunion / Kissimmee", "321-323-7810", "https://www.reunionvacationhomes.com/", "7531 Osceola Polk Line Rd, Davenport, FL 33896", "B", ["https://www.reunionvacationhomes.com/contact-us/", "https://www.reunionvacationhomes.com/property-management/"]],
+  ["mccormack-realty-kissimmee", "McCormack Realty", "Kissimmee", "407-933-2367", "https://propertymanagementkissimmee.com/", "1627 E Vine St Suite 134, Kissimmee, FL 34744", "C", ["https://propertymanagementkissimmee.com/contact/"]],
 ];
 
 // Business emails published on the company's own site, re-checked 2026-10-26.
@@ -82,71 +34,115 @@ const publicContacts = {
     contactName: "Lloyd",
     source: "https://www.orlandorentavilla.com/contact-us/",
     checkedAt: "2026-10-26",
-    note: "Listed as the property-management contact; the general inbox is info@orlandorentavilla.com.",
-  },
-  "global-vacation-rentals": {
-    email: "hello@globalfl.com",
-    source: "https://www.globalresorthomes.com/contact/",
-    checkedAt: "2026-10-26",
+    note: "Official page lists Lloyd as the property-management contact; verify the address again before sending.",
   },
   "florida-spirit-vacation-homes": {
     email: "info@floridaspirit.com",
     source: "https://www.floridaspiritvacationhome.com/contact-us/",
     checkedAt: "2026-10-26",
+    note: "Published general contact inbox, not a named decision-maker; confirm it is an appropriate business contact before sending.",
   },
-  "casiola": {
-    email: "info@casiola.com",
-    source: "https://www.casiola.com/contact/",
+  "funstay-florida": {
+    email: "Mike@FunStayHomes.com",
+    contactName: "Mike Chen",
+    confidence: "Medium",
+    source: "https://www.funstayflorida.com/property-management/",
     checkedAt: "2026-10-26",
+    note: "Published on the property-management page with Mike Chen identified as owner. Its management page lists 321-430-8681 while the official contact page lists 503-888-8070; confirm the right contact route and number before calling.",
   },
-  "florida-vacation-homes": {
-    email: "rentals@floridavacationhomes.com",
-    source: "https://www.floridavacationhomes.com/contact/",
+  "grand-welcome-greater-orlando": {
+    email: "hello@orlandohost.com",
+    contactName: "Jay Breitlow",
+    source: "https://www.orlandohost.com/contact",
     checkedAt: "2026-10-26",
+    note: "Official contact page identifies Jay Breitlow as owner and operator.",
   },
-  "orlando-vacation-homes": {
-    email: "info@orlandovacationhomes.com",
-    source: "https://www.orlandovacationhomes.com/about-us/contact-information/",
+  "revavista-vacation-homes": {
+    email: "info@revavista.com",
+    source: "https://revavista.com/contact/",
     checkedAt: "2026-10-26",
+    note: "General inbox published on the official contact page next to the office phone. The page says the local team answers owners and guests around the clock, in English, French and Spanish; confirm it reaches the owner-facing team before sending.",
   },
-  "homes4uu": {
-    email: "kristyn.homes4uu@gmail.com",
-    contactName: "Kristyn",
-    source: "https://www.homes4uu.com/contact-us/",
-    checkedAt: "2026-10-26",
+  "reunion-vacation-homes": {
+    confidence: "Medium",
+    note: "No management email on the official contact page, which publishes the office address and phone lines only (321-323-7810, toll free 1-855-453-5400). Call or use the site form; do not guess an address from the domain.",
   },
-  "realjoy-vacations": {
-    email: "stay@realjoy.com",
-    source: "https://www.realjoy.com/realjoy-contact-us",
-    checkedAt: "2026-10-26",
+  "mccormack-realty-kissimmee": {
+    confidence: "Medium",
+    note: "Official contact page publishes US and UK phone lines and the office address, not a management email. Owners are directed to their portal; the phone line is the appropriate first contact.",
   },
-  "stay-on-30a": {
-    email: "propertymanagement@stayon30a.com",
-    source: "https://stayon30a.com/contact-us",
-    checkedAt: "2026-10-26",
-    note: "Listed under Property Management; the guest/vacation inbox is vacations@stayon30a.com.",
+  "an-owners-dream-management": {
+    confidence: "Medium",
+    note: "No verified business email on its official contact page. The public Visit Central Florida listing shows reservations@anownersdream.com, which appears guest-facing; use the published phone or contact form instead of pitching that inbox. The phone number is verified from that listing, not the official site.",
   },
-  "tampa-property-management": {
-    email: "info@thelistingrem.com",
-    source: "https://tampapropertymanagement.net/contact-us/",
-    checkedAt: "2026-10-26",
-    note: "The site now brands as The Listing Tampa; this is the address published on its contact page.",
+};
+
+// Each draft cites one fact visible on the prospect's official site. It is an
+// invitation to discovery, not a claim that the prospect has a problem or needs
+// automation. Follow-ups are manual and only after the operator reviews context.
+const pitches = {
+  "orlando-rent-a-villa": {
+    source: "https://www.orlandorentavilla.com/property-management/",
+    subject: "A guest-text workflow question for Orlando Rent A Villa",
+    email: `Hello Lloyd,\n\nI saw Orlando Rent A Villa describes property management across Davenport, Reunion, ChampionsGate, and Clermont, with a local team coordinating property care. I’m building StayXI, a guest-initiated text line that answers routine questions only from operator-approved information and routes uncertain questions to the team.\n\nI’m not assuming your operation has a gap. Would you be open to a 15-minute discovery conversation about how guest questions reach your team today? If there’s a fit after that, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nIf this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw Orlando Rent A Villa's property-management page lists Davenport, Reunion, ChampionsGate, and Clermont, and describes local property-care coordination. I'm calling to ask how your team currently handles routine guest questions by text—not to assume there's a problem or replace your service.`,
+    followup: `Hello Lloyd,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for operator feedback, not assuming you need another tool. If a short conversation would be useful, I’d be glad to arrange one; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
   },
-  "holiday-isle-properties": {
-    email: "customersupport@holidayisle.net",
-    source: "https://www.holidayisle.net/contact-us",
-    checkedAt: "2026-10-26",
+  "florida-spirit-vacation-homes": {
+    source: "https://www.floridaspiritvacationhome.com/about-us/",
+    subject: "A routine guest-text question for Florida Spirit",
+    email: `Hello Florida Spirit team,\n\nI read that Florida Spirit has served Central Florida since 2001 and is available seven days a week, including for urgent needs. StayXI is deliberately narrower: a guest-initiated text line for routine property questions, using information an operator approves and routing uncertainty to the team. It is not emergency coverage.\n\nI’m not assuming this would improve your existing service. Would someone on the property-management team be open to a 15-minute discovery conversation about guest-question workflows? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nIf this inbox isn’t appropriate, please point me to a public business contact—or let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw Florida Spirit describes local vacation-rental management and seven-day availability, including 24/7 urgent needs. StayXI is not emergency coverage; I’m asking whether someone from property management would be willing to give feedback on a separate routine-question text workflow.`,
+    followup: `Hello Florida Spirit team,\n\nFollowing up once on my question about routine guest-text workflows. I recognize your site describes existing seven-day and urgent support; I’m not proposing to replace it. If a brief discovery conversation is useful, I’d be glad to arrange one. Otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
   },
-  "vacation-rentals-florida": {
-    email: "guests@vacationrentalsflorida.com",
-    source: "https://vacationrentalsflorida.com/contact/",
-    checkedAt: "2026-10-26",
-    note: "Shares its Davenport address with Florida Vacation Homes, so the two may be the same operator — avoid pitching both as if they were separate. Published inbox is guests@.",
+  "funstay-florida": {
+    source: "https://www.funstayflorida.com/property-management/",
+    subject: "A guest-text workflow question for Mike at FunStay",
+    email: `Hello Mike,\n\nI saw FunStay describes full-service management with guest messaging and 24/7 support. Since you already offer that, I’m not assuming there’s a problem to solve or suggesting a replacement. I’m building StayXI as a narrower text line that answers routine property questions from host-approved information and routes uncertain questions to the operator.\n\nWould you be open to a 15-minute discovery conversation and candid feedback on whether that could complement an existing operation—or simply not be useful? If there’s a fit, I’m testing one property for 30 days at $49, setup included, with no automatic renewal.\n\nIf not relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `May I speak with Mike Chen? I saw FunStay already describes full-service guest messaging and 24/7 support. I'm not calling to suggest that you lack coverage; I'm looking for an operator's candid view of a narrow, approved-answer text workflow and whether it adds anything to a service like yours.`,
+    followup: `Hello Mike,\n\nFollowing up once on my note about a routine-question text workflow. I saw FunStay already offers guest messaging and 24/7 support, so I’m not assuming a need. If you’re open to a short feedback conversation, I’d appreciate it; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
+  },
+  "grand-welcome-greater-orlando": {
+    source: "https://www.orlandohost.com/contact",
+    subject: "A guest-text workflow question for Grand Welcome of Greater Orlando",
+    email: `Hello Jay,\n\nYour contact page describes Grand Welcome of Greater Orlando as a boutique, one-on-one vacation-rental management service for Orlando, Davenport, and Kissimmee. I’m building StayXI, a guest-initiated text line that answers routine property questions from information the operator approves and routes uncertain questions to the team.\n\nI’m not assuming your current process needs changing. Would you be open to a 15-minute discovery conversation about how routine guest questions reach your team? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nIf this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `May I speak with Jay Breitlow? I saw Grand Welcome of Greater Orlando describes its service as boutique and one-on-one across Orlando, Davenport, and Kissimmee. I'm asking for feedback on a small guest-text workflow, not assuming you need automation or want to change your existing service.`,
+    followup: `Hello Jay,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for a brief discovery conversation, not assuming your current process needs to change. If useful, I’d be glad to arrange a time; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
+  },
+  "revavista-vacation-homes": {
+    source: "https://revavista.com/contact/",
+    subject: "A guest-text workflow question for RevaVista Vacation Homes",
+    email: `Hello RevaVista team,\n\nYour contact page describes a local team that answers owners quickly and guests around the clock, covering Orlando, Kissimmee, Davenport, Clermont and ChampionsGate in English, French and Spanish. I’m building StayXI, a guest-initiated text line that answers routine property questions only from operator-approved information and routes anything uncertain to your team.\n\nI’m not assuming your current process needs changing. Would someone on the owner-facing side be open to a 15-minute discovery conversation about how routine guest questions reach your team today? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nIf this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw RevaVista's contact page describes a local team answering owners quickly and guests around the clock across Orlando, Kissimmee, Davenport, Clermont and ChampionsGate. I'm calling to ask how routine guest questions reach your team today—not to assume there's a problem or replace your existing service.`,
+    followup: `Hello RevaVista team,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for operator feedback, not assuming you need another tool. If a short conversation would be useful, I’d be glad to arrange one; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
+  },
+  "reunion-vacation-homes": {
+    source: "https://www.reunionvacationhomes.com/property-management/",
+    subject: "A guest-text workflow question for Reunion Vacation Homes",
+    email: `Hello Reunion Vacation Homes team,\n\nYour property-management page describes management for Reunion Resort and nearby communities including Storey Lake, Solara, Windsor at Westside, The Retreat at Champions Gate and Formosa Gardens. I’m building StayXI, a guest-initiated text line that answers routine property questions only from operator-approved information and routes anything uncertain to your team.\n\nI’m not assuming your current process needs changing. Would someone on the management side be open to a 15-minute discovery conversation about how routine guest questions reach your team today? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nI did not find a management email on your contact page, so please treat this as a contact-form draft. If this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw Reunion Vacation Homes describes management for Reunion Resort and nearby communities including Storey Lake, Solara and Windsor at Westside. I'm calling to ask how routine guest questions reach your team and whether someone on the management side would be open to a brief discovery conversation. I'm not assuming you need another tool.`,
+    followup: `Hello Reunion Vacation Homes team,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for operator feedback, not assuming you need another tool. If a short conversation would be useful, I’d be glad to arrange one; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
+  },
+  "mccormack-realty-kissimmee": {
+    source: "https://propertymanagementkissimmee.com/contact/",
+    subject: "A guest-text workflow question for McCormack Realty",
+    email: `Hello McCormack Realty team,\n\nYour contact page describes property management in Kissimmee with more than 30 years of experience and around 419 properties managed, and it offers owners a review comparing a vacation rental with a long-term tenancy. I’m building StayXI, a guest-initiated text line that answers routine property questions only from operator-approved information and routes anything uncertain to your team.\n\nI’m not assuming that fits how you work; much of your business is long-term, and I would rather ask than guess. Would someone who handles operations be open to a 15-minute conversation about where a text line like that would or would not help? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nI did not find a management email on your contact page, so please treat this as a contact-form draft. If this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw McCormack Realty describes property management in Kissimmee with more than 30 years of experience and around 419 properties managed. I'm calling to ask where a guest text line would or would not fit an operation like yours, rather than assuming it does.`,
+    followup: `Hello McCormack Realty team,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for operator feedback, not assuming you need another tool. If a short conversation would be useful, I’d be glad to arrange one; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
+  },
+  "an-owners-dream-management": {
+    source: "https://visitcentralflorida.org/featured/an-owners-dream-management/",
+    subject: "A guest-text workflow question for An Owners Dream Management",
+    email: `Hello An Owners Dream team,\n\nI saw your public business listing describes a family-owned vacation-rental management company serving the Davenport and Disney area. I’m building StayXI, a guest-initiated text line that answers routine property questions from operator-approved information and routes uncertain questions to the team.\n\nI’m not assuming your current service needs changing. Would someone who handles property operations be open to a 15-minute discovery conversation about how guest questions reach your team? If there’s a fit, I’m testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal.\n\nI did not find a verified business email, so please use this only as a contact-form draft. If this isn’t relevant, just let me know and I won’t follow up.\n\nThanks,\n[Your Name]\nStayXI\n[Your callback number]`,
+    phone: `I saw An Owners Dream Management describes itself as a family-owned vacation-rental management company serving Davenport and the Disney area. I'm calling to ask how guest questions reach the team and whether someone who handles property operations would be open to a brief discovery conversation. I'm not assuming you need a new tool.`,
+    followup: `Hello An Owners Dream team,\n\nFollowing up once on my question about routine guest-text workflows. I’m looking for operator feedback, not assuming you need another tool. If a short conversation would be useful, I’d be glad to arrange one; otherwise, I won’t follow up again.\n\nThanks,\n[Your Name]\nStayXI`,
   },
 };
 
 export const LEADS = prospects.map(([id, name, location, phone, website, address, fit, sources]) => {
   const contact = publicContacts[id] || {};
+  const pitch = pitches[id];
+  if (!pitch) throw new Error(`Missing tailored pitch for ${id}`);
   return {
     id,
     name,
@@ -161,72 +157,15 @@ export const LEADS = prospects.map(([id, name, location, phone, website, address
     emailSource: contact.source || "",
     emailCheckedAt: contact.checkedAt || "",
     emailNote: contact.note || "",
-    confidence: fit === "C" ? "Medium" : "High",
+    pitchSource: pitch.source,
+    pitchCheckedAt: "2026-10-26",
+    confidence: contact.confidence || "High",
     propertyType: "Vacation rental operator",
     scriptTopic: "vacationRental",
     clientType: "vacationRentalOperator",
     leadStatus: "new",
-    pitchEmail: {
-      subject: `Guest texts for ${name} — 15 minutes?`,
-      body: `Hello ${name} team,
-
-I’m [Your Name], founder of StayXI. We’re testing a guest text line for vacation rentals around Orlando and Davenport: it answers routine guest questions — check-in, checkout, Wi-Fi, gate and door codes, trash, pool heat — from answers the operator approves, and forwards anything it isn’t sure about straight to your team.
-
-I’m inviting a small group of ${location} operators to try it on one property for 30 days — $49 flat, setup included, no auto-renewal, and no ongoing price set yet.
-
-Would you be open to a 15-minute call about how ${name} handles routine guest questions after hours today? If someone else owns guest communications, I’d appreciate being pointed to the right public contact. And if this isn’t a fit, just let me know and I won’t follow up.
-
-Thanks,
-[Your Name]
-StayXI
-[Your callback number]`,
-    },
-    pitchPhone: `PHONE CALL SCRIPT — ${name} (${location})
-
-1. RECEPTION / GATEKEEPER
-"Hi, this is [Your Name] calling from StayXI. I’m reaching ${name} in ${location} about how your team handles routine guest questions. Could you point me to the person who oversees guest communications?"
-
-2. WHEN CONNECTED TO THE RIGHT PERSON
-"Hi [Name], this is [Your Name] with StayXI. We set up a guest text line that answers routine guest questions from information you approve and routes anything it’s unsure about to your team. I don’t want to assume how you handle this today — may I ask how routine guest questions reach you?"
-
-3. DISCOVERY — PAUSE AND LISTEN
-"Do guests text your team with recurring questions?"
-"If so, which questions take the most staff time?"
-"Would an automatic first reply help, or do you want every message to come straight to you?"
-
-4. SHORT, RELEVANT EXPLANATION
-"It’s configured with each property’s information. It answers the common questions and escalates everything outside that to your team. I’m running 30-day, $49 pilots with a few ${location} operators — I’d be glad to show you a quick demo so you can decide whether it fits."
-
-5. CLOSE
-"Would a 15-minute introduction next week be worthwhile? If someone else owns this area, could you share the best public way to reach them?"
-
-6. IF THEY ARE BUSY
-"Of course — when’s a better time? I can also use the contact method your company publishes."
-
-7. IF THEY ALREADY HAVE A SYSTEM
-"That makes sense; I’m not suggesting you replace what works. Is there a gap you’d want a guest-texting tool to close, or should I leave it there?"
-
-8. IF THEY ARE NOT INTERESTED
-"Understood, thanks for your time. I won’t keep you."
-
-9. VOICEMAIL
-"Hi, this is [Your Name] with StayXI, calling ${name} in ${location} about how your team handles routine guest questions by text. We run a guest text line that answers from host-approved property information and routes uncertain questions to the host. If a brief introduction would be useful, please call me back at [Your callback number]. Thanks."
-
-CALL NOTES
-- Replace the bracketed details with your name and a callback number you have verified.
-- Ask permission, speak naturally, and stop if they decline.
-- Never claim to know their current process, volume, software, results, or contacts before they confirm it.
-- This is a prospecting script, not a promise of features beyond configured answers and escalation.`,
-    followUpEmail: {
-      subject: `Following up — guest texts for ${name}`,
-      body: `Hello ${name} team,
-
-Just following up on my note about StayXI, a guest text line that answers routine guest questions from your approved property information and routes the rest to your team.
-
-I’m running 30-day, $49 pilots with a few ${location} operators — setup included, no auto-renewal. If that’s useful, I’d be glad to show you how it works. If not, no follow-up from me.
-
-Thanks,
-StayXI`,
-    },
+    pitchEmail: { subject: pitch.subject, body: pitch.email },
+    pitchPhone: `CALL CONTEXT: ${name} (${location})\n\n${pitch.phone}\n\nDiscovery: Ask how routine guest questions arrive today and what happens when the team is busy. Listen before describing the offer. Do not imply the business has a problem.\n\nIf invited: StayXI is testing a one-property, 30-day pilot for $49, setup included, with no automatic renewal. Ask whether a brief demo would be useful.\n\nIf declined: Thank them and stop. Never leave a voicemail or send a follow-up if they ask not to be contacted.\n\nBefore contact: Recheck the official source links and current phone number. Replace [Your Name] and [Your callback number] in any email draft.`,
+    followUpEmail: { subject: `Following up — ${name} guest-text workflow question`, body: pitch.followup },
   };
 });

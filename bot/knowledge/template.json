@@ -1,62 +1,54 @@
 {
   "id": "SUNSET",
-  "name": "Sunset Villa",
-  "twilioNumber": "+14075550100",
-  "hostPhone": "+14075550199",
-  "secrets": [
-    {
-      "topic": "Gate code",
-      "keywords": ["gate", "gate code", "front gate", "how do i get in", "code for the gate"],
-      "reply": "Your gate code is 4821."
-    },
-    {
-      "topic": "Door lock",
-      "keywords": ["door code", "lock code", "front door code", "keypad code"],
-      "reply": "Your front door code is 9911."
-    }
-  ],
-  "answers": [
+  "name": "[PROPERTY_NAME]",
+  "twilioNumber": "[TWILIO_NUMBER_E164]",
+  "hostPhone": "[HOST_PHONE_E164]",
+  "status": "TEMPLATE_ONLY_NOT_FOR_LIVE_USE",
+  "instructions": "Replace every bracketed value with host-confirmed information. The answers array is intentionally empty so this file is safe to import as-is; copy only reviewed answerExamples into answers after replacing every placeholder. This file contains no real property facts. Never invent access information; verify access codes with the operator and test only in a non-guest environment before activating.",
+  "secrets": [],
+  "answers": [],
+  "answerExamples": [
     {
       "topic": "Checkout",
       "keywords": ["checkout", "check out", "check-out", "what time do we leave", "departure time"],
-      "reply": "Checkout is 10:00 AM. Late checkout is not available."
+      "reply": "[HOST_APPROVED_CHECKOUT_TIME_AND_LATE_CHECKOUT_POLICY]"
     },
     {
       "topic": "WiFi",
       "keywords": ["wifi", "wi-fi", "wireless", "internet", "password for the internet", "network name"],
-      "reply": "Network: KIDS-SWIMMING-4\nPassword: SUNSHINE2026"
+      "reply": "Wi-Fi details are shared in the host-approved welcome information. [ADD_ONLY_IF_THE_HOST_APPROVES_SHARING_THE_NETWORK_AND_PASSWORD_BY_TEXT]"
     },
     {
       "topic": "Trash",
       "keywords": ["trash", "garbage", "bins", "trash day", "trash pickup", "where does trash go"],
-      "reply": "Trash pickup is Tuesday morning — bins go out Monday night."
+      "reply": "[HOST_APPROVED_TRASH_PICKUP_DAY_AND_BIN_INSTRUCTIONS]"
     },
     {
       "topic": "Pool",
       "keywords": ["pool", "pool heater", "heat the pool", "pool temperature"],
-      "reply": "The pool heater is the grey panel on the lanai wall. Press HEAT, then the up arrow to 86. It takes about 4 hours to warm up."
+      "reply": "[HOST_APPROVED_POOL_HEATER_INSTRUCTIONS_AND_WARMUP_TIME]"
     },
     {
       "topic": "Parking",
       "keywords": ["parking", "where to park", "street parking", "driveway"],
-      "reply": "Two cars in the driveway. No street parking — HOA rule."
+      "reply": "[HOST_APPROVED_PARKING_RULES]"
     },
     {
       "topic": "Pets",
       "keywords": ["pet", "dog", "cat", "pets allowed", "can i bring my dog"],
-      "reply": "No pets, per the HOA."
+      "reply": "[HOST_APPROVED_PET_POLICY]"
     },
     {
       "topic": "Quiet hours",
       "keywords": ["quiet hours", "quiet time", "noise", "loud"],
-      "reply": "Quiet hours are 10 PM to 8 AM."
+      "reply": "[HOST_APPROVED_QUIET_HOURS]"
     },
     {
       "topic": "Hurricane prep",
       "keywords": ["hurricane", "storm", "shutters", "storm prep"],
-      "reply": "Storm shutters are in the garage, labeled by window."
+      "reply": "[HOST_APPROVED_STORM_PREPARATION_INSTRUCTIONS_OR_REMOVE_THIS_ANSWER]"
     }
   ],
-  "unknownReply": "I can't confirm that from the property's information. Please contact your host directly.",
-  "rateLimitReply": "I can't reply to more messages right now. Please contact your host directly."
+  "unknownReply": "I can't confirm that from this property's approved information. Please contact your host using your booking app.",
+  "rateLimitReply": "I can't respond to more messages right now. Please contact your host using your booking app."
 }
