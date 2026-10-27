@@ -88,4 +88,3 @@ Thanks for opting in to [Property Name] support texts! You'll receive gate codes
 - [ ] Test SMS flow end-to-end
 - [ ] Verify rate limiting works
 - [ ] Confirm escalation to host works
-"Thanks for opting in to [Property Name] support texts! You'll receive gate codes, WiFi, checkout times, and property info. Msg & data rates may apply. Reply STOP to opt out or HELP for help."

@@ -1,6 +1,6 @@
 # StayXI — Launch Readiness
 
-_Status snapshot: 2026-10-26. This is an operating checklist, not legal or financial advice._
+_Status snapshot: 2026-10-27. This is an operating checklist, not legal or financial advice._
 
 This file answers one question: **what is actually left before StayXI can take a paying pilot property?** Everything below is either *built*, *blocked on a purchase/credential only you can provide*, or *still to do*. Be honest with yourself about which column each item is in before spending money.
 
@@ -10,15 +10,15 @@ This file answers one question: **what is actually left before StayXI can take a
 
 | Piece | Where | State |
 |---|---|---|
-| Guest SMS bot (webhook, routing, escalation, STOP/HELP) | `bot/worker.ts` | Working, `npm test` = 69/69 pass |
+| Guest SMS bot (webhook, routing, escalation, STOP/HELP) | `bot/worker.ts` | Working, `npm test` = 82/82 pass |
 | Property answer library + secrets (gate codes) | D1 + `PROPERTIES` KV | Working |
 | Admin panel (Properties / Leads / Analytics / Operations / Pilot) | inlined in `bot/worker.ts` | Deployed; health endpoint returns `ok`, Pilot markup is present, and pilot APIs return 401 without a session |
 | Pilot setup, launch gates, and persistent scorecards | Pilot tab + D1 migration `0007_pilot_properties.sql` | Deployed and locally exercised end-to-end; launch/scorecard audit events record field names and outcomes, not scorecard contents |
-| Pilot activity viewer | Pilot tab + authenticated `pilot-audit` API | Implemented in source and locally tested; deploy Worker before it is available in production. Shows aggregate counts/event metadata only, never scorecard answers or notes |
-| Read-only production smoke check | `npm run check:production` | Implemented and validated against local Wrangler; requires the admin password and the updated Worker deployment for a production pass. GET-only; does not mutate D1 or KV |
+| Pilot activity viewer | Pilot tab + authenticated `pilot-audit` API | Deployed and verified live 2026-10-27: the production panel is byte-identical to a build of `main`, and `pilot-audit` returns 401 without a session. Shows aggregate counts/event metadata only, never scorecard answers or notes |
+| Read-only production smoke check | `npm run check:production` | Implemented and validated against local Wrangler; its public and unauthenticated checks pass against production (2026-10-27), and the authenticated checks still require `STAYXI_ADMIN_PASSWORD`. GET-only; does not mutate D1 or KV |
 | Pilot integration monitoring | `admin_audit_log` | Launch, completion, and scorecard-save events are auditable without recording scorecard contents; external alerts and dashboards are not configured |
 | One-to-one Gmail outreach (send-only, unsubscribe, suppression) | admin Leads tab | Built, **not connected** (needs Google OAuth) |
-| Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Ready to deploy to Pages |
+| Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Deployed to Pages; `davenport-host-co.pages.dev` matches `site/index.html` byte-for-byte (2026-10-27) |
 | Pilot program + terms | `PILOT_PROGRAM.md` | Written |
 | Lead list | `bot/leads.js` | Re-checked 2026-10-26; **5 of 8 have a verified public email** |
 
