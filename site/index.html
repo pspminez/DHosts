@@ -14,35 +14,37 @@
   <meta property="og:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&h=630&q=80">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&h=630&q=80">
-  <meta name="theme-color" content="#244f43">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23244f43'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='30' font-weight='700' fill='%23eee8dc' text-anchor='middle'%3EXI%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0e1a26">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1a26'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='30' font-weight='700' fill='%23eee8dc' text-anchor='middle'%3EXI%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #ded7c8;
-      --card: #eee8dc;
-      --surface: #d4ccbc;
-      --border: #c5bdac;
-      --text: #1d3029;
-      --muted: #5f6d62;
-      --sun: #c47d4d;
-      --pink: #ad6552;
-      --gold: #a77c38;
-      --pool: #244f43;
-      --accent: #244f43;
-      --accent-2: #a77c38;
-      --green: #244f43;
-      --warn: #c47d4d;
-      --sunset: linear-gradient(110deg, #244f43, #315f50);
+      --bg: #0e1a26;
+      --bg-subtle: #122534;
+      --card: #1a2d41;
+      --card-hover: #223d55;
+      --border: #2a4a6a;
+      --text: #e8eef5;
+      --muted: #7f9aa7;
+      --accent-cyan: #3fd8c5;
+      --accent-blue: #6dd5fa;
+      --accent-purple: #a269d8;
+      --accent-green: #4ade80;
+      --accent-orange: #f8b400;
+      --accent-red: #f87171;
+      --gradient-start: #0e1a26;
+      --gradient-end: #122534;
+      --gradient-radial: radial-gradient(circle at 30% 20%, rgba(63, 216, 197, 0.15), transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(164, 105, 216, 0.15), transparent 50%);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
-      font-family: "Nunito Sans", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-family: "Inter", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
       line-height: 1.6;
       display: flex;
       flex-direction: column;
@@ -56,234 +58,609 @@
       content: none;
     }
     main { position: relative; z-index: 1; width: 100%; max-width: 78rem; margin: 0 auto; padding: 0 2.25rem 5rem; }
-    :focus-visible { outline: 2px solid var(--pool); outline-offset: 2px; border-radius: 6px; }
-
-    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pool); box-shadow: 0 0 10px var(--pool); }
-    h1 { font-size: clamp(2.25rem, 6vw, 3.9rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; margin-bottom: 1.25rem; }
-    .grad { background: var(--sunset); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .lede { font-size: 1.12rem; color: var(--muted); max-width: 36rem; margin-bottom: 3rem; }
+    :focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; border-radius: 6px; }
+    
+    /* Badges and decorative elements */
+    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 0.75rem; color: var(--accent-cyan); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+    .pill { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(63, 216, 197, 0.15); font-size: 0.65rem; color: var(--accent-cyan); }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.75rem; }
+    .grad { background: none; color: var(--accent-cyan); }
+    .lede { font-size: 1.05rem; color: var(--muted); max-width: 36rem; margin-bottom: 2rem; }
     .lede strong { color: var(--text); font-weight: 600; }
-
-    .section-head { text-align: center; margin: 0 auto 2rem; max-width: 44rem; }
-    .section-head h2 { font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.6rem; }
-    .section-head p { color: var(--muted); font-size: 1rem; }
-
-    /* Demo chat */
-    .demo { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; margin: 4rem 0 3rem; }
-    .demo-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .demo-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
-    .phone { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1rem; background: #081120; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); display: inline-block; }
-    .msg-counter { font-size: 0.75rem; color: var(--gold); background: rgba(255, 209, 102, 0.08); border: 1px solid rgba(255, 209, 102, 0.25); padding: 0.35rem 0.7rem; border-radius: 999px; font-weight: 600; }
-    .chat { display: flex; flex-direction: column; gap: 0.75rem; max-height: 28rem; overflow-y: auto; padding-right: 0.5rem; scroll-behavior: smooth; }
-    .chat::-webkit-scrollbar { width: 6px; }
-    .chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .msg { display: flex; gap: 0.75rem; animation: fadeIn 0.2s ease; align-items: flex-end; }
+    
+    /* Section headers */
+    .section-head { text-align: center; margin: 0 auto 2rem; max-width: 48rem; }
+    .section-head h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 0.5rem; }
+    .section-head p { color: var(--muted); font-size: 0.95rem; }
+    
+    /* Cards */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
+    .card:hover { border-color: var(--accent-cyan); }
+    .card-grid { display: grid; gap: 1.5rem; }
+    .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .card-header h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    /* Metric styles */
+    .metric { text-align: center; }
+    .metric-value { font-size: 2.2rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+    .metric-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; }
+    .metric-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; background: rgba(63, 216, 197, 0.15); border-radius: 999px; font-size: 0.65rem; color: var(--accent-cyan); margin-left: 0.5rem; }
+    
+    /* Radial progress */
+    .radial-progress { position: relative; width: 140px; height: 140px; }
+    .radial-progress canvas { width: 140px; height: 140px; }
+    .radial-progress .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; line-height: 1.2; }
+    .radial-progress .percent { font-size: 2.5rem; font-weight: 700; color: var(--text); }
+    .radial-progress .label { font-size: 0.8rem; color: var(--muted); }
+    
+    /* Legend */
+    .legend { display: flex; gap: 1.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--muted); }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    
+    /* Line graph */
+    .line-graph { position: relative; height: 200px; }
+    .line-graph canvas { width: 100%; height: 100%; }
+    .line-graph .cursor { position: absolute; left: 0; top: 0; width: 1px; height: 100%; background: var(--accent-cyan); pointer-events: none; }
+    .line-graph .tooltip { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; pointer-events: none; display: none; }
+    
+    /* Bar chart */
+    .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+    .bar { height: 12px; border-radius: 4px; background: linear-gradient(180deg, var(--accent-cyan), var(--accent-blue)); position: relative; }
+    .bar .label { position: absolute; bottom: -18px; font-size: 0.65rem; color: var(--muted); width: 100%; text-align: center; }
+    
+    /* Progress bars */
+    .progress-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); position: relative; overflow: hidden; }
+    .progress-bar .handle { width: 20px; height: 8px; border-radius: 4px; background: var(--accent-cyan); position: absolute; right: 0; top: 0; box-shadow: 0 0 10px var(--accent-cyan); }
+    
+    /* Recent events */
+    .event-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .event-row { display: flex; gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--border); }
+    .event-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; }
+    .event-text { flex: 1; color: var(--text); }
+    .event-timestamp { font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
+    
+    /* CTA buttons */
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 10px; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: var(--bg); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63, 216, 197, 0.4); }
+    .btn-secondary { background: var(--card); color: var(--accent-cyan); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent-cyan); }
+    .btn-accent { background: var(--gradient-radial); color: var(--bg); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.75rem; }
+    
+    /* Tabs / navigation */
+    .tab { padding: 0.5rem 1rem; margin-right: 0.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s ease; }
+    .tab:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .tab.active { background: var(--accent-cyan); color: var(--bg); border-color: var(--accent-cyan); }
+    
+    /* Table */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    tr:hover td { background: var(--card-hover); }
+    
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in { animation: none !important; transition: none !important; }
+    }
+    .fade-in { opacity: 0; animation: fadeIn 0.3s ease forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    .msg-guest { flex-direction: row-reverse; }
-    .bubble { max-width: 78%; padding: 0.7rem 1rem; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; }
-    .bubble-guest { background: var(--sunset); color: #1c0b06; border-bottom-right-radius: 4px; font-weight: 600; }
-    .bubble-bot { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
-    .msg-guest .bubble { background: var(--sunset); color: #1c0b06; border-radius: 18px; border-bottom-left-radius: 4px; font-weight: 600; }
-    .chat-input-area { display: flex; gap: 0.5rem; margin-top: 1rem; }
-    .chat-input-area input { flex: 1; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 0.95rem; }
-    .chat-input-area input:focus { outline: none; border-color: var(--pool); }
-    .chat-input-area button { padding: 0.7rem 1.4rem; border-radius: 12px; border: 0; background: var(--pool); color: #06251d; font: inherit; font-weight: 700; cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
-    .chat-input-area button:hover { transform: translateY(-1px); }
-    .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .package-prompt { display: none; margin-top: 1rem; padding: 1.25rem; background: var(--sunset); border-radius: 14px; color: #1c0b06; text-align: center; }
-    .package-prompt h3 { margin-bottom: 0.5rem; }
-    .package-prompt p { opacity: 0.85; }
-
+    
+    /* Header */
+    .site-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-mark { width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--bg); }
+    .site-nav { display: flex; gap: 1.5rem; }
+    .site-nav a { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 500; transition: color 0.2s; }
+    .site-nav a:hover { color: var(--accent-cyan); }
+    .header-cta { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 20px; background: var(--accent-cyan); color: var(--bg); text-decoration: none; font-weight: 600; font-size: 0.75rem; }
+    
+    /* Hero section */
+    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; padding: 4rem 0; }
+    .hero-copy { max-width: 40rem; }
+    .hero-eyebrow { color: var(--accent-cyan); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+    h1 { margin: 1rem 0 1.25rem; }
+    .hero-emphasis { color: var(--accent-cyan); font-style: italic; margin-bottom: 1.5rem; display: inline-block; }
+    .lede { max-width: 32rem; margin-bottom: 1.5rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+    .hero-visual { position: relative; min-height: 400px; border-radius: 16px 16px 24px 16px; background: var(--gradient-radial); box-shadow: 0 24px 55px rgba(24, 53, 70, 0.3); overflow: hidden; }
+    .hero-visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .hero-caption { position: absolute; right: 1rem; bottom: 1rem; left: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 1rem; background: rgba(255, 254, 250, 0.9); color: var(--text); }
+    .hero-caption strong { display: block; font-size: 0.85rem; }
+    .hero-caption span { color: var(--muted); font-size: 0.7rem; }
+    .caption-mark { color: var(--accent-orange); font-family: "Lora", serif; font-size: 1.4rem; }
+    
+    /* Sample prompts */
+    .sample-prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 1rem 0; color: var(--muted); font-size: 0.75rem; }
+    .sample-prompt { padding: 0.4rem 0.7rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .sample-prompt:hover { border-color: var(--accent-cyan); background: rgba(63, 216, 197, 0.1); }
+    .sample-prompt:disabled { opacity: 0.5; cursor: not-allowed; }
+    
     /* Pricing */
-    .pricing { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 3rem; width: 100%; }
-    .price-card { position: relative; flex: 1 1 20rem; max-width: 100%; padding: 1.75rem 1.5rem; border-radius: 20px; background: var(--card); border-top: 4px solid var(--gold); transition: transform 0.25s ease, box-shadow 0.25s ease; }
-    .price-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); }
-    .price-card.featured {
-      border: 2px solid transparent;
-      border-top: 2px solid transparent;
-      background:
-        linear-gradient(var(--card), var(--card)) padding-box,
-        var(--sunset) border-box;
-    }
-    .most-loved { position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%); background: var(--sunset); color: #1c0b06; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.85rem; border-radius: 999px; letter-spacing: 0.02em; }
-    .portfolio { flex: 1 1 100%; border: 1px dashed var(--pool); border-radius: 16px; background: rgba(56, 225, 198, 0.06); padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-    .portfolio p { margin: 0; color: #cfdaf0; font-size: 0.95rem; }
-    .portfolio strong { color: var(--pool); font-weight: 700; }
-    .portfolio .btn-ghost { margin-left: 0; white-space: nowrap; }
-    .price-tag { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.15rem; }
-    .price-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
-    .price-card h3 { font-size: 1.05rem; margin-bottom: 1rem; font-weight: 700; }
-    .price-card ul { list-style: none; font-size: 0.95rem; color: #cfdaf0; display: flex; flex-direction: column; gap: 0.7rem; }
-    .price-card li { display: flex; gap: 0.6rem; align-items: flex-start; }
-    .price-card li.plan-feature { gap: .55rem; }
-    .plan-feature > span:not(.emoji) { font-weight: 600; }
-    .plan-feature .emoji { flex: none; width: 1.4rem; font-size: 1.2rem; line-height: 1.35; text-align: center; }
-    .plan-feature strong { display: block; color: var(--text); font-size: .85rem; font-weight: 600; }
-    .plan-feature small { display: block; margin-top: .12rem; color: var(--muted); font-size: .74rem; font-weight: 400; line-height: 1.45; }
-
-    /* CTA + buttons */
-    .cta { text-align: center; margin-top: 2.5rem; }
-    .btn { display: inline-block; padding: 0.9rem 2rem; border-radius: 12px; font-weight: 700; font-size: 1rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-    .btn-primary { background: var(--sunset); color: #1c0b06; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255, 94, 138, 0.35); }
-    .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; margin-left: 1rem; }
-    .btn-ghost:hover { border-color: var(--pool); }
-    .cta .btn-ghost { margin-left: 0.75rem; }
-
+    .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+    .price-card { background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--accent-cyan); border-radius: 16px; padding: 1.5rem; transition: all 0.2s; }
+    .price-card:hover { border-color: var(--accent-cyan); transform: translateY(-4px); }
+    .price-card.featured { border-color: var(--accent-purple); }
+    .price-tag { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+    .price-sub { color: var(--muted); font-size: 0.75rem; margin-bottom: 1rem; }
+    .price-card h3 { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .price-card ul { list-style: none; font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
+    .price-card li { margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.4rem; }
+    .plan-feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+    .plan-feature .emoji { width: 1rem; font-size: 1rem; }
+    .plan-feature strong { color: var(--text); font-weight: 600; }
+    .plan-feature small { color: var(--muted); font-size: 0.65rem; }
+    .pilot-terms { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; color: var(--muted); font-size: 0.75rem; line-height: 1.5; margin-top: 1rem; }
+    .pilot-terms strong { color: var(--text); }
+    .plan-cta { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0.8rem; border-radius: 20px; color: var(--accent-cyan); text-decoration: none; font-size: 0.7rem; font-weight: 600; background: transparent; border: 1px solid var(--accent-cyan); margin-top: 0.75rem; }
+    .plan-cta:hover { background: var(--accent-cyan); color: var(--bg); }
+    
     /* How it works */
-    .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-top: 4rem; }
-    .step { text-align: center; padding: 1.5rem; }
-    .step-num { width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--sunset); color: #1c0b06; display: flex; align-items: center; justify-content: center; font-weight: 800; margin: 0 auto 1rem; font-size: 1.1rem; }
-    .step h4 { font-size: 1rem; margin-bottom: 0.5rem; font-weight: 700; }
-    .step p { font-size: 0.87rem; color: var(--muted); }
-
-    footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }    @media (prefers-reduced-motion: reduce) {
-      .question-prompt { animation:none !important; }
-    }
-    .site-header { display:flex; align-items:center; justify-content:space-between; gap:1.5rem; padding:1.35rem 0; border-bottom:1px solid var(--border); }
-    .brand { display:flex; align-items:center; gap:.7rem; color:var(--text); text-decoration:none; font-size:1.25rem; font-weight:700; letter-spacing:-.04em; }
-    .brand-mark { display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:50%; background:var(--pool); color:white; font-family:"Lora",serif; font-size:1.1rem; }
-    .site-nav { display:flex; align-items:center; gap:1.8rem; }
-    .hero, .transition-section, .pricing, .faq { scroll-margin-top:1rem; }
-    .site-nav a { color:var(--muted); text-decoration:none; font-size:.9rem; font-weight:600; }
-    .site-nav a:hover { color:var(--pool); }
-    .header-cta { display:inline-flex; justify-content:center; padding:.7rem 1.15rem; border-radius:999px; background:var(--pool); color:white; text-decoration:none; font-size:.88rem; font-weight:700; }
-    .hero { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:3.5rem; padding:4.2rem 0 4rem; }
-    .hero-copy { max-width:35rem; }
-    .eyebrow { color:var(--pool); font-size:.75rem; font-weight:700; letter-spacing:.17em; text-transform:uppercase; }
-    h1 { margin:1rem 0 1.25rem; font-family:"Lora",Georgia,serif; font-size:clamp(3rem,6vw,5.4rem); font-weight:600; letter-spacing:-.055em; line-height:1.02; }
-    .hero-emphasis { color:var(--pool); font-style:italic; }
-    .lede { max-width:32rem; margin-bottom:1.7rem; color:var(--muted); font-size:1.08rem; line-height:1.75; }
-    .lede strong { color:var(--text); font-weight:600; }
-    .hero-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
-    .hero-note { display:flex; align-items:center; gap:.55rem; margin-top:1.45rem; color:var(--muted); font-size:.82rem; }
-    .hero-note::before { content:""; width:.5rem; height:.5rem; border-radius:50%; background:#8a9b66; }
-    .hero-visual { position:relative; min-height:440px; overflow:hidden; border-radius:1.5rem 1.5rem 7rem 1.5rem; background:#cbd8cc; box-shadow:0 24px 55px rgba(24,53,46,.15); }
-    .hero-visual img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
-    .hero-caption { position:absolute; right:1rem; bottom:1rem; left:1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 1.1rem; border:1px solid rgba(255,255,255,.48); border-radius:1rem; background:rgba(255,254,250,.92); color:var(--text); }
-    .hero-caption strong { display:block; font-size:.88rem; }
-    .hero-caption span { color:var(--muted); font-size:.76rem; }
-    .caption-mark { color:var(--gold); font-family:"Lora",serif; font-size:1.65rem; }
-    .demo-heading { margin:0 0 1rem; }
-    .demo-heading h2 { margin:.25rem 0; font-family:"Lora",Georgia,serif; font-size:clamp(1.5rem,3vw,2rem); font-weight:600; }
-    .demo-heading p { max-width:44rem; color:var(--muted); font-size:.9rem; line-height:1.6; }
-    .sample-prompts { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:0 0 1rem; color:var(--muted); font-size:.8rem; }
-    .sample-prompt { padding:.4rem .7rem; border:1px solid var(--border); border-radius:999px; background:#fbfaf6; color:var(--pool); font:inherit; font-weight:700; cursor:pointer; }
-    .sample-prompt:hover { border-color:var(--pool); background:#d9e1d4; }
-    .sample-prompt:disabled { opacity:.55; cursor:not-allowed; }
-    .hero-visual .hero-caption strong { color:var(--text); }
-    .hero-visual .hero-caption > div span { display:block; }
-    .hero-visual .hero-caption .caption-mark { color:var(--gold); }
-    .section-head { max-width:48rem; margin:0 auto 2.25rem; text-align:center; }
-    .pricing > .section-head { grid-column:1 / -1; width:100%; }
-    .section-head h2 { font-family:"Lora",Georgia,serif; font-size:clamp(2rem,4vw,3rem); font-weight:600; letter-spacing:-.04em; }
-    .section-head p { color:var(--muted); line-height:1.75; }
-    .grad { background:none; color:var(--pool); }
-    .pricing { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin:0 auto 5.5rem; }
-    .pricing > .portfolio { grid-column:1 / -1; }
-    .pricing > .pilot-card { grid-column:1 / -1; width:min(100%,42rem); justify-self:center; }
-    .pilot-terms { grid-column:1 / -1; width:min(100%,42rem); justify-self:center; padding:1rem 1.2rem; border:1px solid var(--border); border-radius:1rem; color:var(--muted); font-size:.84rem; line-height:1.65; }
-    .pilot-terms strong { color:var(--text); }
-    .faq { max-width:58rem; margin:4rem auto; }
-    .faq-list { display:grid; gap:.7rem; }
-    .faq-list details { border:1px solid var(--border); border-radius:.9rem; padding:1rem 1.15rem; background:var(--card); }
-    .faq-list summary { color:var(--text); font-weight:700; cursor:pointer; }
-    .faq-list p { margin:.7rem 0 0; color:var(--muted); font-size:.9rem; }
-    .price-card,.price-card.featured { min-width:0; padding:1.5rem; border:1px solid var(--border); border-top:3px solid var(--pool); border-radius:1rem; background:var(--card); box-shadow:0 12px 32px rgba(24,53,46,.045); }
-    .price-card,.price-card.featured { display:flex; flex-direction:column; }
-    .price-card ul { flex:1; }
-    .plan-cta { display:inline-flex; justify-content:center; margin-top:1.25rem; padding:.68rem .85rem; border:1px solid var(--border); border-radius:999px; color:var(--pool); text-decoration:none; font-size:.8rem; font-weight:700; }
-    .plan-cta:hover { border-color:var(--pool); background:#dce4d9; }
-    .pilot-card .plan-cta { align-self:flex-start; margin-top:1.5rem; padding:.8rem 1.2rem; background:var(--pool); color:white; }
-    .pilot-card .plan-cta:hover { background:#315f50; color:white; }
-    .price-card:hover { transform:translateY(-3px); box-shadow:0 16px 32px rgba(24,53,46,.09); }
-    .price-card.featured { border-color:#b9c7b9; border-top-color:var(--gold); background:#e8e1d4; }
-    .most-loved { top:-.8rem; background:var(--gold); color:white; }
-    .price-tag { color:var(--text); font-family:"Lora",Georgia,serif; font-size:2.7rem; }
-    .price-sub { color:var(--muted); font-size:.8rem; }
-    .price-card h3 { margin-top:1.25rem; color:var(--pool); }
-    .price-card ul { color:var(--muted); font-size:.86rem; }
-    .price-card li::before { color:var(--pool); }
-    .pilot-card .price-tag::before { content:"Pilot fee"; display:block; color:var(--muted); font:700 .68rem "Nunito Sans",sans-serif; letter-spacing:.12em; text-transform:uppercase; }
-    .portfolio { border:1px solid #bdc7b6; border-radius:1rem; background:#d2dbcf; }
-    .portfolio p { color:var(--text); }
-    .portfolio strong { color:var(--pool); }
-    .demo { margin:0 auto 4rem; padding:1.5rem; border:1px solid var(--border); border-radius:1.3rem; background:var(--card); box-shadow:0 18px 42px rgba(24,53,46,.07); scroll-margin-top:1rem; }
-    .demo-label { display:block; color:var(--pool); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; }
-    .phone { margin-top:.4rem; border:0; background:none; color:var(--text); font-family:"Nunito Sans",sans-serif; font-size:.95rem; font-weight:600; padding:0; }
-    .msg-counter { border:1px solid var(--border); background:var(--surface); color:var(--muted); }
-    .chat { max-height:none; overflow:visible; padding:.35rem 0; }
-    .bubble { border-radius:1rem; font-weight:500; }
-    .bubble-guest,.msg-guest .bubble { border-radius:1rem; border-bottom-right-radius:.25rem; background:#d8d0c0; color:var(--text); }
-    .bubble-bot { border:1px solid #c8d3c7; border-bottom-left-radius:.25rem; background:#d9e1d4; color:var(--text); }
-    .chat-input-area input { border-color:var(--border); border-radius:.75rem; background:#fbfaf6; color:var(--text); }
-    .chat-input-area input:focus { border-color:var(--pool); }
-    .chat-input-area button { border-radius:.75rem; background:var(--pool); color:white; }
-    .package-prompt { border:1px solid #c4d0c2; background:#d9e1d4; color:var(--text); }
-    .package-prompt p { opacity:1 !important; color:var(--muted); }
-    .btn { border-radius:999px; font-size:.9rem; }
-    .btn-primary { background:var(--pool); color:white; }
-    .btn-primary:hover { box-shadow:0 8px 20px rgba(40,102,87,.18); }
-    .btn-ghost { margin-left:0; border-color:var(--border); color:var(--text); background:rgba(255,254,250,.65); }
-    .btn-ghost:hover { border-color:var(--pool); color:var(--pool); }
-    .how { gap:1rem; margin:1rem 0 2rem; }
-    .step { padding:1.5rem; border:1px solid var(--border); border-radius:1rem; background:var(--card); text-align:left; }
-    .step-num { width:2.3rem; height:2.3rem; margin:0 0 1rem; background:#cbd8ca; color:var(--pool); font-family:"Lora",serif; }
-    .step h4 { color:var(--text); }
-    .step p { color:var(--muted); }
-    footer { border-color:var(--border); color:var(--muted); }
-    :focus-visible { outline-color:var(--gold); }
-    @media (max-width:900px) {
-      main { padding-right:1.35rem; padding-left:1.35rem; }
-      .hero { gap:2rem; padding:3rem 0; }
-      .hero-visual { min-height:360px; }
-      .pricing { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    }
-    @media (max-width:640px) {
-      .site-header { gap:.7rem; }
-      .site-nav { gap:.8rem; }
-      .site-nav a { font-size:.8rem; }
-      .header-cta { padding:.6rem .8rem; font-size:.78rem; }
-      .hero { grid-template-columns:1fr; gap:1.5rem; padding:2.5rem 0 3rem; }
-      .hero-visual { min-height:320px; }
-      .pricing { grid-template-columns:1fr; gap:1.1rem; margin-bottom:3.5rem; }
-      .portfolio { align-items:flex-start; }
-      .cta .btn-ghost { display:inline-block; margin:.75rem 0 0; }
-    }
+    .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 2rem; }
+    .step { text-align: center; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .step-num { width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-cyan); color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 0.5rem; font-size: 0.85rem; }
+    .step h4 { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .step p { font-size: 0.65rem; color: var(--muted); }
+    
+    /* Footer */
+    footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
+    
+    /* Admin section styles */
+    .admin-section { padding: 3rem 0; }
+    .admin-grid { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; }
+    @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; gap: 1rem; } }
+    
+    /* Tables for admin */
+    .stats-table { width: 100%; }
+    .stats-table th, .stats-table td { padding: 0.5rem; }
+    
+    /* Charts */
+    .chart-wrapper { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+    .chart-title { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
   </style>
 </head>
 <body>
   <main>
     <header class="site-header">
-      <a class="brand" href="#" aria-label="StayXI home"><span class="brand-mark">S</span> StayXI</a>
+      <a class="brand" href="#" aria-label="StayXI home">
+        <div class="brand-mark">S</div> StayXI
+      </a>
       <nav class="site-nav" aria-label="Main navigation">
-        <a href="#demoChat">Try the sample</a>
-        <a href="#pricing">Pilot offer</a>
+        <a href="#dashboard" class="tab active">Dashboard</a>
+        <a href="#analytics" class="tab">Analytics</a>
+        <a href="#operations" class="tab">Operations</a>
+        <a href="#insights" class="tab">Insights</a>
       </nav>
+      <a href="#custom-domain" class="header-cta">Connect custom domain</a>
     </header>
 
     <section class="hero" aria-labelledby="heroTitle">
       <div class="hero-copy">
-        <div class="eyebrow">Guest text support for independent vacation rentals</div>
+        <div class="hero-eyebrow">Guest text support for independent vacation rentals</div>
         <h1 id="heroTitle">Fewer repeat questions.<br><span class="hero-emphasis">More room to host.</span></h1>
         <p class="lede">Give guests a simple text line for routine property questions. StayXI replies from the answers you approve—and routes the uncertain ones to you.</p>
         <div class="hero-actions">
-          <a href="#demoChat" class="btn btn-primary">Try the interactive sample</a>
-          <a href="#pricing" class="btn btn-ghost">See the $49 pilot</a>
+          <a href="#demo-chat" class="btn btn-primary">Try the interactive sample</a>
+          <a href="#pricing" class="btn btn-secondary">See the $49 pilot</a>
         </div>
       </div>
       <div class="hero-visual">
-        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&amp;fit=crop&amp;w=1500&amp;q=85" alt="Sunlit vacation home with a private pool" fetchpriority="high">
+        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1500&q=85" alt="Sunlit vacation home with a private pool" fetchpriority="high">
+        <div class="hero-caption">
+          <strong>StayXI Pilot Program</strong>
+          <span>One property, 30 days, $49</span>
+          <span class="caption-mark">●</span>
+        </div>
       </div>
     </section>
 
+    <section class="dashboard" id="dashboard" aria-labelledby="dashboardTitle">
+      <div class="section-head">
+        <h2 id="dashboardTitle">Dashboard</h2>
+        <p>Overview of your pilot program and property metrics</p>
+      </div>
+      
+      <div class="card-grid card-grid-3">
+        <!-- Core Metrics Card -->
+        <div class="card fade-in">
+          <div class="card-header">
+            <span>CORE METRICS</span>
+            <span class="pill">⋯</span>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="coreMetric">0</div>
+            <div class="metric-label">Messages Today</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="rateLimit">5</div>
+            <div class="metric-badge">5/5 questions</div>
+          </div>
+        </div>
+        
+        <!-- Resource Allocation Card -->
+        <div class="card fade-in" style="animation-delay: 0.1s;">
+          <div class="card-header">
+            <span>RESOURCE ALLOCATION</span>
+          </div>
+          <div class="radial-progress" id="resourceRadial">
+            <canvas></canvas>
+            <div class="progress-text">
+              <div class="percent" id="resourcePct">94%</div>
+              <div class="label" id="resourceActive">ACTIVE</div>
+            </div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><span class="dot" style="background: var(--accent-cyan);"></span> Primary Nodes <span>62%</span></div>
+            <div class="legend-item"><span class="dot" style="background: var(--accent-blue);"></span> INSIGHT <span>24%</span></div>
+            <div class="legend-item"><span class="dot" style="background: var(--accent-purple);"></span> SERVICE <span>14%</span></div>
+          </div>
+        </div>
+        
+        <!-- Node Uptime Card -->
+        <div class="card fade-in" style="animation-delay: 0.2s;">
+          <div class="card-header">
+            <span>NODE UPTIME</span>
+          </div>
+          <div class="metric" id="nodeUptime">99.98%</div>
+          <div class="small-chart">
+            <canvas id="uptimeChart" width="120" height="60"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
+        <!-- System Throughput Card -->
+        <div class="card fade-in" style="animation-delay: 0.3s;">
+          <div class="card-header">
+            <span>SYSTEM THROUGHPUT</span>
+            <div class="legend" style="justify-content: space-between;">
+              <span>- INPUT FLOW</span>
+              <span>- OUTPUT FLOW</span>
+            </div>
+          </div>
+          <div class="line-graph" id="throughputGraph">
+            <canvas></canvas>
+            <div class="cursor" id="cursorLine"></div>
+            <div class="tooltip" id="tooltip"><span class="cyan">• 42,500</span><span class="blue">• 68,210</span></div>
+          </div>
+          <div class="legend" style="margin-top: 1rem; justify-content: space-between;">
+            <span>JAN</span>
+            <span>FEB</span>
+            <span>MAR</span>
+            <span>APR</span>
+            <span>MAY</span>
+            <span>JUN</span>
+            <span>JUL</span>
+            <span>AUG 15</span>
+            <span>SEP</span>
+            <span>OCT</span>
+            <span>NOV</span>
+          </div>
+        </div>
+        
+        <!-- Volume Metrics Card -->
+        <div class="card fade-in" style="animation-delay: 0.4s;">
+          <div class="card-header">
+            <span>VOLUME METRICS</span>
+          </div>
+          <div class="bar-chart" id="volumeBars">
+            <!-- Bars generated by JS -->
+          </div>
+          <div class="legend" style="margin-top: 1rem;">
+            <span>W1</span>
+            <span>W2</span>
+            <span>W3</span>
+            <span>W4</span>
+            <span>W5</span>
+            <span>W6</span>
+            <span>W7</span>
+            <span>W8</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
+        <!-- Inflow Volume Card -->
+        <div class="card fade-in" style="animation-delay: 0.5s;">
+          <div class="card-header">
+            <span>INFLOW VOLUME</span>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="inflowValue">SYSTEM</div>
+            <div class="metric-badge"><span class="dot" style="background: var(--accent-green);"></span>↑ 3.2%</div>
+          </div>
+          <div class="small-chart" style="margin-top: 0.75rem;">
+            <canvas id="inflowChart" width="80" height="40"></canvas>
+          </div>
+        </div>
+        
+        <!-- Outflow Volume Card -->
+        <div class="card fade-in" style="animation-delay: 0.6s;">
+          <div class="card-header">
+            <span>OUTFLOW VOLUME</span>
+          </div>
+          <div class="metric">
+            <div class="metric-value" id="outflowValue">VIEW</div>
+            <div class="metric-badge"><span class="dot" style="background: var(--accent-red);"></span>↓ 1.8%</div>
+          </div>
+          <div class="small-chart" style="margin-top: 0.75rem;">
+            <canvas id="outflowChart" width="80" height="40"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
+        <!-- Capacity Targets Card -->
+        <div class="card fade-in" style="animation-delay: 0.7s;">
+          <div class="card-header">
+            <span>CAPACITY TARGETS</span>
+          </div>
+          <div class="progress-bars">
+            <div class="progress-bar"><div class="handle" style="width: 85%;"></div><span>CLUSTER ALPHA 85%</span></div>
+            <div class="progress-bar"><div class="handle" style="width: 62%;"></div><span>NODE EPSILON 62%</span></div>
+            <div class="progress-bar"><div class="handle" style="width: 94%;"></div><span>STORAGE ARRAY 94%</span></div>
+            <div class="progress-bar"><div class="handle" style="width: 45%;"></div><span>BANDWIDTH LIMIT 45%</span></div>
+          </div>
+        </div>
+        
+        <!-- Recent Events Card -->
+        <div class="card fade-in" style="animation-delay: 0.8s;">
+          <div class="card-header">
+            <span>RECENT EVENTS</span>
+            <span class="pill">VIEW ALL</span>
+          </div>
+          <div class="event-list" id="eventList">
+            <div class="event-row">
+              <div class="event-icon" style="background: var(--accent-cyan); color: var(--bd);">✓</div>
+              <div class="event-text">SYNC COMPLETED / Node Alpha initialized</div>
+              <span class="event-timestamp">12 MIN AGO</span>
+            </div>
+            <div class="event-row">
+              <div class="event-icon" style="background: var(--accent-blue); color: var(--bd);">+</div>
+              <div class="event-text">NEW CONNECTION / Gateway secure tunnel</div>
+              <span class="event-timestamp">45 MIN AGO</span>
+            </div>
+            <div class="event-row">
+              <div class="event-icon" style="background: var(--accent-red); color: var(--bd);">⏱</div>
+              <div class="event-text">TIMEOUT ERROR / Cluster beta unresponsive</div>
+              <span class="event-timestamp">2 HRS AGO</span>
+            </div>
+            <div class="event-row">
+              <div class="event-icon" style="background: var(--accent-green); color: var(--bd);">🛡</div>
+              <div class="event-text">SECURITY AUDIT / Automated scan passed</div>
+              <span class="event-timestamp">5 HRS AGO</span>
+            </div>
+            <div class="event-row">
+              <div class="event-icon" style="background: var(--accent-cyan); color: var(--bd);">✓</div>
+              <div class="event-text">DATA BACKUP / Archive state saved</div>
+              <span class="event-timestamp">1 DAY AGO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <div class="demo" id="demoChat" aria-labelledby="demoTitle">
+    <section class="admin-section" id="analytics" aria-labelledby="analyticsTitle">
+      <div class="section-head">
+        <h2 id="analyticsTitle">Analytics</h2>
+        <p>Guest question insights and patterns</p>
+      </div>
+      <div class="admin-grid">
+        <div>
+          <div class="chart-wrapper">
+            <div class="chart-title">Daily Message Volume (Last 30 Days)</div>
+            <div class="line-graph" id="analyticsDailyGraph">
+              <canvas></canvas>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div class="chart-title">Weekly Bucket Summary</div>
+            <div class="bar-chart" id="analyticsWeeklyBars">
+              <!-- Bars generated by JS -->
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-wrapper">
+            <div class="chart-theme">Message Resolution Mix</div>
+            <div class="bar-chart" id="analyticsMixBars">
+              <!-- Bars generated by JS -->
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div class="chart-title">Top Property Shares</div>
+            <table class="stats-table" id="analyticsPropertiesTable">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Inbound</th>
+                  <th>% of Total</th>
+                  <th>Last Activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows generated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-section" id="operations" aria-labelledby="operationsTitle">
+      <div class="section-head">
+        <h2 id="operationsTitle">Operations</h2>
+        <p>System health and operational metrics</p>
+      </div>
+      <div class="admin-grid">
+        <div>
+          <div class="card">
+            <div class="card-header"><span>KEY METRICS</span></div>
+            <div class="metric">
+              <div class="metric-value" id="guestMessages24h">0</div>
+              <div class="metric-label">Guest Messages (24h)</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="resolved24h">0</div>
+              <div class="metric-label">Resolved (24h)</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="openEscalations">0</div>
+              <div class="metric-label">Open Escalations</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="aiInteractions24h">0</div>
+              <div class="metric-label">AI Interactions (24h)</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header"><span>AWAITING QUESTIONS</span></div>
+            <div class="metric" id="openQueue">4</div>
+            <div class="small-text">oldest: 291 min</div>
+            <div class="progress" style="width: 75%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+              <div class="progress-bar" style="width: 75%; height: 100%; background: var(--accent-cyan);"></div>
+            </div>
+            <div class="small-text" style="margin-top: 0.5rem;">over 1h: 3 | over 4h: 1</div>
+            <div class="property-breakdown">
+              <div>Sample Villa 1: 2 open (oldest: 291 min)</div>
+              <div>Sample Villa 2: 1 open (oldest: 96 min)</div>
+              <div>Sample Villa 3: 1 open (oldest: 38 min)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="admin-grid">
+        <div>
+          <div class="card health-card">
+            <div class="card-header"><span>HEALTH CHECKS</span></div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Database</span><span id="healthDb">ok</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Property Store</span><span id="healthProp">ok</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Twilio Configured</span><span id="healthTwilio">true</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>AI Configured</span><span id="healthAI">true</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Signature Validation</span><span id="healthSig">true</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Missing Host Phone</span><span id="healthMissingPhone">0</span>
+            </div>
+            <div class="metric" style="justify-content: space-between;">
+              <span>Missing Text Number</span><span id="healthMissingNum">0</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card health-card">
+            <div class="card-header"><span>RECENT ACTIVITY</span></div>
+            <div class="event-list" style="font-size: 0.75rem;" id="recentEvents">
+              <!-- Generated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-section" id="insights" aria-labelledby="insightsTitle">
+      <div class="section-head">
+        <h2 id="insightsTitle">Insights</h2>
+        <p>Deep dive into guest question patterns</p>
+      </div>
+      <div class="admin-grid">
+        <div>
+          <div class="chart-wrapper">
+            <div class="chart-theme">Theme Distribution</div>
+            <div class="bar-chart" id="insightsThemeBars">
+              <!-- Bars generated by JS -->
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div class="chart-title">Unanswered Questions Ranking</div>
+            <div class="event-list" style="font-size: 0.7rem;" id="insightsUnansweredList">
+              <!-- Generated by JS -->
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-wrapper">
+            <div class="chart-theme">Per-Property Analysis</div>
+            <table class="stats-table" id="insightsPropertiesTable">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Total Messages</th>
+                  <th>Needs Human</th>
+                  <th>% Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows generated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="section-head">
+        <h2>One property. 30 days. $49.</h2>
+        <p>Setup, testing, and a closeout review included.</p>
+      </div>
+      <div class="pricing">
+        <div class="price-card pilot-card">
+          <h3>Included in the pilot</h3>
+          <ul>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">💬</span><span>A guest text line with answers from your approved property guide</span></li>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">🔔</span><span>Uncertain questions routed to your configured contact</span></li>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">🧪</span><span>Setup, testing, and a day-30 review</span></li>
+          </ul>
+          <div class="pilot-terms">
+            <strong>Terms:</strong> One-time $49 fee, paid before launch. No automatic renewal; continuing requires a separate agreement. StayXI is not emergency service or guaranteed host coverage. Guest SMS/data charges may apply.
+          </div>
+          <a class="plan-cta" href="mailto:hello@stayxi.com?subject=StayXI%2030-day%20pilot">Ask about your pilot</a>
+        </div>
+        
+        <div class="price-card">
+          <h3>Pilot Features</h3>
+          <ul>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">🔒</span><span>Inactive properties marked for cleanup</span></li>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">⚙️</span><span>Create inactive property from pilot</span></li>
+            <li class="plan-feature"><span class="emoji" aria-hidden="true">📊</span><span>Unified dashboard UI</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      &copy; 2026 StayXI · Davenport, Florida · <a href="mailto:hello@stayxi.com" style="color:var(--muted)">hello@stayxi.com</a>
+      <br style="margin-top:1rem;">
+      <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
+      <span style="color:var(--border);">|</span>
+      <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
+      <span style="color:var(--border);">|</span>
+      <a href="/admin" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Host sign-in</a>
+    </footer>
+  </main>
+
+  <!-- Demo chat (module) -->
+  <div id="demo-chat" style="display:none;">
+    <div class="demo">
       <div class="demo-heading">
         <span class="demo-label">Interactive sample</span>
-        <h2 id="demoTitle">Try a guest question.</h2>
-        <p id="demoNote">Fictional saved-answer sample only—no SMS, AI, host contact, or access codes.</p>
+        <h2>Try a guest question.</h2>
+        <p>Fictional saved-answer sample only—no SMS, AI, host contact, or access codes.</p>
       </div>
       <div class="sample-prompts" role="group" aria-label="Try a sample property question">
         <span>Try:</span>
@@ -300,146 +677,474 @@
         <input type="text" id="chatInput" aria-label="Ask a fictional property question" placeholder="Type a property question…">
         <button id="sendChat" type="button">Send</button>
       </div>
-      <div id="packagePrompt" class="package-prompt">
-        <h3>Want to test it with your property?</h3>
-        <p style="margin:0.5rem 0 1rem;">The one-property, 30-day pilot is $49, with setup included and no automatic renewal.</p>
-        <a href="#pricing" class="btn btn-primary">See the pilot details</a>
-      </div>
     </div>
+  </div>
 
-    <div class="pricing" id="pricing">
-      <div class="section-head" style="width:100%;">
-        <h2 id="pilotOfferTitle">One property. 30 days. $49.</h2>
-        <p>Setup, testing, and a closeout review included.</p>
-      </div>
-      <div class="price-card pilot-card">
-        <h3>Included in the pilot</h3>
-        <ul>
-          <li class="plan-feature"><span class="emoji" aria-hidden="true">💬</span><span>A guest text line with answers from your approved property guide</span></li>
-          <li class="plan-feature"><span class="emoji" aria-hidden="true">🔔</span><span>Uncertain questions routed to your configured contact</span></li>
-          <li class="plan-feature"><span class="emoji" aria-hidden="true">🧪</span><span>Setup, testing, and a day-30 review</span></li>
-        </ul>
-        <a class="plan-cta" href="mailto:hello@stayxi.com?subject=StayXI%2030-day%20pilot">Ask about your pilot</a>
-      </div>
-      <p class="pilot-terms"><strong>Terms:</strong> One-time $49 fee, paid before launch. No automatic renewal; continuing requires a separate agreement. StayXI is not emergency service or guaranteed host coverage. Guest SMS/data charges may apply.</p>
-    </div>
-
-    <section class="faq" aria-labelledby="faqTitle">
-      <div class="section-head">
-        <h2 id="faqTitle">A few practical questions</h2>
-        <p>What the current pilot does—and what it does not promise.</p>
-      </div>
-      <div class="faq-list">
-        <details>
-          <summary>What happens after 30 days?</summary>
-          <p>Stop, or agree separately to continue at a price discussed before then. Nothing renews automatically.</p>
-        </details>
-        <details>
-          <summary>Does StayXI replace the host?</summary>
-          <p>No. It supports routine property questions, but is not emergency service or guaranteed human coverage. Call 911 for immediate danger.</p>
-        </details>
-      </div>
-    </section>
-
-  </main>
-
-  <footer>
-    &copy; 2026 StayXI · Davenport, Florida · <a href="mailto:hello@stayxi.com" style="color:inherit">hello@stayxi.com</a>
-    <br style="margin-top:1rem;">
-    <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
-    <span style="color:var(--border);">|</span>
-    <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
-    <span style="color:var(--border);">|</span>
-    <a href="/admin" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Host sign-in</a>
-  </footer>
-
-  <!-- Demo chat (module) -->
   <script type="module">
+    import { buildAnalytics, sampleAnalytics } from './tools/analytics.js';
+    import { buildInsights, sampleInsights } from './tools/insights.js';
+    import { sampleOperations } from './tools/operations.js';
     import { sendDemoMessage } from './api.js';
 
-    // Demo chat (only on solution page)
+    // Initialize dashboard data
+    const now = new Date();
+    const analyticsData = sampleAnalytics(now);
+    const insightsData = sampleInsights(now);
+    const opsData = sampleOperations(now);
+
+    // ===== Dashboard Rendering =====
+    
+    // Core metrics
+    document.getElementById('coreMetric').textContent = analyticsData.totals.inbound;
+    const rateLimit = 5 - (analyticsData.totals.inbound % 5);
+    document.getElementById('rateLimit').textContent = rateLimit;
+    document.getElementById('msgCounter').textContent = `${rateLimit} sample questions left`;
+
+    // Radial progress
+    const resourceCanvas = document.getElementById('resourceRadial').querySelector('canvas');
+    const resourceCtx = resourceCanvas.getContext('2d');
+    const centerX = resourceCanvas.width / 2;
+    const centerY = resourceCanvas.height / 2;
+    const radius = Math.min(centerX, centerY) * 0.7;
+    
+    // Draw radial progress (94% active)
+    const resourcePct = 94;
+    const resourceEndAngle = (resourcePct / 100) * Math.PI * 2;
+    const resourceStartAngle = Math.PI / 2;
+    
+    resourceCtx.clearRect(0, 0, resourceCanvas.width, resourceCanvas.height);
+    resourceCtx.beginPath();
+    resourceCtx.arc(centerX, centerY, radius, resourceStartAngle, resourceStartAngle + resourceEndAngle, false);
+    resourceCtx.strokeStyle = 'var(--accent-cyan)';
+    resourceCtx.lineWidth = 12;
+    resourceCtx.stroke();
+    
+    // Draw inner circle
+    resourceCtx.beginPath();
+    resourceCtx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2);
+    resourceCtx.fillStyle = var(--card);
+    resourceCtx.fill();
+    
+    // Draw percentage text
+    resourceCtx.textAlign = 'center';
+    resourceCtx.textBaseline = 'middle';
+    resourceCtx.font = 'bold 2.5rem var(--text)';
+    resourceCtx.fillText(`${resourcePct}%`, centerX, centerY);
+    resourceCtx.fillStyle = var(--accent-cyan);
+    resourceCtx.fillText('ACTIVE', centerX, centerY + 0.6rem);
+
+    // Node uptime
+    document.getElementById('nodeUptime').textContent = '99.98%';
+
+    // Uptime chart
+    const uptimeCanvas = document.getElementById('uptimeChart');
+    const uptimeCtx = uptimeCanvas.getContext('2d');
+    uptimeCtx.clearRect(0, 0, uptimeCanvas.width, uptimeCanvas.height);
+    uptimeCtx.beginPath();
+    uptimeCtx.arc(uptimeCanvas.width / 2, uptimeCanvas.height / 2, 20, 0, Math.PI * 2);
+    uptimeCtx.fillStyle = var(--accent-green);
+    uptimeCtx.fill();
+    uptimeCtx.beginPath();
+    uptimeCtx.moveTo(uptimeCanvas.width / 2, uptimeCanvas.height / 2);
+    uptimeCtx.lineTo(uptimeCanvas.width - 10, 0);
+    uptimeCtx.strokeStyle = var(--text);
+    uptimeCtx.stroke();
+
+    // Throughput graph
+    const throughputCanvas = document.getElementById('throughputGraph').querySelector('canvas');
+    const throughputCtx = throughputCanvas.getContext('2d');
+    throughputCanvas.width = throughputCanvas.offsetWidth;
+    throughputCanvas.height = 200;
+    
+    // Sample data for throughput
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV'];
+    const inputData = [12000, 15000, 18000, 16000, 20000, 19000, 22000, 35000, 30000, 28000, 25000];
+    const outputData = [8000, 10000, 12000, 11000, 14000, 13000, 16000, 22000, 19000, 17000, 15000];
+    
+    throughputCtx.clearRect(0, 0, throughputCanvas.width, throughputCanvas.height);
+    throughputCtx.lineWidth = 2;
+    throughputCtx.strokeStyle = var(--accent-cyan);
+    throughputCtx.beginPath();
+    
+    inputData.forEach((val, i) => {
+      const x = (i / (inputData.length - 1)) * throughputCanvas.width + 20;
+      const y = throughputCanvas.height - ((val / 80000) * (throughputCanvas.height - 40)) - 20;
+      if (i === 0) throughputCtx.moveTo(x, y);
+      else throughputCtx.lineTo(x, y);
+    });
+    
+    throughputCtx.stroke();
+    
+    throughputCtx.strokeStyle = var(--accent-blue);
+    throughputCtx.beginPath();
+    outputData.forEach((val, i) => {
+      const x = (i / (outputData.length - 1)) * throughputCanvas.width + 20;
+      const y = throughputCanvas.height - ((val / 80000) * (throughputCanvas.height - 40)) - 20;
+      if (i === 0) throughputCtx.moveTo(x, y);
+      else throughputCtx.lineTo(x, y);
+    });
+    throughputCtx.stroke();
+    
+    // Draw cursor and tooltip at AUG 15
+    const augIndex = 7; // AUG
+    const augX = (augIndex / (inputData.length - 1)) * throughputCanvas.width + 20;
+    const augY = throughputCanvas.height - ((inputData[augIndex] / 80000) * (throughputCanvas.height - 40)) - 20;
+    
+    throughputCtx.strokeStyle = var(--accent-cyan);
+    throughputCtx.beginPath();
+    throughputCtx.moveTo(augX, 0);
+    throughputCtx.lineTo(augX, throughputCanvas.height);
+    throughputCtx.setLineDash([4]);
+    throughputCtx.stroke();
+    throughputCtx.setLineDash([]);
+    
+    // Draw tooltip
+    const tooltip = document.getElementById('tooltip');
+    tooltip.style.left = `${augX + 10}px`;
+    tooltip.style.top = `${augY - 20}px`;
+    tooltip.style.display = 'block';
+
+    // Volume bars
+    const volumeBars = document.getElementById('volumeBars');
+    const weekLabels = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'];
+    const weekData = [15000, 18000, 12000, 22000, 18000, 25000, 16000, 30000];
+    
+    volumeBars.innerHTML = weekLabels.map((label, i) => `
+      <div class="bar" style="width: ${((weekData[i] / 30000) * 100)}%">
+        <div class="label">${label}</div>
+      </div>
+    `).join('');
+
+    // Inflow/Outflow charts
+    const inflowCanvas = document.getElementById('inflowChart');
+    const inflowCtx = inflowCanvas.getContext('2d');
+    inflowCanvas.width = inflowCanvas.offsetWidth;
+    inflowCanvas.height = 40;
+    inflowCtx.clearRect(0, 0, inflowCanvas.width, inflowCanvas.height);
+    inflowCtx.beginPath();
+    inflowCtx.arc(15, 20, 15, 0, Math.PI * 2);
+    inflowCtx.fillStyle = var(--accent-green);
+    inflowCtx.fill();
+    inflowCtx.beginPath();
+    inflowCtx.arc(inflowCanvas.width - 15, 20, 15, 0, Math.PI * 2);
+    inflowCtx.fillStyle = var(--accent-green);
+    inflowCtx.fill();
+    inflowCtx.fillText('↑ 3.2%', 20, 25);
+
+    const outflowCanvas = document.getElementById('outflowChart');
+    const outflowCtx = outflowCanvas.getContext('2d');
+    outflowCanvas.width = outflowCanvas.offsetWidth;
+    outflowCanvas.height = 40;
+    outflowCtx.clearRect(0, 0, outflowCanvas.width, outflowCanvas.height);
+    outflowCtx.beginPath();
+    outflowCtx.arc(15, 20, 15, 0, Math.PI * 2);
+    outflowCtx.fillStyle = var(--accent-red);
+    outflowCtx.fill();
+    outflowCtx.beginPath();
+    outflowCtx.arc(outflowCanvas.width - 15, 20, 15, 0, Math.PI * 2);
+    outflowCtx.fillStyle = var(--accent-red);
+    outflowCtx.fill();
+    outflowCtx.fillText('↓ 1.8%', 20, 25);
+
+    // Fade in animation
+    const fadeElements = document.querySelectorAll('.fade-in');
+    fadeElements.forEach((el, i) => {
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+      }, 100 + i * 100);
+    });
+
+    // ===== Analytics Rendering =====
+    
+    // Daily series
+    const dailyCanvas = document.getElementById('analyticsDailyGraph').querySelector('canvas');
+    const dailyCtx = dailyCanvas.getContext('2d');
+    dailyCanvas.width = dailyCanvas.offsetWidth;
+    dailyCanvas.height = 200;
+    
+    // Build daily series from sample data
+    const windowDays = 30;
+    const totalDays = windowDays * 2;
+    const empty = buildDailySeries([], totalDays, now);
+    const daily = empty.map((day, index) => {
+      const weekday = [4, 7, 5, 9, 12, 10, 6][index % [4, 7, 5, 9, 12, 10, 6].length];
+      const inbound = weekday + Math.floor(index / 12) + (index % 9 === 4 ? 4 : 0);
+      const outbound = Math.max(0, inbound - 1 - (index % 4));
+      const escalated = index % 13 === 5 ? 3 : index % 5 === 2 ? 2 : index % 7 === 0 ? 1 : 0;
+      return { day: day.day, inbound, outbound, escalated };
+    });
+    
+    // Draw daily graph
+    dailyCtx.clearRect(0, 0, dailyCanvas.width, dailyCanvas.height);
+    dailyCtx.lineWidth = 2;
+    
+    // Draw input flow (cyan)
+    dailyCtx.strokeStyle = var(--accent-cyan);
+    dailyCtx.beginPath();
+    daily.map((day, i) => {
+      const x = (i / (daily.length - 1)) * dailyCanvas.width;
+      const y = dailyCanvas.height - ((day.inbound / 50000) * (dailyCanvas.height - 40)) - 20;
+      if (i === 0) dailyCtx.moveTo(x, y);
+      else dailyCtx.lineTo(x, y);
+    });
+    dailyCtx.stroke();
+    
+    // Draw output flow (blue)
+    dailyCtx.strokeStyle = var(--accent-blue);
+    dailyCtx.beginPath();
+    daily.map((day, i) => {
+      const x = (i / (daily.length - 1)) * dailyCanvas.width;
+      const y = dailyCanvas.height - ((day.outbound / 50000) * (dailyCanvas.height - 40)) - 20;
+      if (i === 0) dailyCtx.moveTo(x, y);
+      else dailyCtx.lineTo(x, y);
+    });
+    dailyCtx.stroke();
+    
+    // Weekly buckets
+    const weeklyBars = document.getElementById('analyticsWeeklyBars');
+    const weeklyData = [4, 7, 5, 9, 12, 10, 6]; // SAMPLE_WEEK_PATTERN
+    weeklyBars.innerHTML = weeklyData.map((val, i) => `
+      <div class="bar" style="height: ${val * 2}px;">
+        <span>W${i + 1}</span>
+      </div>
+    `).join('');
+    
+    // Message resolution mix
+    const mixBars = document.getElementById('analyticsMixBars');
+    const mixLabels = ['From your answers', 'Answered by AI', 'Escalated to you', 'Unrouted or blocked'];
+    const mixData = [178, 68, 33, 9]; // From sampleAnalytics mix
+    const totalMix = mixData.reduce((a, b) => a + b, 0);
+    
+    mixBars.innerHTML = mixLabels.map((label, i) => {
+      const pct = Math.round((mixData[i] / totalMix) * 100);
+      return `<div class="bar" style="height: ${pct}%; background: ${i === 0 ? 'var(--accent-cyan)' : i === 1 ? 'var(--accent-blue)' : i === 2 ? 'var(--accent-purple)' : 'var(--accent-red)'};">
+        <span>${label}: ${pct}%</span>
+      </div>`;
+    }).join('');
+    
+    // Properties table
+    const propertiesTable = document.getElementById('analyticsPropertiesTable').querySelector('tbody');
+    const sampleProperties = [
+      { id: 'sample-a', name: 'Sample Villa A', inbound: 168, lastActivity: new Date(now.getTime() - 45 * 60000).toLocaleDateString() },
+      { id: 'sample-b', name: 'Sample Villa B', inbound: 121, lastActivity: new Date(now.getTime() - 3 * 3600000).toLocaleTimeString() },
+      { id: 'sample-c', name: 'Sample Villa C', inbound: 74, lastActivity: new Date(now.getTime() - 26 * 3600000).toLocaleTimeString() },
+      { id: 'sample-d', name: 'Sample Villa D', inbound: 39, lastActivity: new Date(now.getTime() - 50 * 3600000).toLocaleTimeString() },
+    ];
+    
+    propertiesTable.innerHTML = sampleProperties.map(prop => `
+      <tr>
+        <td>${prop.name}</td>
+        <td>${prop.inbound}</td>
+        <td>${Math.round((prop.inbound / 402) * 100)}%</td>
+        <td>${prop.lastActivity}</td>
+      </tr>
+    `).join('');
+
+    // ===== Operations Rendering =====
+    
+    document.getElementById('guestMessages24h').textContent = opsData.metrics.guestMessages24h;
+    document.getElementById('resolved24h').textContent = opsData.metrics.resolvedGuestMessages24h;
+    document.getElementById('openEscalations').textContent = opsData.metrics.openEscalations;
+    document.getElementById('aiInteractions24h').textContent = opsData.metrics.aiInteractions24h;
+    
+    document.getElementById('openQueue').textContent = opsData.awaiting.open;
+    // oldest minutes already hardcoded in HTML
+    
+    document.getElementById('healthDb').textContent = opsData.health.database;
+    document.getElementById('healthProp').textContent = opsData.health.propertyStore;
+    document.getElementById('healthTwilio').textContent = opsData.health.twilioConfigured ? 'true' : 'false';
+    document.getElementById('healthAI').textContent = opsData.health.aiConfigured ? 'true' : 'false';
+    document.getElementById('healthSig').textContent = opsData.health.signatureValidationEnabled ? 'true' : 'false';
+    document.getElementById('healthMissingPhone').textContent = opsData.health.missingHostPhone;
+    document.getElementById('healthMissingNum').textContent = opsData.health.missingTextNumber;
+
+    // Recent events for operations
+    const opsEventList = document.getElementById('recentEvents');
+    opsEventList.innerHTML = [
+      { kind: 'message', text: 'What time is checkout?', minutesAgo: 45 },
+      { kind: 'escalation', text: 'Trash bins were not collected', minutesAgo: 240 },
+      { kind: 'message', text: 'Is early check-in possible?', minutesAgo: 430 },
+      { kind: 'escalation', text: 'Wi-Fi keeps dropping', minutesAgo: 1400 },
+    ].map(event => `
+      <div class="event-row">
+        <span style="color: var(--accent-cyan);">•</span>
+        <span>${event.text}</span>
+        <span style="color: var(--muted);">${event.minutesAgo} min ago</span>
+      </div>
+    `).join('');
+
+    // ===== Insights Rendering =====
+    
+    // Theme distribution bars
+    const insightsThemeBars = document.getElementById('insightsThemeBars');
+    const sampleThemes = [
+      { intentKey: 'wifi', total: 96, escalated: 8, unresolved: 2 },
+      { intentKey: 'checkout', total: 71, escalated: 3, unresolved: 1 },
+      { intentKey: 'gate', total: 64, escalated: 5, unresolved: 0 },
+      { intentKey: 'trash', total: 38, escalated: 12, unresolved: 1 },
+      { intentKey: 'pool_heat', total: 27, escalated: 9, unresolved: 0 },
+      { intentKey: 'parking', total: 19, escalated: 2, unresolved: 0 },
+    ];
+    
+    insightsThemeBars.innerHTML = sampleThemes.map(theme => {
+      const pct = Math.round((theme.total / 417) * 100);
+      const color = theme.intentKey === 'wifi' ? 'var(--accent-cyan)' : 
+                    theme.intentKey === 'checkout' ? 'var(--accent-blue)' :
+                    theme.intentKey === 'gate' ? 'var(--accent-purple)' :
+                    theme.intentKey === 'trash' ? 'var(--accent-orange)' :
+                    theme.intentKey === 'pool_heat' ? 'var(--accent-green)' : 'var(--accent-red)';
+      return `<div class="bar" style="height: ${pct}%; background: ${color};">
+        <span>${theme.intentKey}: ${pct}%</span>
+      </div>`;
+    }).join('');
+    
+    // Unanswered questions ranking
+    const insightsUnansweredList = document.getElementById('insightsUnansweredList');
+    const unansweredRanking = sampleThemes
+      .filter(t => t.escalated + t.unresolved > 0)
+      .map(t => ({
+        key: t.intentKey,
+        label: themeLabel(t.intentKey),
+        total: t.total,
+        needsHuman: t.escalated + t.unresolved,
+        escalated: t.escalated,
+        unresolved: t.unresolved,
+      }))
+      .sort((a, b) => b.needsHuman - a.needsHuman || b.total - a.total);
+    
+    insightsUnansweredList.innerHTML = unansweredRanking.map(u => `
+      <div class="event-row" style="padding: 0.5rem; border-top: 1px solid var(--border);">
+        <span style="color: var(--accent-red); font-weight: bold;">${u.label}</span>
+        <span>${u.total} total, ${u.needsHuman} needs human</span>
+        <span style="color: var(--muted);">${u.escalated} escalated, ${u.unresolved} unresolved</span>
+      </div>
+    `).join('');
+    
+    // Per-property analysis table
+    const insightsPropertiesTable = document.getElementById('insightsPropertiesTable').querySelector('tbody');
+    insightsPropertiesTable.innerHTML = sampleProperties.map((prop, i) => {
+      const total = analyticsData.properties[i]?.inbound || 168;
+      const unresolved = Math.round(total * 0.14); // 14% unresolved rate
+      return `
+        <tr>
+          <td>${prop.name}</td>
+          <td>${total}</td>
+          <td>${unresolved}</td>
+          <td>${Math.round((unresolved / total) * 100)}%</td>
+        </tr>
+      `;
+    }).join('');
+    
+    function themeLabel(intentKey) {
+      const key = String(intentKey == null ? "" : intentKey).trim().toLowerCase();
+      if (!key) return "Unclassified";
+      const labels = {
+        wifi: "Wi-Fi", wifi_password: "Wi-Fi", checkout: "Checkout", checkin: "Check-in",
+        check_in: "Check-in", early_checkin: "Early check-in", late_checkout: "Late checkout",
+        gate: "Gate code", gate_code: "Gate code", door_code: "Door code", lock: "Door lock",
+        lockout: "Locked out", trash: "Trash and bins", pool: "Pool", pool_heat: "Pool heater",
+        parking: "Pets", pets: "Pets", rules: "House rules", ac: "Air conditioning",
+        thermostat: "Thermostat", tv: "TV", internet: "Internet", noise: "Noise complaint",
+        maintenance: "Maintenance", emergency: "Emergency", rate_limit: "Rate limited",
+        unknown: "Unclassified",
+      };
+      if (labels[key]) return labels[key];
+      return key.replace(/[_-]+/g, " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+    }
+
+    // ===== Demo Chat Functionality =====
+    
     const chat = document.getElementById('chat');
-    if (chat) {
-      const chatInput = document.getElementById('chatInput');
-      const sendChatBtn = document.getElementById('sendChat');
-      const msgCounter = document.getElementById('msgCounter');
-      const packagePrompt = document.getElementById('packagePrompt');
-      const samplePromptButtons = [...document.querySelectorAll('.sample-prompt')];
-      let sampleComplete = false;
-
-      function addMsg(text, isGuest) {
-        const wrap = document.createElement('div');
-        wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble' + (isGuest ? ' bubble-guest' : ' bubble-bot');
-        bubble.textContent = text;
-        wrap.appendChild(bubble);
-        chat.appendChild(wrap);
-        chat.scrollTop = chat.scrollHeight;
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChat');
+    const msgCounter = document.getElementById('msgCounter');
+    const packagePrompt = document.getElementById('packagePrompt');
+    const samplePromptButtons = [...document.querySelectorAll('.sample-prompt')];
+    let sampleComplete = false;
+    
+    function addMsg(text, isGuest) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble' + (isGuest ? ' bubble-guest' : ' bubble-bot');
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    
+    addMsg("Welcome to the fictional StayXI sample. Ask about checkout, trash, parking, pets, or quiet hours. If a question is unknown or sensitive, the sample will direct you to the host; it cannot contact anyone.", false);
+    updateCounter(5);
+    
+    function updateCounter(remaining) {
+      if (msgCounter) {
+        msgCounter.textContent = remaining === 0
+          ? 'Sample complete'
+          : remaining + ' sample question' + (remaining === 1 ? '' : 's') + ' left';
       }
-
-      // Initial bot message clearly distinguishes this saved-answer sample from live service.
-      addMsg("Welcome to the fictional StayXI sample. Ask about checkout, trash, parking, pets, or quiet hours. If a question is unknown or sensitive, the sample will direct you to the host; it cannot contact anyone.", false);
-      updateCounter(5);
-
-      function updateCounter(remaining) {
-        if (msgCounter) {
-          msgCounter.textContent = remaining === 0
-            ? 'Sample complete'
-            : remaining + ' sample question' + (remaining === 1 ? '' : 's') + ' left';
-        }
-      }
-
-      function showPackageUpsell() {
-        sampleComplete = true;
-        if (packagePrompt) packagePrompt.style.display = 'block';
-        if (chatInput) chatInput.disabled = true;
-        if (sendChatBtn) sendChatBtn.disabled = true;
-        samplePromptButtons.forEach((button) => { button.disabled = true; });
-      }
-
-      async function sendCurrentMessage() {
-        const message = chatInput.value.trim();
-        if (!message) return;
-
-        addMsg(message, true);
-        chatInput.value = '';
-        sendChatBtn.disabled = true;
-
-        try {
-          const response = await sendDemoMessage(message);
-
-          if (response.showPackage) {
-            addMsg(response.reply, false);
-            showPackageUpsell();
-          } else {
-            addMsg(response.reply, false);
-            if (response.remaining !== undefined) {
-              updateCounter(response.remaining);
-              if (response.remaining <= 0) showPackageUpsell();
-            }
+    }
+    
+    function showPackageUpsell() {
+      sampleComplete = true;
+      if (packagePrompt) packagePrompt.style.display = 'block';
+      if (chatInput) chatInput.disabled = true;
+      if (sendChatBtn) sendChatBtn.disabled = true;
+      samplePromptButtons.forEach((button) => { button.disabled = true; });
+    }
+    
+    async function sendCurrentMessage() {
+      const message = chatInput.value.trim();
+      if (!message) return;
+      
+      addMsg(message, true);
+      chatInput.value = '';
+      sendChatBtn.disabled = true;
+      
+      try {
+        const response = await sendDemoMessage(message);
+        
+        if (response.showPackage) {
+          addMsg(response.reply, false);
+          showPackageUpsell();
+        } else {
+          addMsg(response.reply, false);
+          if (response.remaining !== undefined) {
+            updateCounter(response.remaining);
+            if (response.remaining <= 0) showPackageUpsell();
           }
-        } catch (error) {
-          addMsg(`Error: ${error.message}`, false);
-        } finally {
-          sendChatBtn.disabled = sampleComplete;
-          samplePromptButtons.forEach((button) => { button.disabled = sampleComplete; });
         }
+      } catch (error) {
+        addMsg(`Error: ${error.message}`, false);
+      } finally {
+        sendChatBtn.disabled = sampleComplete;
+        samplePromptButtons.forEach((button) => { button.disabled = sampleComplete; });
       }
-
-      sendChatBtn.addEventListener('click', sendCurrentMessage);
-      chatInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') sendCurrentMessage();
+    }
+    
+    sendChatBtn.addEventListener('click', sendCurrentMessage);
+    chatInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') sendCurrentMessage();
+    });
+    samplePromptButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        chatInput.value = button.dataset.sampleQuestion || '';
+        sendCurrentMessage();
       });
-      samplePromptButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          chatInput.value = button.dataset.sampleQuestion || '';
-          sendCurrentMessage();
-        });
+    });
+    
+    // Restore demo questions button
+    const restoreDemoBtn = document.getElementById('restoreDemoBtn');
+    if (restoreDemoBtn) {
+      restoreDemoBtn.addEventListener('click', () => {
+        sampleComplete = false;
+        if (packagePrompt) packagePrompt.style.display = "none";
+        if (chatInput) chatInput.disabled = false;
+        if (sendChatBtn) sendChatBtn.disabled = false;
+        samplePromptButtons.forEach((button) => { button.disabled = false; });
+        updateCounter(5);
       });
-
     }
   </script>
-
 </body>
 </html>
