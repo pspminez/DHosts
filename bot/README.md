@@ -66,7 +66,9 @@ Worker, KV namespace, and D1 database; do not create replacement resources.
 Before applying changes, confirm the active Cloudflare account and review
 `npx wrangler d1 migrations list davenport-host-co-db --remote`. The pilot
 release should show only `0007_pilot_properties.sql` pending. Review that
-migration and take/verify a D1 backup before proceeding. Then, from the project
+migration and take/verify a D1 backup before proceeding — write the backup under
+`private/` or outside the repo, since a D1 export contains guest and access data.
+Then, from the project
 root, apply the additive migration before publishing the Worker:
 
 ```powershell

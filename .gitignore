@@ -5,3 +5,9 @@ node_modules/
 dist/
 .dev.vars
 .dev.vars.*
+
+# Local-only material that must never be committed: private/ holds the answer
+# libraries with real access codes, and .env files hold credentials.
+private/
+.env*
+!.env.example
