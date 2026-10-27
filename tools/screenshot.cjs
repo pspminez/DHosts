@@ -68,6 +68,15 @@ const AWAITING = {
   ],
 };
 
+// What the live endpoint returns for the day-part card, so a capture taken in
+// live mode shows the card instead of its "no messages" fallback.
+const DAY_PARTS = [
+  { key: "overnight", label: "Overnight", hours: "12–6am", inbound: 1, share: 8.3 },
+  { key: "morning", label: "Morning", hours: "6am–12pm", inbound: 4, share: 33.3 },
+  { key: "afternoon", label: "Afternoon", hours: "12–6pm", inbound: 5, share: 41.7 },
+  { key: "evening", label: "Evening", hours: "6pm–12am", inbound: 2, share: 16.7 },
+];
+
 const LIVE_METRICS = {
   guestMessages24h: 12,
   resolvedGuestMessages24h: 10,
@@ -181,7 +190,7 @@ function connect(url) {
     "/admin/api/analytics?sample=1": sampleAnalytics(now),
     "/admin/api/insights": { ...sampleInsights(now), sample: false },
     "/admin/api/insights?sample=1": sampleInsights(now),
-    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, awaiting: AWAITING },
+    "/admin/api/operations": { sample: false, metrics: LIVE_METRICS, dayParts: DAY_PARTS, awaiting: AWAITING },
     "/admin/api/operations?sample=1": sampleOperations(now),
     "/admin/api/health": HEALTH,
     "/admin/api/features": { insights: true },

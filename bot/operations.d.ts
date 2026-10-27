@@ -37,11 +37,33 @@ export interface OperationsAwaiting {
   byProperty: AwaitingProperty[];
 }
 
+export interface OperationsDayPart {
+  key: string;
+  label: string;
+  hours: string;
+  inbound: number;
+  share: number;
+}
+
+export interface OperationsMixEntry {
+  key: string;
+  label: string;
+  n: number;
+  pct: number;
+}
+
 export interface OperationsSample {
   sample: true;
   metrics: OperationsMetrics;
   health: OperationsHealth;
   awaiting: OperationsAwaiting;
+  dayParts: OperationsDayPart[];
+  mix: OperationsMixEntry[];
 }
 
+export function buildDayParts(
+  rows: { hour?: string | null; inbound?: number | string | null }[],
+  now?: Date,
+  timeZone?: string,
+): OperationsDayPart[];
 export function sampleOperations(now?: Date): OperationsSample;

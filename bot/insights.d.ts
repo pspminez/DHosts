@@ -29,6 +29,18 @@ export interface InsightProperty {
   needsHumanShare: number;
 }
 
+export interface InsightDailyPoint {
+  day: string;
+  inbound: number;
+  outbound: number;
+  escalated: number;
+}
+
+export interface InsightWeeklyBucket {
+  label: string;
+  inbound: number;
+}
+
 export interface InsightsSnapshot {
   sample: boolean;
   windowDays: number;
@@ -42,12 +54,15 @@ export interface InsightsSnapshot {
   themes: InsightTheme[];
   unanswered: InsightUnanswered[];
   properties: InsightProperty[];
+  daily: InsightDailyPoint[];
+  weekly: InsightWeeklyBucket[];
 }
 
 export interface InsightsInput {
   current: { intentKey?: string | null; total?: number | string | null; escalated?: number | string | null; unresolved?: number | string | null }[];
   previous: { intentKey?: string | null; total?: number | string | null }[];
   properties: { name?: string | null; total?: number | string | null; unresolved?: number | string | null }[];
+  daily?: { day?: string; inbound?: number | string | null; outbound?: number | string | null; escalated?: number | string | null }[];
 }
 
 export function themeLabel(intentKey: unknown): string;

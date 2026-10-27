@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handledWithoutHuman, sampleAnalytics } from "./analytics.js";
-import { sampleOperations } from "./operations.js";
+import { buildDayParts, sampleOperations } from "./operations.js";
 
 // Fixed clock so the derived figures are deterministic in every timezone.
 const NOW = new Date(Date.UTC(2026, 9, 26, 12, 0, 0));
@@ -128,4 +128,46 @@ test("stamps the same way the live query does", () => {
   const { metrics } = sampleOperations(NOW);
   assert.match(metrics.measuredAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   assert.equal(metrics.measuredAt, "2026-10-26 12:00:00");
+});
+
+test("splits the last 24 hours into the four stretches of the host's day", () => {
+  const { dayParts, metrics } = sampleOperations(NOW);
+  assert.deepEqual(dayParts.map((part) => part.key), ["overnight", "morning", "afternoon", "evening"]);
+  assert.deepEqual(dayParts.map((part) => part.hours), ["12–6am", "6am–12pm", "12–6pm", "6pm–12am"]);
+  // The panel shows the parts next to the guest-message tile, so they have to
+  // be the same messages, split across the clock.
+  assert.equal(dayParts.reduce((sum, part) => sum + part.inbound, 0), metrics.guestMessages24h);
+  const shares = dayParts.reduce((sum, part) => sum + part.share, 0);
+  assert.ok(Math.abs(shares - 100) <= 0.5, `shares should cover the day, got ${shares}%`);
+});
+
+test("reads the hourly buckets in the host's timezone, not UTC", () => {
+  // 13:00 UTC is 9am in Davenport, so that hour is a morning message. Grouping
+  // by the raw UTC hour would have filed it under the afternoon.
+  const rows = [{ hour: "2026-10-26T13", inbound: 4 }];
+  const now = new Date(Date.UTC(2026, 9, 26, 16, 0, 0));
+  assert.equal(buildDayParts(rows, now).find((part) => part.key === "morning").inbound, 4);
+  assert.equal(buildDayParts(rows, now).find((part) => part.key === "afternoon").inbound, 0);
+});
+
+test("fills quiet stretches with real zeros", () => {
+  // A stretch with no rows must render as an empty bar, not as a missing card.
+  const parts = buildDayParts([], NOW);
+  assert.deepEqual(parts.map((part) => part.inbound), [0, 0, 0, 0]);
+  assert.deepEqual(parts.map((part) => part.share), [0, 0, 0, 0]);
+});
+
+test("ignores buckets older than the 24-hour window", () => {
+  const rows = [
+    { hour: "2026-10-26T11", inbound: 5 },
+    { hour: "2026-10-01T09", inbound: 99 },
+  ];
+  assert.equal(buildDayParts(rows, NOW).reduce((sum, part) => sum + part.inbound, 0), 5);
+});
+
+test("the demo day looks like a host's day: quiet overnight, busy after lunch", () => {
+  const byKey = new Map(sampleOperations(NOW).dayParts.map((part) => [part.key, part.inbound]));
+  assert.equal(byKey.get("overnight"), 0, "no sample guest texts arrive at 2am");
+  assert.ok(byKey.get("afternoon") > byKey.get("morning"), "the afternoon should be the busiest stretch");
+  assert.ok(byKey.get("morning") > byKey.get("evening"));
 });

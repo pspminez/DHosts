@@ -12,7 +12,7 @@
 //   * A theme with no previous period reports a null delta, never 0% — the panel
 //     shows no arrow rather than inventing a comparison.
 
-import { percentDelta, themeLabel } from "./analytics.js";
+import { buildDailySeries, buildWeekly, percentDelta, sampleAnalytics, themeLabel } from "./analytics.js";
 
 // Shared with the analytics payload; kept as a re-export so callers of this
 // module do not have to know where the map lives.
@@ -27,6 +27,7 @@ const round1 = (value) => Math.round(value * 10) / 10;
  *   current     [{ intentKey, total, escalated, unresolved }] — last 30 days
  *   previous    [{ intentKey, total }]                        — the 30 days before
  *   properties  [{ name, total, unresolved }]                 — last 30 days, live only
+ *   daily       [{ day, inbound }]                            — last 60 days, for the chart
  *
  * A message "needs a human" when it escalated or never got routed to an answer.
  */
@@ -79,6 +80,10 @@ export function buildInsights(input, now = new Date()) {
     }))
     .sort((a, b) => b.needsHuman - a.needsHuman || b.shareOfTheme - a.shareOfTheme);
 
+  // The tab draws the same style of chart as Analytics: a filled area series of
+  // daily questions plus weekly buckets, so the payload carries both.
+  const dailySeries = buildDailySeries((input && input.daily) || [], INSIGHTS_WINDOW_DAYS, now);
+
   const propertyTotals = propertyRows.reduce((sum, row) => sum + Number((row && row.total) || 0), 0);
   const properties = propertyRows
     .map((row) => {
@@ -107,6 +112,10 @@ export function buildInsights(input, now = new Date()) {
     themes,
     unanswered,
     properties,
+    daily: dailySeries,
+    // Four weeks rather than eight: the window is 30 days, so eight buckets
+    // would render four permanently empty bars at the left of the chart.
+    weekly: buildWeekly(dailySeries, 4),
   };
 }
 
@@ -139,8 +148,10 @@ export function sampleInsights(now = new Date()) {
     unresolved: theme.unresolved,
   }));
   const previous = SAMPLE_THEMES.map((theme) => ({ intentKey: theme.intentKey, total: theme.prior }));
+  // Same daily shape as the Analytics demo, so both tabs tell one story.
+  const daily = sampleAnalytics(now).daily.map((day) => ({ day: day.day, inbound: day.inbound }));
   return {
-    ...buildInsights({ current, previous, properties: SAMPLE_PROPERTIES }, now),
+    ...buildInsights({ current, previous, properties: SAMPLE_PROPERTIES, daily }, now),
     sample: true,
   };
 }
