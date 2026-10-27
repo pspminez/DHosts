@@ -168,6 +168,8 @@ async function runPage({ html, script, routes }) {
     "toggleInsights: toggleInsightsSample",
     "renderList: renderList",
     "renderLeads: renderLeads",
+    "loadPilots: loadPilots",
+    "openPilot: openPilot",
     "showTab: showTab",
     "setProperties: (v) => { properties = v; }",
     "setLeads: (v) => { leads = v; }",
@@ -311,6 +313,29 @@ const LEADS = [
     "/admin/api/health": HEALTH,
     "/admin/api/properties": { properties: PROPERTIES },
     "/admin/api/property?id=SUNSET": SUNSET_PROPERTY,
+    "/admin/api/pilots": {
+      pilots: [{
+        propertyId: "PILOT-ONE", leadId: null, clientName: "Test Operator", propertyName: "Test Property",
+        stage: "draft", active: false, startedAt: "2026-10-26", endsAt: "2026-11-25", feeCents: 4900,
+        checklist: {}, scorecard: {}, knowledge: { answers: [], secrets: [] }, hasTextLine: true, hasHostContact: true,
+        criticalChangesPending: false,
+        metrics: { guestMessages: 0, answered: 0, escalated: 0, unrouted: 0, openEscalations: 0, avgHostReplyMinutes: null, answeredRate: null, escalatedRate: null, unroutedRate: null, addOns: [] },
+      }],
+      availableProperties: [
+        { id: "PILOT-AVAILABLE", name: "Available Test Property", stage: "live", active: 0 },
+        // Already serving guests: pilots must be startable without taking it
+        // offline first.
+        { id: "PILOT-ACTIVE", name: "Already Live Property", stage: "live", active: 1 },
+      ],
+    },
+    "/admin/api/pilot-audit": {
+      summary: { launched: 2, completed: 1, scorecardsSaved: 3 },
+      events: [
+        { createdAt: "2026-10-26 12:00:00", action: "pilot_launched", propertyId: "PILOT-ONE", propertyName: "Test Property" },
+        { createdAt: "2026-10-26 11:00:00", action: "pilot_scorecard_saved", propertyId: "PILOT-ONE", propertyName: "Test Property" },
+      ],
+    },
+    "/admin/api/leads": { leads: LEADS },
   };
 
   // ---- shell: every view has a nav item, and showTab marks exactly one -----
@@ -329,6 +354,32 @@ const LEADS = [
     page.navItems.filter((n) => n.classList.contains("active")).map((n) => n.getAttribute("data-tab")),
     ["properties"],
   );
+  await page.helpers.loadPilots();
+  check(
+    "pilot property picker offers every property without a pilot",
+    page.registry.pilotNewProperty.children.map((option) => option.value),
+    ["", "PILOT-AVAILABLE", "PILOT-ACTIVE"],
+  );
+
+  const noOnboarding = await runPage({
+    html,
+    script,
+    routes: { ...routes, "/admin/api/pilots": { pilots: [], availableProperties: [] } },
+  });
+  await noOnboarding.helpers.loadPilots();
+  check(
+    "an empty onboarding list says why it is empty",
+    noOnboarding.registry.pilotNewProperty.children[0].textContent,
+    "No property available to onboard",
+  );
+  check("the start button is disabled with nothing to onboard", noOnboarding.registry.pilotCreateButton.disabled, true);
+  check("pilot activity summary counts", page.registry.pilotAuditSummary.children.map((tile) => tile.children.map((node) => node.textContent)), [["2", "Launches"], ["1", "Completed"], ["3", "Scorecards saved"]]);
+  check("pilot activity renders event labels only", page.registry.pilotAuditEvents.children.map((event) => event.textContent), ["2026-10-26 12:00:00 · Test Property · Pilot launched", "2026-10-26 11:00:00 · Test Property · Scorecard saved"]);
+  check("pilot activity never displays scorecard notes", page.registry.pilotAuditEvents.children.some((event) => event.textContent.includes("private")), false);
+  check("pilot list renders saved draft status", page.registry.pilotRecordList.children[0].children[0].children[1].textContent.startsWith("DRAFT · 2026-10-26"), true);
+  page.helpers.openPilot("PILOT-ONE");
+  check("draft editor offers the launch action", page.registry.pilotLaunchButton.textContent, "Launch pilot");
+  check("draft editor persists the pilot checklist", page.registry.pilotLaunchChecks.children.length, 7);
   // The properties view keeps its old id, so map it explicitly.
   const viewIds = { properties: "listView", leads: "leadsView", analytics: "analyticsView", insights: "insightsView", operations: "operationsView", pilot: "pilotView" };
   check(
@@ -449,7 +500,19 @@ const LEADS = [
   check("insights total", page.registry.insightTotal.textContent, String(insightsSample.totals.messages));
   check("insights worst theme", page.registry.insightWorst.textContent, insightsSample.unanswered[0].label);
   check("insight theme rows", page.registry.insightThemesList.children.length, insightsSample.themes.length);
-  check("insight property rows", page.registry.insightProperties.children[0].children[1].children.length, insightsSample.properties.length);
+  // Stacked rows, not a table: a four-column table only fit this card behind a
+  // sideways scrollbar.
+  check("insight property rows", page.registry.insightProperties.children.length, insightsSample.properties.length);
+  check(
+    "insight property row shows the property and its question count",
+    page.registry.insightProperties.children[0].children[0].children.map((cell) => cell.textContent),
+    [insightsSample.properties[0].name, insightsSample.properties[0].total.toLocaleString()],
+  );
+  check(
+    "insight property row spells out the human share",
+    page.registry.insightProperties.children[0].children[2].textContent,
+    insightsSample.properties[0].needsHuman.toLocaleString() + " needed a human · " + insightsSample.properties[0].needsHumanShare + "%",
+  );
   page.helpers.toggleInsights();
   await new Promise((r) => setTimeout(r, 40));
   check("insights demo requests the sample endpoint", page.calls.includes("/admin/api/insights?sample=1"), true);
@@ -463,6 +526,29 @@ const LEADS = [
   check("overlapping loads leave six stat tiles, not twelve", ops.registry.operationMetrics.children.length, 6);
   check("overlapping loads leave seven health rows", ops.registry.operationHealth.children.length, 7);
   check("operations stamp", ops.registry.operationsStatus.textContent, "Updated 2026-10-26 11:22:33.");
+
+  // ---- when guests text (day parts) ---------------------------------------
+  // The fixture above has no day parts, like a live route that predates them;
+  // the demo payload is the one the rows can be checked against.
+  check("a route without day parts says so", ops.registry.opDayParts.children[0].textContent, "No guest messages in the last 24 hours.");
+  const parts = await runPage({ html, script, routes: { ...routes, "/admin/api/operations": operationsSample } });
+  await parts.helpers.loadOperations();
+  const busiestPart = operationsSample.dayParts.reduce(
+    (best, part) => (part.inbound > best.inbound ? part : best),
+    operationsSample.dayParts[0],
+  );
+  check("day-part rows", parts.registry.opDayParts.children.length, operationsSample.dayParts.length);
+  check(
+    "day-part row names the stretch and its volume",
+    parts.registry.opDayParts.children[0].children[0].children.map((cell) => cell.textContent),
+    [operationsSample.dayParts[0].label + " · " + operationsSample.dayParts[0].hours, operationsSample.dayParts[0].inbound.toLocaleString()],
+  );
+  check("day-part bars are drawn", parts.registry.opDayParts.children[0].children[1].children.length, 1);
+  check(
+    "day-part card points at the busiest stretch",
+    parts.registry.opDayPartNote.textContent,
+    "busiest: " + busiestPart.label.toLowerCase() + " · " + busiestPart.share + "%",
+  );
 
   // ---- questions awaiting a host reply ------------------------------------
   check("awaiting count", ops.registry.opAwaitingCount.textContent, "4");
@@ -485,6 +571,10 @@ const LEADS = [
   await noQueue.helpers.loadOperations();
   check("unreadable queue degrades to a dash", noQueue.registry.opAwaitingCount.textContent, "—");
   check("unreadable queue says so", noQueue.registry.opAwaitingAge.textContent, "queue unavailable");
+  // A live route that predates the day parts must say so rather than leave an
+  // empty card, and the busiest-stretch note must not keep stale text.
+  check("missing day parts say so", noQueue.registry.opDayParts.children[0].textContent, "No guest messages in the last 24 hours.");
+  check("missing day parts clear the busiest note", noQueue.registry.opDayPartNote.textContent, "");
 
   const quietQueue = await runPage({
     html,

@@ -44,9 +44,10 @@ import {
   randomSessionToken,
   revokeAdminSession,
 } from "./admin-session.js";
-import { buildAnalytics, sampleAnalytics } from "./analytics.js";
-import { sampleOperations } from "./operations.js";
+import { buildAnalytics, buildMix, sampleAnalytics } from "./analytics.js";
+import { buildDayParts, sampleOperations } from "./operations.js";
 import { buildInsights, sampleInsights } from "./insights.js";
+import { canLaunchPilot, measurePilot, normaliseKnowledge, pilotCode } from "./pilots.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
@@ -681,7 +682,16 @@ async function handleHealth(env: Env): Promise<Response> {
       env.DB.prepare("SELECT 1 AS healthy").first(),
       env.PROPERTIES.get("__healthcheck__"),
     ]);
-    return new Response(JSON.stringify({ status: "ok" }), {
+    // Pilot readiness tracks properties, not pilot_profiles: a property awaiting
+    // setup is inactive (the schema default), so the deployment is pilot-ready
+    // once at least one property is active.
+    const propertyCounts = await env.DB.prepare(
+      `SELECT COALESCE(SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), 0) AS activeCount,
+              COUNT(*) AS totalCount FROM properties`
+    ).first<{ activeCount: number; totalCount: number }>();
+    const activeCount = Number(propertyCounts?.activeCount || 0);
+    const totalCount = Number(propertyCounts?.totalCount || 0);
+    return new Response(JSON.stringify({ status: "ok", pilotReady: activeCount > 0, pilotActive: activeCount, pilotTotal: totalCount, healthy: true }), {
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   } catch (err) {
@@ -997,7 +1007,7 @@ async function handleDemoChat(request: Request, env: Env) {
 
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
   const rateLimitKey = `demo_chat_rate:${clientIp}`;
-  const maxMessages = 5;
+  const maxMessages = (await env.PROPERTIES.get("demo_max_questions")) ? Number(env.PROPERTIES.get("demo_max_questions")) : 5;
   let currentCount: number;
   try {
     const storedCount = await env.PROPERTIES.get(rateLimitKey);
@@ -1743,6 +1753,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   // when ADMIN_PASSWORD is not configured — the previous open endpoints let
   // anyone read gate codes and rewrite property data.
   const isSessionEndpoint = url.pathname === "/admin/api/login" || url.pathname === "/admin/api/logout";
+
   if (url.pathname.startsWith("/admin/api/") && !isSessionEndpoint) {
     const expected = env.ADMIN_PASSWORD;
     if (!expected) {
@@ -1862,11 +1873,453 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     });
   }
 
+  // Pilot activity shows aggregate lifecycle counts and event metadata only.
+  // It deliberately never selects or returns changed_fields_json / scorecard values.
+  if (url.pathname === "/admin/api/pilot-audit" && request.method === "GET") {
+    try {
+      const [{ results: counts }, { results: events }] = await Promise.all([
+        env.DB.prepare(
+          `SELECT action, COUNT(*) AS count FROM admin_audit_log
+           WHERE action IN ('pilot_launched', 'pilot_completed', 'pilot_scorecard_saved')
+           GROUP BY action`
+        ).all<{ action: string; count: number }>(),
+        env.DB.prepare(
+          `SELECT a.created_at AS createdAt, a.action, a.property_id AS propertyId,
+                  p.display_name AS propertyName
+           FROM admin_audit_log a LEFT JOIN properties p ON p.id = a.property_id
+           WHERE a.action IN ('pilot_launched', 'pilot_completed', 'pilot_scorecard_saved')
+           ORDER BY a.created_at DESC, a.id DESC LIMIT 50`
+        ).all<{ createdAt: string; action: string; propertyId: string | null; propertyName: string | null }>(),
+      ]);
+      const totals = { launched: 0, completed: 0, scorecardsSaved: 0 };
+      for (const row of counts || []) {
+        if (row.action === "pilot_launched") totals.launched = Number(row.count || 0);
+        else if (row.action === "pilot_completed") totals.completed = Number(row.count || 0);
+        else if (row.action === "pilot_scorecard_saved") totals.scorecardsSaved = Number(row.count || 0);
+      }
+      return adminJson({ summary: totals, events: events || [] });
+    } catch (err) {
+      console.error("Failed to load pilot audit activity:", errorMessage(err) || err);
+      return adminJson({ error: "Failed to load pilot audit activity" }, 500);
+    }
+  }
+
+  // Admin API: manage pilot records, launch gates, and per-property scorecards.
+  if (url.pathname === "/admin/api/pilots" && request.method === "GET") {
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT pp.property_id AS propertyId, pp.lead_id AS leadId, pp.client_name AS clientName,
+                pp.contact_name AS contactName, pp.contact_email AS contactEmail, pp.contact_phone AS contactPhone,
+                pp.location, pp.started_at AS startedAt, pp.ends_at AS endsAt, pp.fee_cents AS feeCents,
+                pp.checklist_json AS checklistJson, pp.scorecard_json AS scorecardJson,
+                pp.knowledge_json AS knowledgeJson, pp.created_at AS createdAt, pp.updated_at AS updatedAt,
+                p.display_name AS propertyName, p.active, p.stage, p.twilio_number AS twilioNumber,
+                h.phone AS hostPhone
+         FROM pilot_profiles pp
+         JOIN properties p ON p.id = pp.property_id
+         LEFT JOIN hosts h ON h.id = p.host_id
+         ORDER BY pp.updated_at DESC, pp.property_id`
+      ).all<any>();
+      const pilots: any[] = [];
+      for (const row of results || []) {
+        const bounds = "created_at >= COALESCE(datetime(?2), datetime('1970-01-01')) AND created_at < COALESCE(datetime(?3, '+1 day'), datetime('now', '+1 second'))";
+        const [messages, open, replyTime, intents] = await Promise.all([
+          env.DB.prepare(
+            `SELECT COUNT(*) AS guestMessages,
+                    SUM(CASE WHEN resolution IN ('keyword','kb','ai') THEN 1 ELSE 0 END) AS answered,
+                    SUM(CASE WHEN resolution IN ('escalate','escalated','emergency') THEN 1 ELSE 0 END) AS escalated,
+                    SUM(CASE WHEN resolution IS NULL OR resolution IN ('unrouted','blocked','error') THEN 1 ELSE 0 END) AS unrouted
+             FROM messages WHERE property_id = ?1 AND direction = 'in' AND ${bounds}`
+          ).bind(row.propertyId, row.startedAt || null, row.endsAt || null).first<any>(),
+          env.DB.prepare(
+            `SELECT COUNT(*) AS count FROM escalations WHERE property_id = ?1 AND status = 'open'
+             AND ${bounds}`
+          ).bind(row.propertyId, row.startedAt || null, row.endsAt || null).first<any>(),
+          env.DB.prepare(
+            `SELECT ROUND(AVG((julianday(answered_at) - julianday(created_at)) * 1440), 1) AS minutes
+             FROM escalations WHERE property_id = ?1 AND status = 'answered' AND answered_at IS NOT NULL
+               AND ${bounds}`
+          ).bind(row.propertyId, row.startedAt || null, row.endsAt || null).first<any>(),
+          env.DB.prepare(
+            `SELECT COALESCE(NULLIF(intent_key, ''), 'unknown') AS intent, COUNT(*) AS count
+             FROM messages WHERE property_id = ?1 AND direction = 'in' AND ${bounds}
+             GROUP BY intent ORDER BY count DESC LIMIT 8`
+          ).bind(row.propertyId, row.startedAt || null, row.endsAt || null).all<any>(),
+        ]);
+        const storedKnowledge = normaliseKnowledge(JSON.parse(row.knowledgeJson || "{}"));
+        const propertyKnowledge = ((await env.PROPERTIES.get(`prop:${row.propertyId}`, "json")) || {}) as { answers?: unknown[]; secrets?: unknown[] };
+        const pendingChanges = await env.DB.prepare(
+          "SELECT kv_key AS kvKey FROM property_change_requests WHERE property_id = ?1 AND status = 'pending'"
+        ).bind(row.propertyId).all<{ kvKey: string }>();
+        const stagedKnowledgeValues = await Promise.all((pendingChanges.results || []).map((change) =>
+          env.PROPERTIES.get<{ secrets?: unknown[]; criticalAnswers?: unknown[] }>(change.kvKey, "json")
+        ));
+        const stagedKnowledge = stagedKnowledgeValues.filter((value): value is { secrets?: unknown[]; criticalAnswers?: unknown[] } => !!value);
+
+        const stagedSecrets = stagedKnowledge.flatMap((proposal) => proposal.secrets || []);
+        const stagedCriticalAnswers = stagedKnowledge.flatMap((proposal) => proposal.criticalAnswers || []);
+        const mergeUnique = <T>(items: T[]) => [...new Map(items.map((item) => [JSON.stringify(item), item])).values()];
+
+        const hasStagedKnowledge = (pendingChanges.results || []).length > 0;
+        const approvedCriticalAnswers = normaliseKnowledge(propertyKnowledge).answers.filter(isCriticalKnowledgeItem);
+        const knowledge = normaliseKnowledge({
+          answers: mergeUnique([
+            ...storedKnowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)),
+            ...(hasStagedKnowledge ? stagedCriticalAnswers : approvedCriticalAnswers),
+          ]),
+          secrets: hasStagedKnowledge ? mergeUnique(stagedSecrets) : propertyKnowledge.secrets || [],
+        });
+        pilots.push({
+          propertyId: row.propertyId,
+          leadId: row.leadId,
+          clientName: row.clientName || "",
+          contactName: row.contactName || "",
+          contactEmail: row.contactEmail || "",
+          contactPhone: row.contactPhone || "",
+          location: row.location || "",
+          startedAt: row.startedAt || "",
+          endsAt: row.endsAt || "",
+          feeCents: row.feeCents,
+          checklist: JSON.parse(row.checklistJson || "{}"),
+          scorecard: JSON.parse(row.scorecardJson || "{}"),
+          knowledge,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          criticalChangesPending: (pendingChanges.results || []).length > 0,
+          propertyName: row.propertyName || row.propertyId,
+          active: Boolean(row.active),
+          stage: row.stage,
+          hasTextLine: /^\+[1-9]\d{1,14}$/.test(row.twilioNumber || ""),
+          hasHostContact: /^\+[1-9]\d{1,14}$/.test(row.hostPhone || ""),
+          metrics: measurePilot({
+            guestMessages: Number(messages?.guestMessages || 0),
+            answered: Number(messages?.answered || 0),
+            escalated: Number(messages?.escalated || 0),
+            unrouted: Number(messages?.unrouted || 0),
+            openEscalations: Number(open?.count || 0),
+            avgHostReplyMinutes: replyTime?.minutes == null ? null : Number(replyTime.minutes),
+            topIntents: (intents.results || []).map((intent: { intent: string; count: number }) => ({ intent: intent.intent, count: Number(intent.count) })),
+          }),
+        });
+      }
+      // Any property without a pilot record can start one, active or not: an
+      // operator who already runs a property should still be able to pilot it,
+      // and starting the setup must not take their guests offline.
+      const { results: availableProperties } = await env.DB.prepare(
+        `SELECT p.id, p.display_name AS name, p.stage, p.active
+         FROM properties p LEFT JOIN pilot_profiles pp ON pp.property_id = p.id
+         WHERE pp.property_id IS NULL ORDER BY p.display_name, p.id`
+      ).all<any>();
+      return adminJson({ pilots, availableProperties: availableProperties || [] });
+    } catch (err) {
+      console.error("Failed to load pilot records:", errorMessage(err) || err);
+      return adminJson({ error: "Failed to load pilot records" }, 500);
+    }
+  }
+
+  if (url.pathname === "/admin/api/pilots" && request.method === "POST") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return adminJson({ error: "Invalid JSON" }, 400);
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return adminJson({ error: "Invalid pilot record" }, 400);
+    const data = body as Record<string, unknown>;
+    const propertyId = typeof data.propertyId === "string" ? data.propertyId.trim().toUpperCase() : "";
+    const leadId = typeof data.leadId === "string" && data.leadId.trim() ? data.leadId.trim() : null;
+    if (!/^[A-Z0-9_-]{2,20}$/.test(propertyId)) return adminJson({ error: "Select a valid property." }, 400);
+    if (leadId && !LEADS.some((lead) => lead.id === leadId)) return adminJson({ error: "Unknown lead." }, 404);
+    const boundedText = (value: unknown, limit: number) => typeof value === "string" ? value.trim().slice(0, limit) : "";
+
+    try {
+      const property = await env.DB.prepare(
+        `SELECT p.id, p.display_name AS name, p.active, p.stage, p.twilio_number AS twilioNumber,
+                h.phone AS hostPhone FROM properties p LEFT JOIN hosts h ON h.id = p.host_id WHERE p.id = ?1`
+      ).bind(propertyId).first<any>();
+      if (!property) return adminJson({ error: "Property not found." }, 404);
+      const existing = await env.DB.prepare("SELECT property_id FROM pilot_profiles WHERE property_id = ?1").bind(propertyId).first();
+      if (existing) return adminJson({ error: "This property already has a pilot record." }, 409);
+
+      let knowledge = normaliseKnowledge(data.knowledge);
+      if (!data.knowledge && leadId) {
+        const leadProgress = await env.DB.prepare("SELECT knowledge_json AS knowledgeJson FROM admin_lead_progress WHERE lead_id = ?1")
+          .bind(leadId).first<{ knowledgeJson: string }>();
+        if (leadProgress?.knowledgeJson) knowledge = normaliseKnowledge(JSON.parse(leadProgress.knowledgeJson));
+      }
+      const propertyKnowledge = ((await env.PROPERTIES.get(`prop:${propertyId}`, "json")) || {}) as { secrets?: unknown[]; answers?: unknown[]; addons?: unknown[] };
+      if (data.knowledge !== undefined && (!data.knowledge || typeof data.knowledge !== "object" || Array.isArray(data.knowledge))) {
+        return adminJson({ error: "Invalid pilot knowledge." }, 400);
+      }
+      if (data.knowledge !== undefined) {
+        const submitted = normaliseKnowledge(data.knowledge);
+        const mergeUnique = <T>(items: T[]) => [...new Map(items.map((item) => [JSON.stringify(item), item])).values()];
+        knowledge = normaliseKnowledge({
+          answers: mergeUnique([...knowledge.answers, ...submitted.answers]),
+          secrets: submitted.secrets,
+        });
+      }
+      const mergeKnowledge = <T>(items: T[]) => [...new Map(items.map((item) => [JSON.stringify(item), item])).values()];
+      knowledge = normaliseKnowledge({
+        answers: mergeKnowledge([...knowledge.answers, ...((propertyKnowledge.answers || []) as typeof knowledge.answers)]),
+        secrets: knowledge.secrets.length ? knowledge.secrets : propertyKnowledge.secrets,
+      });
+      const profileKnowledge = {
+        answers: knowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)),
+        secrets: [],
+      };
+      const leadDiscoveryKnowledge = {
+        answers: knowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)),
+        secrets: [],
+      };
+      const checklist = { "0": false, "1": false, "2": false, "3": false, "4": false, "5": false, "6": false };
+      const onboardingStatements = [
+        env.DB.prepare(
+          `INSERT INTO pilot_profiles
+           (property_id, lead_id, client_name, contact_name, contact_email, contact_phone, location,
+            started_at, ends_at, fee_cents, checklist_json, scorecard_json, knowledge_json)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, ?8, ?9, '{}', ?10)`
+        ).bind(
+          propertyId, leadId, boundedText(data.clientName, 200) || property.name || propertyId,
+          boundedText(data.contactName, 200), boundedText(data.contactEmail, 254), boundedText(data.contactPhone, 40),
+          boundedText(data.location, 200), Number.isSafeInteger(data.feeCents) && Number(data.feeCents) >= 0 ? data.feeCents : 4900,
+          JSON.stringify(checklist), JSON.stringify(profileKnowledge),
+        ),
+        // Only the stage moves. An inactive property stays inactive until
+        // launch; one that is already serving guests keeps serving them while
+        // its pilot setup is a draft.
+        env.DB.prepare("UPDATE properties SET stage = 'draft', updated_at = datetime('now') WHERE id = ?1").bind(propertyId),
+      ];
+      if (leadId) {
+        onboardingStatements.push(env.DB.prepare(
+          `INSERT INTO admin_lead_progress (lead_id, lead_status, checklist_json, property_id, knowledge_json)
+           VALUES (?1, 'converted', '{}', ?2, ?3)
+           ON CONFLICT(lead_id) DO UPDATE SET lead_status = 'converted', property_id = excluded.property_id, updated_at = datetime('now')`
+        ).bind(leadId, propertyId, JSON.stringify(leadDiscoveryKnowledge)));
+      }
+      await env.DB.batch(onboardingStatements);
+      // Discovery knowledge remains on the draft profile until it passes the
+      // property's existing critical-change review during launch.
+      // `active` lets the panel word its confirmation: a property that was
+      // already live has not been paused by starting the setup.
+      return adminJson({ success: true, propertyId, stage: "draft", active: Boolean(property.active) }, 201);
+    } catch (err) {
+      console.error("Failed to create pilot record:", errorMessage(err) || err);
+      return adminJson({ error: "Failed to create pilot record" }, 500);
+    }
+  }
+
+  if (url.pathname === "/admin/api/pilot" && request.method === "PUT") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return adminJson({ error: "Invalid JSON" }, 400);
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return adminJson({ error: "Invalid pilot update" }, 400);
+    const data = body as Record<string, unknown>;
+    const propertyId = typeof data.propertyId === "string" ? data.propertyId.trim().toUpperCase() : "";
+    if (!/^[A-Z0-9_-]{2,20}$/.test(propertyId)) return adminJson({ error: "Property ID required." }, 400);
+    const textField = (field: string, limit: number, current: string) => {
+      const value = data[field];
+      return value === undefined ? current : typeof value === "string" ? value.trim().slice(0, limit) : null;
+    };
+    const validDate = (value: unknown) => {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const parsed = new Date(value + "T00:00:00Z");
+      return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    };
+    try {
+      const current = await env.DB.prepare("SELECT * FROM pilot_profiles WHERE property_id = ?1").bind(propertyId).first<any>();
+      if (!current) return adminJson({ error: "Pilot record not found." }, 404);
+      const currentStage = await env.DB.prepare("SELECT active, stage, twilio_number AS twilioNumber, host_id AS hostId FROM properties WHERE id = ?1")
+        .bind(propertyId).first<any>();
+      if (!currentStage) return adminJson({ error: "Property not found." }, 404);
+      const profileLead = await env.DB.prepare(
+        "SELECT lead_id AS leadId FROM pilot_profiles WHERE property_id = ?1"
+      ).bind(propertyId).first<{ leadId: string | null }>();
+      const fields = {
+        clientName: textField("clientName", 200, current.client_name || ""),
+        contactName: textField("contactName", 200, current.contact_name || ""),
+        contactEmail: textField("contactEmail", 254, current.contact_email || ""),
+        contactPhone: textField("contactPhone", 40, current.contact_phone || ""),
+        location: textField("location", 200, current.location || ""),
+      };
+      if (Object.values(fields).some((value) => value === null) || (fields.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.contactEmail))) {
+        return adminJson({ error: "Invalid pilot contact information." }, 400);
+      }
+      const startedAt = data.startedAt === undefined ? current.started_at : data.startedAt === "" || data.startedAt === null ? null : validDate(data.startedAt) ? data.startedAt : undefined;
+      const endsAt = data.endsAt === undefined ? current.ends_at : data.endsAt === "" || data.endsAt === null ? null : validDate(data.endsAt) ? data.endsAt : undefined;
+      if (startedAt === undefined || endsAt === undefined || (startedAt && endsAt && endsAt < startedAt)) {
+        return adminJson({ error: "Enter valid pilot dates, with the end date on or after the start date." }, 400);
+      }
+      const feeCents = data.feeCents === undefined ? current.fee_cents : data.feeCents;
+      if (!Number.isSafeInteger(feeCents) || Number(feeCents) < 0 || Number(feeCents) > 10000000) {
+        return adminJson({ error: "Pilot fee must be a non-negative amount in cents." }, 400);
+      }
+      const checklist = data.checklist === undefined ? JSON.parse(current.checklist_json || "{}") : data.checklist;
+      const validChecklist = checklist && typeof checklist === "object" && !Array.isArray(checklist) &&
+        Object.keys(checklist).length <= 7 && Object.entries(checklist).every(([key, value]) => /^[0-6]$/.test(key) && typeof value === "boolean");
+      if (!validChecklist) return adminJson({ error: "Invalid pilot launch checklist." }, 400);
+      const scorecard = data.scorecard === undefined ? JSON.parse(current.scorecard_json || "{}") : data.scorecard;
+      if (!scorecard || typeof scorecard !== "object" || Array.isArray(scorecard) || Object.keys(scorecard).length > 40 ||
+          Object.entries(scorecard).some(([key, value]) => !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key) || typeof value !== "string" || value.length > 4000)) {
+        return adminJson({ error: "Invalid pilot scorecard." }, 400);
+      }
+      const submittedKnowledge = data.knowledge === undefined ? null : normaliseKnowledge(data.knowledge);
+      if (data.knowledge !== undefined && (!data.knowledge || typeof data.knowledge !== "object" || Array.isArray(data.knowledge))) {
+        return adminJson({ error: "Invalid pilot knowledge." }, 400);
+      }
+      const knowledge = submittedKnowledge || normaliseKnowledge(JSON.parse(current.knowledge_json || "{}"));
+      const storedKnowledge = {
+        answers: knowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)),
+        secrets: [],
+      };
+      const propertyKv = ((await env.PROPERTIES.get(`prop:${propertyId}`, "json")) || {}) as { answers?: unknown[]; secrets?: unknown[]; addons?: unknown[] };
+      const approvedKnowledge = normaliseKnowledge(propertyKv);
+      const pendingChange = await env.DB.prepare(
+        "SELECT id, kv_key AS kvKey FROM property_change_requests WHERE property_id = ?1 AND status = 'pending' LIMIT 1"
+      ).bind(propertyId).first<{ id: string; kvKey: string }>();
+      const stagedProposal = pendingChange
+        ? await env.PROPERTIES.get<{ secrets?: unknown[]; criticalAnswers?: unknown[] }>(pendingChange.kvKey, "json")
+        : null;
+      const proposedCriticalAnswers = knowledge.answers.filter(isCriticalKnowledgeItem);
+      const existingCriticalAnswers = pendingChange
+        ? ((stagedProposal?.criticalAnswers || []) as { topic?: string; keywords?: string[]; reply?: string }[]).filter(isCriticalKnowledgeItem)
+        : approvedKnowledge.answers.filter(isCriticalKnowledgeItem);
+      const existingSecrets = pendingChange ? stagedProposal?.secrets || [] : approvedKnowledge.secrets;
+      const protectedKnowledgeChanged = JSON.stringify(proposedCriticalAnswers) !== JSON.stringify(existingCriticalAnswers) ||
+        JSON.stringify(knowledge.secrets) !== JSON.stringify(existingSecrets);
+      let criticalChangesPending = !!pendingChange;
+      if (pendingChange && !stagedProposal) return adminJson({ error: "Staged critical property details are missing; review them from the property editor." }, 409);
+      if (data.knowledge === undefined) {
+        criticalChangesPending = !!pendingChange;
+      } else if (pendingChange && protectedKnowledgeChanged) {
+        return adminJson({ error: "A different critical property change is already awaiting review. Review it before changing protected details." }, 409);
+      }
+      if (!pendingChange && data.knowledge !== undefined && protectedKnowledgeChanged) {
+        const metadata = await env.DB.prepare(
+          "SELECT access_instructions AS accessInstructions, emergency_contacts AS emergencyContacts FROM property_metadata WHERE property_id = ?1"
+        ).bind(propertyId).first<{ accessInstructions: string | null; emergencyContacts: string | null }>();
+        const requestId = crypto.randomUUID();
+        const kvKey = `critical-change:${propertyId}:${requestId}`;
+        const proposal = {
+          secrets: knowledge.secrets,
+          criticalAnswers: proposedCriticalAnswers,
+          accessInstructions: metadata?.accessInstructions || null,
+          emergencyContacts: metadata?.emergencyContacts || null,
+        };
+        await env.PROPERTIES.put(kvKey, JSON.stringify(proposal), { expirationTtl: 31 * 24 * 60 * 60 });
+        try {
+          await env.DB.prepare(
+            `INSERT INTO property_change_requests
+             (id, property_id, kv_key, changed_fields_json, status, requested_by)
+             VALUES (?1, ?2, ?3, ?4, 'pending', 'shared_admin')`
+          ).bind(requestId, propertyId, kvKey, JSON.stringify(["secrets", "critical_answers"])).run();
+        } catch (err) {
+          await env.PROPERTIES.delete(kvKey);
+          throw err;
+        }
+        criticalChangesPending = true;
+      }
+      const nextStage = data.stage === undefined ? currentStage.stage : data.stage;
+      if (!["draft", "pilot", "live"].includes(String(nextStage))) return adminJson({ error: "Invalid pilot stage." }, 400);
+      if (currentStage.stage === "live" && nextStage !== "live") return adminJson({ error: "A live property cannot return to pilot setup." }, 409);
+      if (nextStage === "pilot" && (currentStage.stage !== "pilot" || Number(currentStage.active) !== 1)) {
+        const approvedCriticalAnswers = approvedKnowledge.answers.filter(isCriticalKnowledgeItem);
+        const liveAnswers = [
+          ...storedKnowledge.answers,
+          ...approvedCriticalAnswers,
+        ];
+        const launchSecrets = approvedKnowledge.secrets;
+        const host = await env.DB.prepare("SELECT phone FROM hosts WHERE id = ?1").bind(currentStage.hostId).first<{ phone: string }>();
+        if (!canLaunchPilot({
+          checklist,
+          startedAt: startedAt ? String(startedAt) : null,
+          endsAt: endsAt ? String(endsAt) : null,
+          now: Date.now(),
+          // On stage-only launch requests `knowledge` comes from the sanitized
+          // D1 draft, which intentionally excludes critical answers and secrets.
+          // Compare the effective launch configuration instead; the separate
+          // pending-change gate still prevents unreviewed protected data from going live.
+          knowledge: { answers: liveAnswers, secrets: launchSecrets },
+          approvedKnowledge,
+          hasPendingChanges: !!pendingChange || criticalChangesPending,
+          hasTextLine: /^\+[1-9]\d{1,14}$/.test(currentStage.twilioNumber || ""),
+          hasHostContact: /^\+[1-9]\d{1,14}$/.test(host?.phone || ""),
+        })) {
+          return adminJson({ error: "Pilot launch is blocked: complete all seven checks, set active pilot dates, configure an E.164 text line and host phone, approve all staged critical changes, and match the pilot's protected details to the approved property configuration." }, 409);
+        }
+        await env.PROPERTIES.put(`prop:${propertyId}`, JSON.stringify({
+          secrets: launchSecrets,
+          answers: liveAnswers,
+          ...(Array.isArray(propertyKv.addons) ? { addons: propertyKv.addons } : {}),
+        }));
+      }
+      if (nextStage === "live" && currentStage.stage !== "pilot") {
+        return adminJson({ error: "Only an active pilot can be marked live." }, 409);
+      }
+      if (nextStage === "live" && currentStage.active !== 1) {
+        return adminJson({ error: "An inactive pilot cannot be marked live." }, 409);
+      }
+      if (nextStage === "live") {
+        const pendingChange = await env.DB.prepare(
+          "SELECT id FROM property_change_requests WHERE property_id = ?1 AND status = 'pending' LIMIT 1"
+        ).bind(propertyId).first();
+        if (pendingChange) return adminJson({ error: "Review staged critical property changes before completing the pilot." }, 409);
+        const finalKnowledge = normaliseKnowledge((await env.PROPERTIES.get(`prop:${propertyId}`, "json")) || {});
+        if (!finalKnowledge.answers.length && !finalKnowledge.secrets.length) {
+          return adminJson({ error: "A pilot cannot be completed until its approved knowledge is saved on the property." }, 409);
+        }
+      }
+      if ((currentStage.stage === "draft" && nextStage === "pilot") ||
+          (currentStage.stage === "pilot" && Number(currentStage.active) !== 1 && nextStage === "pilot")) {
+        await recordAdminAudit(env, propertyId, "pilot_launched", ["stage", "active"]);
+      }
+      if (currentStage.stage === "pilot" && nextStage === "live") {
+        await recordAdminAudit(env, propertyId, "pilot_completed", ["stage"]);
+      }
+      if (data.scorecard !== undefined) {
+        await recordAdminAudit(env, propertyId, "pilot_scorecard_saved", Object.keys(scorecard));
+      }
+      const propertyStageUpdate = nextStage === "draft"
+        ? env.DB.prepare("UPDATE properties SET stage = 'draft', updated_at = datetime('now') WHERE id = ?1").bind(propertyId)
+        : nextStage === "pilot"
+          ? env.DB.prepare("UPDATE properties SET stage = 'pilot', active = 1, updated_at = datetime('now') WHERE id = ?1").bind(propertyId)
+          : env.DB.prepare("UPDATE properties SET stage = 'live', updated_at = datetime('now') WHERE id = ?1").bind(propertyId);
+      const statements = [
+        propertyStageUpdate,
+        env.DB.prepare(
+          `UPDATE pilot_profiles SET client_name = ?1, contact_name = ?2, contact_email = ?3,
+           contact_phone = ?4, location = ?5, started_at = ?6, ends_at = ?7, fee_cents = ?8,
+           checklist_json = ?9, scorecard_json = ?10, knowledge_json = ?11, updated_at = datetime('now')
+           WHERE property_id = ?12`
+        ).bind(fields.clientName, fields.contactName || null, fields.contactEmail || null, fields.contactPhone || null,
+          fields.location || null, startedAt || null, endsAt || null, feeCents, JSON.stringify(checklist),
+          JSON.stringify(scorecard), JSON.stringify(storedKnowledge), propertyId),
+      ];
+      if (profileLead?.leadId) {
+        const discoveryKnowledge = {
+          answers: storedKnowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)),
+          secrets: [],
+        };
+        statements.push(env.DB.prepare(
+          "UPDATE admin_lead_progress SET knowledge_json = ?1, updated_at = datetime('now') WHERE lead_id = ?2"
+        ).bind(JSON.stringify(discoveryKnowledge), profileLead.leadId));
+      }
+      await env.DB.batch(statements);
+      return adminJson({ success: true, propertyId, stage: nextStage, criticalChangesPending });
+    } catch (err) {
+      console.error("Failed to save pilot record:", errorMessage(err) || err);
+      return adminJson({ error: "Failed to save pilot record" }, 500);
+    }
+  }
+
   // Admin API: List properties (with dashboard stats)
   if (url.pathname === "/admin/api/properties" && request.method === "GET") {
     try {
       const { results } = await env.DB.prepare(
-        `SELECT p.id, p.display_name as name, p.twilio_number as twilioNumber, p.active,
+        `SELECT p.id, p.display_name as name, p.twilio_number as twilioNumber, p.active, p.stage,
            (SELECT COUNT(*) FROM messages m WHERE m.property_id = p.id AND (m.direction = 'in' OR m.resolution IN ('keyword','kb','ai','escalate','escalated','error'))) AS asked,
            (SELECT COUNT(*) FROM messages m WHERE m.property_id = p.id AND m.resolution IN ('escalate','escalated')) AS escalated,
            (SELECT COUNT(*) FROM escalations e WHERE e.property_id = p.id AND e.status = 'open') AS openEscalations,
@@ -1893,7 +2346,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     try {
       const { results } = await env.DB.prepare(
         `SELECT id, display_name as name, address, host_id as hostId, twilio_number as twilioNumber,
-                rate_limit_reply as rateLimitReply, unknown_reply as unknownReply, active
+                rate_limit_reply as rateLimitReply, unknown_reply as unknownReply, active, stage
          FROM properties WHERE id = ?1`
       ).bind(id).all();
 
@@ -2202,7 +2655,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
 
       const currentProperty = await env.DB.prepare(
         `SELECT id, display_name AS name, address, twilio_number AS twilioNumber,
-                rate_limit_reply AS rateLimitReply, unknown_reply AS unknownReply
+                rate_limit_reply AS rateLimitReply, unknown_reply AS unknownReply, stage, active
          FROM properties WHERE id = ?1`
       ).bind(id).first<{
         id: string;
@@ -2211,8 +2664,17 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         twilioNumber: string | null;
         rateLimitReply: string | null;
         unknownReply: string | null;
+        stage: string;
+        active: number;
       }>();
       if (!currentProperty) return adminJson({ error: "Property not found" }, 404);
+      // Activation is still gated on the launch checks. The exception is a
+      // property that is already serving guests — it was live before its pilot
+      // started — which must stay editable while the setup is a draft.
+      if ((active === true || active === 1) && Number(currentProperty.active) !== 1 &&
+          (currentProperty.stage === "draft" || currentProperty.stage === "pilot")) {
+        return adminJson({ error: "Draft and paused pilot properties must pass the pilot launch checks before activation." }, 409);
+      }
 
       const dispName = typeof name === "string" ? name : currentProperty.name;
       const propertyAddress = typeof address === "string" ? address.trim() : currentProperty.address;
@@ -2454,6 +2916,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       await env.DB.prepare("DELETE FROM messages WHERE property_id = ?1").bind(id).run();
       await env.DB.prepare("DELETE FROM escalations WHERE property_id = ?1").bind(id).run();
       await env.DB.prepare("DELETE FROM ai_interactions WHERE property_id = ?1").bind(id).run();
+      await env.DB.prepare("DELETE FROM pilot_profiles WHERE property_id = ?1").bind(id).run();
       await env.DB.prepare("DELETE FROM properties WHERE id = ?1").bind(id).run();
       // Only touches the auto-created host from the create flow; hosts shared
       // or created by hand have other id shapes and are left alone.
@@ -2473,8 +2936,10 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
   if (url.pathname === "/admin/api/leads" && request.method === "GET") {
     try {
       const { results } = await env.DB.prepare(
-        "SELECT lead_id AS leadId, lead_status AS leadStatus, checklist_json AS checklistJson, property_id AS propertyId FROM admin_lead_progress"
-      ).all<{ leadId: string; leadStatus: string; checklistJson: string; propertyId: string | null }>();
+        `SELECT lead_id AS leadId, lead_status AS leadStatus, checklist_json AS checklistJson,
+                property_id AS propertyId, knowledge_json AS knowledgeJson
+         FROM admin_lead_progress`
+      ).all<{ leadId: string; leadStatus: string; checklistJson: string; propertyId: string | null; knowledgeJson: string }>();
       const { results: deletedRows } = await env.DB.prepare(
         "SELECT lead_id AS leadId FROM admin_deleted_leads"
       ).all<{ leadId: string }>();
@@ -2488,7 +2953,15 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       const deletedLeadIds = new Set((deletedRows || []).map((row) => row.leadId));
       const progress = Object.fromEntries((results || []).map((row) => [
         row.leadId,
-        { leadStatus: row.leadStatus, checklist: JSON.parse(row.checklistJson), propertyId: row.propertyId },
+        {
+          leadStatus: row.leadStatus,
+          checklist: JSON.parse(row.checklistJson),
+          propertyId: row.propertyId,
+          knowledge: {
+            answers: (normaliseKnowledge(JSON.parse(row.knowledgeJson || "{}")).answers || []).filter((answer) => !isCriticalKnowledgeItem(answer)),
+            secrets: [],
+          },
+        },
       ]));
       const sentByLead = new Map((sentRows || []).map((row) => [row.leadId, row]));
       const suppressedHashes = new Set((suppressionRows || []).map((row) => row.emailHash));
@@ -2539,17 +3012,35 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         Object.entries(checklist).some(([key, value]) => !/^[0-6]$/.test(key) || typeof value !== "boolean")) {
       return adminJson({ error: "Invalid lead checklist" }, 400);
     }
+    if (data.knowledge !== undefined && (!data.knowledge || typeof data.knowledge !== "object" || Array.isArray(data.knowledge))) {
+      return adminJson({ error: "Invalid discovery knowledge" }, 400);
+    }
+    const pilotLink = data.leadStatus === "converted" && /^[A-Z0-9_-]{2,20}$/.test(propertyId)
+      ? await env.DB.prepare("SELECT 1 AS found FROM pilot_profiles WHERE lead_id = ?1 AND property_id = ?2").bind(leadId, propertyId).first()
+      : null;
+    const profileForLead = !!pilotLink;
 
     try {
+      const existing = data.knowledge === undefined
+        ? await env.DB.prepare("SELECT knowledge_json AS knowledgeJson FROM admin_lead_progress WHERE lead_id = ?1")
+          .bind(leadId).first<{ knowledgeJson: string }>()
+        : null;
+      const sourceKnowledge = data.knowledge === undefined
+        ? normaliseKnowledge(JSON.parse(existing?.knowledgeJson || "{}"))
+        : normaliseKnowledge(data.knowledge);
+      const knowledge = profileForLead
+        ? { answers: sourceKnowledge.answers.filter((answer) => !isCriticalKnowledgeItem(answer)), secrets: [] }
+        : sourceKnowledge;
       await env.DB.prepare(
-        `INSERT INTO admin_lead_progress (lead_id, lead_status, checklist_json, property_id)
-         VALUES (?1, ?2, ?3, ?4)
+        `INSERT INTO admin_lead_progress (lead_id, lead_status, checklist_json, property_id, knowledge_json)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(lead_id) DO UPDATE SET
            lead_status = excluded.lead_status,
            checklist_json = excluded.checklist_json,
            property_id = excluded.property_id,
+           knowledge_json = excluded.knowledge_json,
            updated_at = datetime('now')`
-      ).bind(leadId, data.leadStatus, JSON.stringify(checklist), propertyId || null).run();
+      ).bind(leadId, data.leadStatus, JSON.stringify(checklist), propertyId || null, JSON.stringify(knowledge)).run();
       return adminJson({ success: true });
     } catch (err) {
       console.error("Failed to save admin lead progress:", errorMessage(err) || err);
@@ -2565,10 +3056,12 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       return adminJson({ error: "Unknown lead" }, 404);
     }
     try {
-      await env.DB.prepare(
-        "INSERT INTO admin_deleted_leads (lead_id) VALUES (?1) ON CONFLICT(lead_id) DO NOTHING"
-      ).bind(leadId).run();
-      await env.DB.prepare("DELETE FROM admin_lead_progress WHERE lead_id = ?1").bind(leadId).run();
+      await env.DB.batch([
+        env.DB.prepare(
+          "INSERT INTO admin_deleted_leads (lead_id) VALUES (?1) ON CONFLICT(lead_id) DO NOTHING"
+        ).bind(leadId),
+        env.DB.prepare("DELETE FROM admin_lead_progress WHERE lead_id = ?1").bind(leadId),
+      ]);
       return adminJson({ success: true });
     } catch (err) {
       console.error("Failed to delete admin lead:", errorMessage(err) || err);
@@ -2726,7 +3219,30 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         avgHostResponseMinutes30d: number | null;
         measuredAt: string;
       }>();
-      return adminJson({ sample: false, metrics, awaiting: await loadAwaitingQueue(env) });
+      const [hourRows, mixRows] = await Promise.all([
+        // Hourly inbound volume for the last 24 hours; the panel groups these
+        // into the four day parts.
+        env.DB.prepare(
+          `SELECT strftime('%Y-%m-%dT%H', created_at) AS hour, COUNT(*) AS inbound
+           FROM messages
+           WHERE direction = 'in' AND created_at >= datetime('now', '-24 hours')
+           GROUP BY hour`
+        ).all<{ hour: string; inbound: number }>(),
+        // Resolution mix for the donut, same buckets as the Analytics tab.
+        env.DB.prepare(
+          `SELECT resolution, COUNT(*) AS n
+           FROM messages
+           WHERE direction = 'in' AND created_at >= datetime('now', '-24 hours')
+           GROUP BY resolution`
+        ).all<{ resolution: string | null; n: number }>(),
+      ]);
+      return adminJson({
+        sample: false,
+        metrics,
+        dayParts: buildDayParts(hourRows.results || [], new Date()),
+        mix: buildMix(mixRows.results || []),
+        awaiting: await loadAwaitingQueue(env),
+      });
     } catch (err) {
       console.error("Operations metrics query failed:", errorMessage(err) || err);
       return adminJson({ error: "Failed to load operations metrics." }, 500);
@@ -2745,7 +3261,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       return adminJson(sampleInsights());
     }
     try {
-      const [current, previous, properties] = await Promise.all([
+      const [current, previous, properties, daily] = await Promise.all([
         env.DB.prepare(
           `SELECT COALESCE(NULLIF(intent_key, ''), 'unknown') AS intentKey,
                   COUNT(*) AS total,
@@ -2777,12 +3293,21 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
            GROUP BY p.id
            ORDER BY total DESC`
         ).all<{ name: string; total: number; unresolved: number }>(),
+        // Daily inbound volume for the tab's throughput chart; 60 days so the
+        // series builder can gap-fill the 30-day window it shows.
+        env.DB.prepare(
+          `SELECT date(created_at) AS day, COUNT(*) AS inbound
+           FROM messages
+           WHERE direction = 'in' AND created_at >= datetime('now', '-60 days')
+           GROUP BY day`
+        ).all<{ day: string; inbound: number }>(),
       ]);
       return adminJson(
         buildInsights({
           current: current.results || [],
           previous: previous.results || [],
           properties: properties.results || [],
+          daily: daily.results || [],
         }),
       );
     } catch (err) {
@@ -2844,6 +3369,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
   :root { --bg:#0b1226; --card:#141d3a; --surface:rgba(255,255,255,.045);
           --border:rgba(255,255,255,.075); --text:#eaf0ff; --muted:#8a97b8;
           --sun:#f59e0b; --pool:#3b82f6; --pink:#ff5b2e; --gold:#ffb020;
+          --cyan:#3fd8c5; --purple:#a269d8; --green:#4ade80;
+          --glow-cyan:0 0 24px rgba(63,216,197,.18);
+          --glow-blue:0 0 24px rgba(59,130,246,.18);
           --sunset:linear-gradient(96deg,#60a5fa,#2563eb); }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
@@ -3065,8 +3593,12 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .dash-col { display:flex; flex-direction:column; gap:1rem; min-width:0; }
   .dash-stack { display:grid; gap:1rem; }
   .dash-card { position:relative; border:1px solid var(--border); border-radius:14px; padding:1rem 1.1rem;
-         background:var(--card);
-         box-shadow:0 18px 40px -32px #000; }
+         background:linear-gradient(145deg, rgba(20,29,58,.92), rgba(26,40,70,.88));
+         box-shadow:0 18px 40px -32px #000, inset 0 1px 0 rgba(255,255,255,.04);
+         transition:border-color .2s ease, box-shadow .2s ease; }
+  .dash-card:hover { border-color:rgba(63,216,197,.4); box-shadow:var(--glow-cyan), 0 18px 40px -32px #000; }
+  .dash-card::before { content:''; position:absolute; inset:0; border-radius:14px; pointer-events:none;
+         background:radial-gradient(circle at 20% 0%, rgba(63,216,197,.06), transparent 50%); }
   .dash-label { font-size:.64rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); font-weight:700; }
   .dash-label-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; }
   .dash-hero { font-size:2.6rem; font-weight:600; letter-spacing:-.03em; line-height:1.05; margin:.3rem 0 .1rem; }
@@ -3079,6 +3611,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .dash-legend { display:inline-flex; align-items:center; gap:.35rem; color:var(--muted); font-size:.68rem; }
   .dash-legend i { width:8px; height:8px; border-radius:50%; display:inline-block; }
   .dash-legend i.k-in { background:var(--pool); }
+  .dash-legend i.k-q { background:var(--cyan); }
   .dash-legend i.k-out { background:#818cf8; margin-left:.55rem; }
   .chart { width:100%; height:auto; display:block; margin-top:.7rem; }
   .spark { width:100%; height:auto; display:block; margin-top:.55rem; }
@@ -3097,7 +3630,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .cap-top span { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .cap-top b { font-weight:700; font-variant-numeric:tabular-nums; }
   .cap-track { height:7px; border-radius:99px; background:rgba(255,255,255,.09); overflow:hidden; }
-  .cap-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .cap-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#3fd8c5,#60a5fa); box-shadow:0 0 8px rgba(63,216,197,.35); }
   .events { list-style:none; display:grid; gap:.72rem; margin-top:.8rem; }
   .events li { display:flex; gap:.55rem; align-items:flex-start; font-size:.76rem; }
   .ev-dot { width:9px; height:9px; border-radius:50%; margin-top:.32rem; flex:none; }
@@ -3119,6 +3652,16 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .prop-table td { padding:.55rem .55rem; border-bottom:1px solid rgba(255,255,255,.06); }
   .prop-table td.num, .prop-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
   .prop-table tr:last-child td { border-bottom:none; }
+  /* The Insights property card sits in a narrow column: a four-column table
+     only fit there with a sideways scrollbar, so each property is a stacked
+     row instead. */
+  .prop-list { display:grid; gap:.8rem; margin-top:.85rem; }
+  .prop-row { min-width:0; }
+  .prop-top { display:flex; align-items:baseline; justify-content:space-between; gap:.6rem; font-size:.76rem; }
+  .prop-top span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .prop-top b { flex:none; font-variant-numeric:tabular-nums; }
+  .prop-row .cap-track { margin-top:.34rem; }
+  .prop-note { color:var(--muted); font-size:.7rem; margin-top:.3rem; font-variant-numeric:tabular-nums; }
   .dash-empty { color:var(--muted); font-size:.78rem; margin-top:.7rem; }
   @media (max-width:1080px) { .dash-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
   @media (max-width:720px) { .dash-grid { grid-template-columns:1fr; } .req-row { grid-template-columns:minmax(0,1fr) auto; }
@@ -3186,6 +3729,22 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .pilot-scorecard-actions { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-top:1rem; }
   .pilot-scorecard-actions button { margin-top:0; }
   .pilot-scorecard-status { color:var(--muted); font-size:.8rem; }
+  .pilot-record-list { display:grid; gap:.75rem; margin-top:.8rem; }
+  .pilot-record { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.8rem; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+  .pilot-record strong, .pilot-record small { display:block; }
+  .pilot-record small { margin-top:.25rem; color:var(--muted); }
+  .pilot-record .ghost { margin:0; }
+  .pilot-editor { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin-top:.8rem; }
+  .pilot-editor .wide { grid-column:1 / -1; }
+  .pilot-editor textarea { min-height:5rem; }
+  .pilot-knowledge-row { display:grid; grid-template-columns:1fr 1fr 2fr auto; gap:.5rem; margin:.5rem 0; align-items:start; }
+  .pilot-knowledge-row input, .pilot-knowledge-row textarea { margin:0; }
+  .pilot-knowledge-row textarea { min-height:3rem; }
+  .pilot-launch-checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem .8rem; margin:.8rem 0; }
+  .pilot-launch-checks label { display:flex; align-items:flex-start; gap:.45rem; color:var(--muted); font-size:.8rem; }
+  .pilot-launch-checks input { margin-top:.15rem; }
+  .pilot-form-status { min-height:1.2em; margin-top:.5rem; color:var(--muted); font-size:.8rem; }
+  @media (max-width:560px) { .pilot-editor, .pilot-launch-checks { grid-template-columns:1fr; } .pilot-editor .wide { grid-column:auto; } .pilot-knowledge-row { grid-template-columns:1fr; } }
   @media (max-width:560px) { .pilot-scorecard { grid-template-columns:1fr; } .pilot-scorecard .wide { grid-column:auto; } }
   .no-data { font-size:.85rem; color:var(--muted); text-align:center; padding:1rem; }
 
@@ -3526,46 +4085,66 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
     <p class="sample-banner hidden" id="insightsBanner">Demo data — these themes are generated to show what the report looks like. They are not your guests' questions.</p>
 
-    <div class="op-heroes">
-      <section class="dash-card">
-        <div class="dash-label">Guest questions · 30 days</div>
-        <div class="dash-hero" id="insightTotal">—</div>
-        <div class="dash-sub">inbound messages</div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Needed a human · 30 days</div>
-        <div class="dash-hero" id="insightNeedsHuman">—</div>
-        <div class="dash-sub" id="insightNeedsHumanShare">share of guest questions</div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Question types</div>
-        <div class="dash-hero" id="insightThemes">—</div>
-        <div class="dash-sub">distinct themes seen</div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Worst theme</div>
-        <div class="dash-hero small" id="insightWorst">—</div>
-        <div class="dash-sub" id="insightWorstShare">nothing needs a human yet</div>
-      </section>
-    </div>
+    <div class="dash-grid">
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label">Guest questions · 30 days</div>
+          <div class="dash-hero" id="insightTotal">—</div>
+          <div class="dash-sub">inbound messages</div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Needed a human · 30 days</div>
+          <div class="dash-hero" id="insightNeedsHuman">—</div>
+          <div class="dash-sub" id="insightNeedsHumanShare">share of guest questions</div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Question types</div>
+          <div class="dash-hero" id="insightThemes">—</div>
+          <div class="dash-sub">distinct themes seen</div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Worst theme</div>
+          <div class="dash-hero small" id="insightWorst">—</div>
+          <div class="dash-sub" id="insightWorstShare">nothing needs a human yet</div>
+        </section>
+      </div>
 
-    <div class="dash-stack">
-      <section class="dash-card">
-        <div class="dash-label-row">
-          <span class="dash-label">Most asked · 30 days</span>
-          <span class="dash-legend">change vs the 30 days before</span>
-        </div>
-        <div id="insightThemesList" class="req-list"></div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Where the answers run out</div>
-        <p class="op-hint">Ranked by how often a question escalated or was never routed to an answer — the themes to write answers for next.</p>
-        <div id="insightUnanswered" class="req-list"></div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">By property · 30 days</div>
-        <div class="prop-table" id="insightProperties"></div>
-      </section>
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label-row">
+            <span class="dash-label">Questions per day · 30 days</span>
+            <span class="dash-legend"><i class="k-q"></i>Inbound questions</span>
+          </div>
+          <svg id="insightThroughput" class="chart" viewBox="0 0 620 230" role="img" aria-label="Guest questions per day"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Weekly volume · questions</div>
+          <svg id="insightWeeklyBars" class="chart" viewBox="0 0 320 160" role="img" aria-label="Weekly question volume"></svg>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label-row">
+            <span class="dash-label">Most asked · 30 days</span>
+            <span class="dash-legend">change vs the 30 days before</span>
+          </div>
+          <div id="insightThemesList" class="req-list"></div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Where the answers run out</div>
+          <p class="op-hint">Ranked by how often a question escalated or was never routed to an answer — the themes to write answers for next.</p>
+          <div id="insightUnanswered" class="req-list"></div>
+        </section>
+      </div>
+
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label-row">
+            <span class="dash-label">By property · 30 days</span>
+            <span class="dash-sub">questions · needed a human</span>
+          </div>
+          <p class="op-hint">Busiest property first. The bar compares properties with each other.</p>
+          <div class="prop-list" id="insightProperties"></div>
+        </section>
+      </div>
     </div>
   </div>
 
@@ -3582,49 +4161,69 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
     <p class="sample-banner hidden" id="operationsBanner">Demo data — these figures, including the health checks, are generated to show what an operating panel looks like. They are not your activity.</p>
 
-    <div class="op-heroes">
-      <section class="dash-card">
-        <div class="dash-label">Guest messages · 24h</div>
-        <div class="dash-hero" id="opGuest24h">—</div>
-        <div class="dash-sub">inbound from guests</div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Answered without a human · 24h</div>
-        <div class="dash-hero" id="opResolved">—</div>
-        <div class="dash-sub">share of guest messages</div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Escalated · 24h</div>
-        <div class="dash-hero" id="opEscalated">—</div>
-        <div class="dash-sub" id="opEscalatedRate"></div>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">Open escalations</div>
-        <div class="dash-hero" id="opOpen">—</div>
-        <div class="dash-sub">waiting on a host reply</div>
-      </section>
-    </div>
-
-    <div class="op-grid">
-      <section class="dash-card">
-        <div class="dash-label">Health checks</div>
-        <ul class="op-health" id="operationHealth" aria-live="polite"></ul>
-      </section>
-      <section class="dash-card">
-        <div class="dash-label">AI and delivery · 24h</div>
-        <div class="op-stats" id="operationMetrics"></div>
-      </section>
-    </div>
-
-    <section class="dash-card op-await">
-      <div class="dash-label-row">
-        <span class="dash-label">Questions awaiting your reply</span>
-        <span class="dash-sub" id="opAwaitingAge"></span>
+    <div class="dash-grid">
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label">Guest messages · 24h</div>
+          <div class="dash-hero" id="opGuest24h">—</div>
+          <div class="dash-sub">inbound from guests</div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Answered without a human · 24h</div>
+          <div class="dash-hero" id="opResolved">—</div>
+          <div class="dash-sub">share of guest messages</div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Escalated · 24h</div>
+          <div class="dash-hero" id="opEscalated">—</div>
+          <div class="dash-sub" id="opEscalatedRate"></div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Open escalations</div>
+          <div class="dash-hero" id="opOpen">—</div>
+          <div class="dash-sub">waiting on a host reply</div>
+        </section>
       </div>
-      <div class="dash-hero small" id="opAwaitingCount">—</div>
-      <div class="dash-sub" id="opAwaitingBuckets"></div>
-      <ul class="op-health" id="opAwaitingList"></ul>
-    </section>
+
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label-row">
+            <span class="dash-label">When guests text · 24h</span>
+            <span class="dash-sub" id="opDayPartNote"></span>
+          </div>
+          <p class="op-hint">Four stretches of the day in your property's local time, so you can see which one to staff.</p>
+          <div id="opDayParts" class="cap-list"></div>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">AI and delivery · 24h</div>
+          <div class="op-stats" id="operationMetrics"></div>
+        </section>
+        <section class="dash-card op-await">
+          <div class="dash-label-row">
+            <span class="dash-label">Questions awaiting your reply</span>
+            <span class="dash-sub" id="opAwaitingAge"></span>
+          </div>
+          <div class="dash-hero small" id="opAwaitingCount">—</div>
+          <div class="dash-sub" id="opAwaitingBuckets"></div>
+          <ul class="op-health" id="opAwaitingList"></ul>
+        </section>
+      </div>
+
+      <div class="dash-col">
+        <section class="dash-card">
+          <div class="dash-label">How questions were answered · 24h</div>
+          <div class="donut-wrap">
+            <svg id="opMixDonut" class="donut" viewBox="0 0 120 120" role="img" aria-label="How guest questions were answered in the last 24 hours"></svg>
+            <div class="donut-center"><strong id="opMixPct">—</strong><span>no human</span></div>
+          </div>
+          <ul class="mix-legend" id="opMixLegend"></ul>
+        </section>
+        <section class="dash-card">
+          <div class="dash-label">Health checks</div>
+          <ul class="op-health" id="operationHealth" aria-live="polite"></ul>
+        </section>
+      </div>
+    </div>
 
     <section class="dash-card">
       <div class="dash-label">Test a guest message</div>
@@ -3646,8 +4245,76 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <section class="card">
         <h2>StayXI Property Pilot Program</h2>
         <p>Validate whether StayXI can reliably reduce routine after-hours guest questions for independent vacation-rental operators—and whether operators will pay to continue.</p>
-        <p><strong>Format:</strong> 30 days, 3–5 properties, one property per operator to start.</p>
+        <p><strong>Format:</strong> 30 days, 3–5 properties, one property per operator to start. Use the pilot records below to set up, launch, measure, and close out each property.</p>
         <div class="pilot-callout"><p>This pilot covers current automated property-specific text support only. Confirm the working contact information, SMS setup, and written pilot terms before onboarding an operator.</p></div>
+        <p class="op-hint"><strong>Test data only:</strong> all current property records are test/demo properties; there are no real operator properties yet. Do not treat their activity as pilot results. Do not launch a test property on a guest-facing number or share its number with guests; activate a real operator property only after they approve the configuration and the launch checklist is complete.</p>
+      </section>
+
+      <section class="card">
+        <h2>Pilot properties</h2>
+        <p>Start a record from any property that does not have a pilot yet. Launch is blocked until the operator and property setup are verified and all required checks are complete. A property that is already serving guests keeps doing so while its setup is a draft.</p>
+        <div class="pilot-editor">
+          <label>Property to onboard<select id="pilotNewProperty"></select></label>
+          <label>Linked lead (optional)<select id="pilotNewLead" onchange="pilotLeadSelected()"></select></label>
+          <label>Client / operator<input id="pilotNewClient" maxlength="200"></label>
+          <label>Contact name<input id="pilotNewContact" maxlength="200"></label>
+          <label>Contact email<input id="pilotNewEmail" maxlength="254" type="email"></label>
+          <label>Contact phone<input id="pilotNewPhone" maxlength="40" type="tel"></label>
+          <label class="wide">Location<input id="pilotNewLocation" maxlength="200"></label>
+        </div>
+        <div class="pilot-scorecard-actions"><button type="button" class="primary" id="pilotCreateButton" onclick="createPilotRecord()">Start pilot setup</button><span class="pilot-form-status" id="pilotCreateStatus" role="status" aria-live="polite"></span></div>
+        <div id="pilotRecordList" class="pilot-record-list"></div>
+      </section>
+
+      <section class="card">
+        <h2>Pilot activity</h2>
+        <p>Aggregate lifecycle counts and recent event metadata only. Scorecard answers and notes are never shown here.</p>
+        <div id="pilotAuditSummary" class="op-stats" aria-live="polite"></div>
+        <ul id="pilotAuditEvents" class="op-health" aria-live="polite"></ul>
+      </section>
+
+      <section class="card hidden" id="pilotEditorCard">
+        <h2 id="pilotEditorTitle">Pilot setup</h2>
+        <div class="pilot-editor">
+          <label>Client / operator<input id="pilotEditClient" maxlength="200"></label>
+          <label>Contact name<input id="pilotEditContact" maxlength="200"></label>
+          <label>Contact email<input id="pilotEditEmail" maxlength="254" type="email"></label>
+          <label>Contact phone<input id="pilotEditPhone" maxlength="40" type="tel"></label>
+          <label>Location<input id="pilotEditLocation" maxlength="200"></label>
+          <label>Start date<input id="pilotEditStart" type="date"></label>
+          <label>End date<input id="pilotEditEnd" type="date"></label>
+          <label>Fee (USD)<input id="pilotEditFee" type="number" min="0" max="100000" step="0.01"></label>
+        </div>
+        <h3>Launch checklist</h3>
+        <div id="pilotLaunchChecks" class="pilot-launch-checks"></div>
+        <h3>Approved guest knowledge</h3>
+        <div id="pilotKnowledgeEditor"></div>
+        <button type="button" class="ghost" onclick="addPilotKnowledgeRow()">+ Add answer</button>
+        <h3>Protected access details</h3>
+        <p class="op-hint">These keyword-triggered secrets stay in the protected property configuration and are never sent to AI. Confirm every access detail with the operator.</p>
+        <div id="pilotSecretsEditor"></div>
+        <button type="button" class="ghost" onclick="addPilotSecretRow()">+ Add protected detail</button>
+        <div class="pilot-scorecard-actions">
+          <button type="button" class="primary" onclick="savePilotDraft()">Save setup</button>
+          <button type="button" class="ghost" id="pilotLaunchButton" onclick="launchPilot()">Launch pilot</button>
+          <button type="button" class="ghost hidden" id="pilotCompleteButton" onclick="completePilot()">Mark pilot complete</button>
+          <span class="pilot-form-status" id="pilotEditStatus" role="status" aria-live="polite"></span>
+        </div>
+        <h3>Per-property scorecard</h3>
+        <div class="pilot-editor">
+          <label>Amount paid / collected<input id="pilotScoreAmount" maxlength="200"></label>
+          <label>Answers reviewed / rated correct<input id="pilotScoreQuality" maxlength="200"></label>
+          <label>Host time before pilot<input id="pilotScoreTimeBefore" maxlength="200"></label>
+          <label>Host time during pilot<input id="pilotScoreTimeDuring" maxlength="200"></label>
+          <label>Safety or privacy incidents<input id="pilotScoreIncidents" maxlength="200"></label>
+          <label>Direct delivery cost<input id="pilotScoreCost" maxlength="200"></label>
+          <label>Continue after pilot?<select id="pilotScoreRenewal"><option value="">Choose an option</option><option value="yes">Yes</option><option value="no">No</option><option value="undecided">Undecided / not asked</option></select></label>
+          <label>Final decision<select id="pilotScoreDecision"><option value="">Choose an option</option><option value="stop">Stop</option><option value="revise">Revise</option><option value="expand">Expand</option></select></label>
+          <label class="wide">Operator's main reason<textarea id="pilotScoreReason" maxlength="4000"></textarea></label>
+          <label class="wide">Recurring guest needs / possible add-ons<textarea id="pilotScoreNeeds" maxlength="4000"></textarea></label>
+          <label class="wide">Biggest issue and next action<textarea id="pilotScoreNextAction" maxlength="4000"></textarea></label>
+        </div>
+        <div class="pilot-scorecard-actions"><button type="button" class="primary" onclick="savePilotScorecard()">Save scorecard</button></div>
       </section>
 
       <section class="card">
@@ -3760,9 +4427,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
         </ul>
       </section>
 
-      <section class="card">
-        <h2>Per-property scorecard</h2>
-        <p>Complete one per property at closeout. Record whether the operator would continue under a separately agreed offer and select a pilot decision. Entries are saved in this browser only.</p>
+      <section class="card hidden">
+        <h2>Legacy browser scorecard</h2>
+        <p>This local-only scorecard is retained for reference. New pilot records and scorecards are saved across admin devices in the pilot properties section above.</p>
         <div class="pilot-scorecard">
           <label>Operator<input id="pilotOperator" autocomplete="organization" placeholder="Operator or company name"></label>
           <label>Property<input id="pilotProperty" placeholder="Property name or code"></label>
@@ -3797,7 +4464,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
           <label class="wide">Biggest issue and next action<textarea id="pilotNextAction" placeholder="Record the main product issue and the next step."></textarea></label>
         </div>
         <div class="pilot-scorecard-actions">
-          <button type="button" class="primary" onclick="savePilotScorecard()">Save scorecard</button>
+          <button type="button" class="primary" onclick="saveLegacyPilotScorecard()">Save local scorecard</button>
           <span class="pilot-scorecard-status" id="pilotScorecardStatus" role="status" aria-live="polite"></span>
         </div>
         <p>Expand beyond the first 3–5 properties only if safety passes, operators choose to continue for specific value, and delivery costs are understood. Otherwise, refine the segment, reliability, onboarding, or offer before adding features or scaling outreach.</p>
@@ -3849,7 +4516,20 @@ document.body.addEventListener("change", (event) => {
   if (event.target.closest("#propView")) markDirty();
 });
 
-const PILOT_SCORECARD_KEY = "stayxi-pilot-scorecard";
+let pilotRecords = [];
+let availablePilotProperties = [];
+let pilotLeads = [];
+let currentPilotId = "";
+const PILOT_CHECKLIST_LABELS = [
+  "Terms, dates, fee, and written agreement confirmed",
+  "Operator and StayXI contacts verified",
+  "SMS endpoint and guest text line tested",
+  "HELP/STOP and privacy notice reviewed",
+  "Pilot review and product-improvement use explained",
+  "Answers and protected configuration reviewed and approved",
+  "Supported, unsupported, high-risk, escalation, and pause tests passed",
+];
+const LEGACY_PILOT_SCORECARD_KEY = "stayxi-pilot-scorecard";
 const PILOT_SCORECARD_FIELDS = [
   "pilotOperator", "pilotProperty", "pilotDates", "pilotAmount", "pilotMessages",
   "pilotAiAnswers", "pilotEscalations", "pilotAnswerQuality", "pilotTimeBefore",
@@ -3857,9 +4537,9 @@ const PILOT_SCORECARD_FIELDS = [
   "pilotRenewalReason", "pilotNeeds", "pilotNextAction",
 ];
 
-function loadPilotScorecard() {
+function loadLegacyPilotScorecard() {
   try {
-    const saved = localStorage.getItem(PILOT_SCORECARD_KEY);
+    const saved = localStorage.getItem(LEGACY_PILOT_SCORECARD_KEY);
     if (!saved) return;
     const scorecard = JSON.parse(saved);
     if (!scorecard || typeof scorecard !== "object" || Array.isArray(scorecard)) {
@@ -3874,20 +4554,20 @@ function loadPilotScorecard() {
   }
 }
 
-function savePilotScorecard() {
+function saveLegacyPilotScorecard() {
   try {
     const scorecard = {};
     PILOT_SCORECARD_FIELDS.forEach((id) => {
       scorecard[id] = $(id).value.trim();
     });
-    localStorage.setItem(PILOT_SCORECARD_KEY, JSON.stringify(scorecard));
+    localStorage.setItem(LEGACY_PILOT_SCORECARD_KEY, JSON.stringify(scorecard));
     $("pilotScorecardStatus").textContent = "Scorecard saved in this browser.";
   } catch (err) {
     $("pilotScorecardStatus").textContent = "Could not save scorecard: " + err.message;
   }
 }
 
-loadPilotScorecard();
+loadLegacyPilotScorecard();
 
 function parseKeywords(str) {
   return str.split(",").map((k) => k.trim()).filter((k) => k.length);
@@ -4514,6 +5194,403 @@ function showTab(tab) {
   else if (tab === 'analytics') loadAnalytics();
   else if (tab === 'insights') loadInsights();
   else if (tab === 'operations') loadOperations();
+  else if (tab === 'pilot') loadPilots();
+}
+
+async function loadPilots() {
+  $('pilotCreateStatus').textContent = 'Loading pilot properties…';
+  try {
+    const [pilotData, leadData, auditData] = await Promise.all([
+      api('/admin/api/pilots'),
+      api('/admin/api/leads'),
+      api('/admin/api/pilot-audit'),
+    ]);
+    pilotRecords = pilotData.pilots || [];
+    renderPilotAudit(auditData);
+    availablePilotProperties = pilotData.availableProperties || [];
+    pilotLeads = leadData.leads || [];
+    $('pilotCreateStatus').textContent = '';
+    renderPilotPickers();
+    renderPilotRecords();
+    if (currentPilotId) {
+      const currentRecord = pilotRecords.find((item) => item.propertyId === currentPilotId);
+      if (currentRecord) openPilot(currentPilotId);
+      else {
+        currentPilotId = '';
+        $('pilotEditorCard').classList.add('hidden');
+      }
+    }
+  } catch (err) {
+    $('pilotCreateStatus').textContent = 'Could not load pilot records: ' + err.message;
+  }
+}
+
+function renderPilotPickers() {
+  const propertySelect = $('pilotNewProperty');
+  propertySelect.textContent = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = availablePilotProperties.length ? 'Choose a property' : 'No property available to onboard';
+  propertySelect.appendChild(placeholder);
+  availablePilotProperties.forEach((property) => {
+    const option = document.createElement('option');
+    option.value = property.id;
+    option.textContent = property.name + ' (' + property.id + ')';
+    propertySelect.appendChild(option);
+  });
+  const leadSelect = $('pilotNewLead');
+  leadSelect.textContent = '';
+  const noLead = document.createElement('option');
+  noLead.value = '';
+  noLead.textContent = 'No linked lead';
+  leadSelect.appendChild(noLead);
+  pilotLeads.forEach((lead) => {
+    const option = document.createElement('option');
+    option.value = lead.id;
+    option.textContent = lead.name;
+    leadSelect.appendChild(option);
+  });
+  $('pilotCreateButton').disabled = availablePilotProperties.length === 0;
+}
+
+function pilotLeadSelected() {
+  const lead = pilotLeads.find((item) => item.id === $('pilotNewLead').value);
+  if (!lead) return;
+  $('pilotNewClient').value = lead.name || '';
+  $('pilotNewContact').value = lead.contactName || '';
+  $('pilotNewEmail').value = lead.email || '';
+  $('pilotNewPhone').value = lead.phone || '';
+  $('pilotNewLocation').value = lead.location || '';
+}
+
+function renderPilotAudit(data) {
+  const summary = $('pilotAuditSummary');
+  summary.textContent = '';
+  [
+    ['launched', 'Launches'],
+    ['completed', 'Completed'],
+    ['scorecardsSaved', 'Scorecards saved'],
+  ].forEach(([key, label]) => {
+    const tile = document.createElement('div');
+    tile.className = 'op-stat';
+    const value = document.createElement('b');
+    value.textContent = String(Number(data.summary?.[key] || 0));
+    const caption = document.createElement('span');
+    caption.textContent = label;
+    tile.append(value, caption);
+    summary.appendChild(tile);
+  });
+
+  const events = $('pilotAuditEvents');
+  events.textContent = '';
+  if (!data.events?.length) {
+    const empty = document.createElement('li');
+    empty.textContent = 'No pilot activity recorded.';
+    events.appendChild(empty);
+    return;
+  }
+  data.events.forEach((event) => {
+    const item = document.createElement('li');
+    const action = event.action === 'pilot_launched' ? 'Pilot launched'
+      : event.action === 'pilot_completed' ? 'Pilot completed'
+        : 'Scorecard saved';
+    item.textContent = [event.createdAt, event.propertyName || event.propertyId || 'Deleted property', action]
+      .filter(Boolean).join(' · ');
+    events.appendChild(item);
+  });
+}
+
+function renderPilotRecords() {
+  const list = $('pilotRecordList');
+  list.textContent = '';
+  if (!pilotRecords.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = 'No pilot properties yet. Add a property first, then start its pilot setup here.';
+    list.appendChild(empty);
+    return;
+  }
+  pilotRecords.forEach((pilot) => {
+    const card = document.createElement('div');
+    card.className = 'pilot-record';
+    const summary = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = pilot.clientName + ' · ' + pilot.propertyName;
+    const detail = document.createElement('small');
+    const metrics = pilot.metrics || {};
+    detail.textContent = pilot.stage.toUpperCase() + ' · ' + (pilot.startedAt || 'Dates not set') + ' · ' +
+      metrics.guestMessages + ' guest messages · ' + metrics.answered + ' answered · ' + metrics.escalated + ' escalated';
+    summary.append(title, detail);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ghost';
+    button.textContent = 'Open';
+    button.onclick = () => openPilot(pilot.propertyId);
+    card.append(summary, button);
+    list.appendChild(card);
+  });
+}
+
+function renderPilotKnowledge(knowledge) {
+  const root = $('pilotKnowledgeEditor');
+  root.textContent = '';
+  (knowledge.answers || []).forEach((answer) => addPilotKnowledgeRow(answer));
+  const secretsRoot = $('pilotSecretsEditor');
+  secretsRoot.textContent = '';
+  (knowledge.secrets || []).forEach((secret) => addPilotSecretRow(secret));
+}
+
+function addPilotSecretRow(secret = {}) {
+  const root = $('pilotSecretsEditor');
+  const row = document.createElement('div');
+  row.className = 'pilot-knowledge-row';
+  const keywords = document.createElement('input');
+  keywords.placeholder = 'Exact trigger keywords, comma separated';
+  keywords.maxLength = 420;
+  keywords.value = (secret.keywords || []).join(', ');
+  keywords.setAttribute('aria-label', 'Protected detail keywords');
+  const reply = document.createElement('textarea');
+  reply.placeholder = 'Operator-approved protected detail';
+  reply.maxLength = 2000;
+  reply.value = secret.reply || '';
+  reply.setAttribute('aria-label', 'Protected detail reply');
+  const spacer = document.createElement('span');
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'remove';
+  remove.textContent = '×';
+  remove.title = 'Remove protected detail';
+  remove.onclick = () => row.remove();
+  row.append(keywords, reply, spacer, remove);
+  root.appendChild(row);
+}
+
+function addPilotKnowledgeRow(answer = {}) {
+  const root = $('pilotKnowledgeEditor');
+  const row = document.createElement('div');
+  row.className = 'pilot-knowledge-row';
+  const topic = document.createElement('input');
+  topic.placeholder = 'Topic';
+  topic.maxLength = 80;
+  topic.value = answer.topic || '';
+  topic.setAttribute('aria-label', 'Answer topic');
+  const keywords = document.createElement('input');
+  keywords.placeholder = 'Keywords, comma separated';
+  keywords.maxLength = 420;
+  keywords.value = (answer.keywords || []).join(', ');
+  keywords.setAttribute('aria-label', 'Answer keywords');
+  const reply = document.createElement('textarea');
+  reply.placeholder = 'Operator-approved guest reply';
+  reply.maxLength = 2000;
+  reply.value = answer.reply || '';
+  reply.setAttribute('aria-label', 'Answer reply');
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'remove';
+  remove.textContent = '×';
+  remove.title = 'Remove answer';
+  remove.onclick = () => row.remove();
+  row.append(topic, keywords, reply, remove);
+  root.appendChild(row);
+}
+
+function collectPilotKnowledge() {
+  const answers = [...$('pilotKnowledgeEditor').children].map((row) => {
+    const [topic, keywords, reply] = row.children;
+    return {
+      topic: topic.value.trim(),
+      keywords: keywords.value.split(',').map((keyword) => keyword.trim()).filter(Boolean),
+      reply: reply.value.trim(),
+    };
+  }).filter((answer) => answer.reply);
+  const secrets = [...$('pilotSecretsEditor').children].map((row) => {
+    const [keywords, reply] = row.children;
+    return {
+      keywords: keywords.value.split(',').map((keyword) => keyword.trim()).filter(Boolean),
+      reply: reply.value.trim(),
+    };
+  }).filter((secret) => secret.reply && secret.keywords.length);
+  return { answers, secrets };
+}
+
+function renderPilotChecklist(checklist = {}) {
+  const root = $('pilotLaunchChecks');
+  root.textContent = '';
+  PILOT_CHECKLIST_LABELS.forEach((label, index) => {
+    const wrapper = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.dataset.key = String(index);
+    input.checked = checklist[String(index)] === true;
+    const text = document.createElement('span');
+    text.textContent = label;
+    wrapper.append(input, text);
+    root.appendChild(wrapper);
+  });
+}
+
+function openPilot(propertyId) {
+  const pilot = pilotRecords.find((item) => item.propertyId === propertyId);
+  if (!pilot) return;
+  currentPilotId = propertyId;
+  $('pilotEditorCard').classList.remove('hidden');
+  $('pilotEditorTitle').textContent = pilot.clientName + ' · ' + pilot.propertyName + ' (' + pilot.stage + ')';
+  $('pilotEditClient').value = pilot.clientName || '';
+  $('pilotEditContact').value = pilot.contactName || '';
+  $('pilotEditEmail').value = pilot.contactEmail || '';
+  $('pilotEditPhone').value = pilot.contactPhone || '';
+  $('pilotEditLocation').value = pilot.location || '';
+  $('pilotEditStart').value = pilot.startedAt || '';
+  $('pilotEditEnd').value = pilot.endsAt || '';
+  $('pilotEditFee').value = pilot.feeCents == null ? '49.00' : (Number(pilot.feeCents) / 100).toFixed(2);
+  renderPilotChecklist(pilot.checklist);
+  renderPilotKnowledge(pilot.knowledge || { answers: [], secrets: [] });
+  const score = pilot.scorecard || {};
+  const scoreFields = {
+    pilotScoreAmount: 'amountPaid', pilotScoreQuality: 'answerQuality', pilotScoreTimeBefore: 'hostTimeBefore',
+    pilotScoreTimeDuring: 'hostTimeDuring', pilotScoreIncidents: 'incidents', pilotScoreCost: 'deliveryCost',
+    pilotScoreRenewal: 'renewal', pilotScoreDecision: 'decision', pilotScoreReason: 'renewalReason',
+    pilotScoreNeeds: 'needs', pilotScoreNextAction: 'nextAction',
+  };
+  Object.entries(scoreFields).forEach(([id, key]) => { $(id).value = typeof score[key] === 'string' ? score[key] : ''; });
+  const canStartOrResumePilot = pilot.stage === 'draft' || (pilot.stage === 'pilot' && !pilot.active);
+  $('pilotLaunchButton').classList.toggle('hidden', !canStartOrResumePilot);
+  $('pilotLaunchButton').textContent = pilot.stage === 'pilot' ? 'Resume pilot' : 'Launch pilot';
+  $('pilotLaunchButton').disabled = !pilot.hasTextLine || !pilot.hasHostContact;
+  $('pilotCompleteButton').classList.toggle('hidden', pilot.stage !== 'pilot');
+  $('pilotEditStatus').textContent = pilot.stage === 'draft' && (!pilot.hasTextLine || !pilot.hasHostContact)
+    ? 'Configure an E.164 guest text line and host escalation phone in the property editor before launch.'
+    : pilot.stage === 'draft' && pilot.criticalChangesPending
+      ? 'Approve or reject pending critical property changes from the property editor before launching.'
+      : '';
+}
+
+function collectPilotChecklist() {
+  const checklist = {};
+  [...$('pilotLaunchChecks').children].forEach((wrapper) => {
+    const input = wrapper.children[0];
+    checklist[input.dataset.key] = input.checked;
+  });
+  return checklist;
+}
+
+function collectPilotScorecard() {
+  return {
+    amountPaid: $('pilotScoreAmount').value.trim(),
+    answerQuality: $('pilotScoreQuality').value.trim(),
+    hostTimeBefore: $('pilotScoreTimeBefore').value.trim(),
+    hostTimeDuring: $('pilotScoreTimeDuring').value.trim(),
+    incidents: $('pilotScoreIncidents').value.trim(),
+    deliveryCost: $('pilotScoreCost').value.trim(),
+    renewal: $('pilotScoreRenewal').value,
+    decision: $('pilotScoreDecision').value,
+    renewalReason: $('pilotScoreReason').value.trim(),
+    needs: $('pilotScoreNeeds').value.trim(),
+    nextAction: $('pilotScoreNextAction').value.trim(),
+  };
+}
+
+function collectPilotUpdate() {
+  return {
+    propertyId: currentPilotId,
+    clientName: $('pilotEditClient').value.trim(),
+    contactName: $('pilotEditContact').value.trim(),
+    contactEmail: $('pilotEditEmail').value.trim(),
+    contactPhone: $('pilotEditPhone').value.trim(),
+    location: $('pilotEditLocation').value.trim(),
+    startedAt: $('pilotEditStart').value,
+    endsAt: $('pilotEditEnd').value,
+    feeCents: Math.round(Number($('pilotEditFee').value) * 100),
+    checklist: collectPilotChecklist(),
+    knowledge: collectPilotKnowledge(),
+    scorecard: collectPilotScorecard(),
+  };
+}
+
+async function createPilotRecord() {
+  const status = $('pilotCreateStatus');
+  const propertyId = $('pilotNewProperty').value;
+  if (!propertyId) { status.textContent = 'Choose a property first.'; return; }
+  status.textContent = 'Creating pilot setup…';
+  $('pilotCreateButton').disabled = true;
+  try {
+    const leadId = $('pilotNewLead').value;
+    const data = await api('/admin/api/pilots', {
+      method: 'POST',
+      body: JSON.stringify({
+        propertyId, leadId: leadId || null,
+        clientName: $('pilotNewClient').value,
+        contactName: $('pilotNewContact').value,
+        contactEmail: $('pilotNewEmail').value,
+        contactPhone: $('pilotNewPhone').value,
+        location: $('pilotNewLocation').value,
+        knowledge: leadId ? (pilotLeads.find((lead) => lead.id === leadId)?.knowledge || undefined) : undefined,
+      }),
+    });
+    currentPilotId = data.propertyId;
+    await loadPilots();
+    openPilot(currentPilotId);
+    status.textContent = data.active
+      ? 'Draft pilot setup created. This property is already serving guests and stays live while its checks are completed.'
+      : 'Draft pilot setup created. The property remains inactive until launch checks pass.';
+  } catch (err) {
+    status.textContent = err.message;
+  } finally {
+    $('pilotCreateButton').disabled = availablePilotProperties.length === 0;
+  }
+}
+
+async function savePilotDraft(showStatus = true) {
+  if (!currentPilotId) return false;
+  try {
+    const result = await api('/admin/api/pilot', { method: 'PUT', body: JSON.stringify(collectPilotUpdate()) });
+    await loadPilots();
+    if (showStatus) $('pilotEditStatus').textContent = result.criticalChangesPending
+      ? 'Pilot setup saved. Critical knowledge changes are pending review from the property editor.'
+      : 'Pilot setup saved.';
+    return true;
+  } catch (err) {
+    $('pilotEditStatus').textContent = 'Could not save pilot setup: ' + err.message;
+    return false;
+  }
+}
+
+async function launchPilot() {
+  if (!await savePilotDraft(false)) return;
+  $('pilotEditStatus').textContent = 'Running launch checks…';
+  try {
+    await api('/admin/api/pilot', { method: 'PUT', body: JSON.stringify({ propertyId: currentPilotId, stage: 'pilot' }) });
+    $('pilotEditStatus').textContent = 'Pilot launched. The property is now active for guest messages.';
+    await loadPilots();
+  } catch (err) {
+    $('pilotEditStatus').textContent = err.message;
+  }
+}
+
+async function completePilot() {
+  if (!currentPilotId || !confirm('Mark this pilot complete and move the property to live status?')) return;
+  if (!await savePilotDraft(false)) return;
+  try {
+    await api('/admin/api/pilot', { method: 'PUT', body: JSON.stringify({ propertyId: currentPilotId, stage: 'live' }) });
+    $('pilotEditStatus').textContent = 'Pilot completed; the property remains active as a live property.';
+    await loadPilots();
+  } catch (err) {
+    $('pilotEditStatus').textContent = err.message;
+  }
+}
+
+async function savePilotScorecard() {
+  if (!currentPilotId) return;
+  try {
+    const payload = collectPilotUpdate();
+    const result = await api('/admin/api/pilot', { method: 'PUT', body: JSON.stringify(payload) });
+    await loadPilots();
+    $('pilotEditStatus').textContent = result.criticalChangesPending
+      ? 'Scorecard saved. Critical knowledge changes are pending review from the property editor.'
+      : 'Per-property scorecard saved across admin devices.';
+  } catch (err) {
+    $('pilotEditStatus').textContent = 'Could not save pilot scorecard: ' + err.message;
+  }
 }
 
 async function loadLeads() {
@@ -4558,6 +5635,7 @@ async function loadLeads() {
         leadStatus: progress.leadStatus || lead.leadStatus,
         checklist: progress.checklist || {},
         propertyId: progress.propertyId || "",
+        knowledge: progress.knowledge || { answers: [], secrets: [] },
         outreach: (data.outreach || {})[lead.id] || { status: null, sentAt: null, suppressed: false },
       };
     });
@@ -4622,6 +5700,7 @@ function saveLeadProgress(lead) {
     leadStatus: lead.leadStatus,
     checklist: lead.checklist || {},
     propertyId: lead.propertyId || null,
+    knowledge: lead.knowledge || { answers: [], secrets: [] },
   };
   const previousSave = leadProgressSaves.get(lead.id) || Promise.resolve();
   const save = previousSave.then(async () => {
@@ -5284,6 +6363,75 @@ function renderThroughput(svg, daily) {
   });
 }
 
+// Single-series sibling of the throughput chart: one glowing area for guest
+// questions per day. Same axes and grid as Analytics so the tabs read as one
+// family, with one line instead of two.
+function renderQuestionArea(svg, daily) {
+  clearNode(svg);
+  const width = 620;
+  const height = 230;
+  const padLeft = 34;
+  const padRight = 10;
+  const padTop = 14;
+  const padBottom = 26;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const bottom = padTop + plotHeight;
+  const series = daily && daily.length ? daily : [];
+
+  const peak = Math.max(1, series.reduce(function (max, day) {
+    return Math.max(max, Number(day.inbound || 0));
+  }, 0));
+
+  for (let step = 0; step <= 3; step += 1) {
+    const value = (peak / 3) * step;
+    const y = padTop + plotHeight - (value / peak) * plotHeight;
+    svg.appendChild(svgEl('line', {
+      x1: String(padLeft), y1: String(y), x2: String(width - padRight), y2: String(y),
+      stroke: 'rgba(148,180,255,.12)', 'stroke-width': '1',
+    }));
+    const label = svgEl('text', {
+      x: String(padLeft - 8), y: String(y + 3.5), 'text-anchor': 'end',
+      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+    });
+    label.textContent = String(Math.round(value));
+    svg.appendChild(label);
+  }
+
+  if (!series.length) {
+    chartNote(svg, 'No guest questions in this period yet', width, height);
+    return;
+  }
+
+  const xAt = function (index) {
+    return padLeft + (series.length <= 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth);
+  };
+  const yAt = function (value) {
+    return padTop + plotHeight - (Math.min(Number(value || 0), peak) / peak) * plotHeight;
+  };
+
+  const defs = svgEl('defs', {});
+  svg.appendChild(defs);
+  const points = series.map(function (day, index) {
+    return { x: xAt(index), y: yAt(day.inbound) };
+  });
+  drawSeries(svg, defs, points, bottom, '#3fd8c5', 'gradInsightDaily', 0.34);
+
+  const marks = [0, Math.floor((series.length - 1) / 2), series.length - 1];
+  marks.forEach(function (index, order) {
+    const point = series[index];
+    if (!point) return;
+    const label = svgEl('text', {
+      x: String(xAt(index)),
+      y: String(height - 6),
+      'text-anchor': order === 0 ? 'start' : (order === marks.length - 1 ? 'end' : 'middle'),
+      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+    });
+    label.textContent = shortDay(point.day);
+    svg.appendChild(label);
+  });
+}
+
 function renderWeeklyBars(svg, weekly) {
   clearNode(svg);
   const width = 320;
@@ -5639,6 +6787,11 @@ function renderInsights(data) {
   renderInsightThemes($('insightThemesList'), themes);
   renderInsightUnanswered($('insightUnanswered'), unanswered);
   renderInsightProperties($('insightProperties'), (data && data.properties) || []);
+
+  // Same chart family as the Analytics tab: a glowing daily area plus weekly
+  // gradient bars, both from the payload's series.
+  renderQuestionArea($('insightThroughput'), (data && data.daily) || []);
+  renderWeeklyBars($('insightWeeklyBars'), (data && data.weekly) || []);
 }
 
 function renderInsightThemes(container, themes) {
@@ -5714,35 +6867,84 @@ function renderInsightProperties(container, properties) {
     container.appendChild(emptyNote('No live properties yet.'));
     return;
   }
-  const table = document.createElement('table');
-  const head = document.createElement('thead');
-  const headRow = document.createElement('tr');
-  [['Property', ''], ['Questions', 'num'], ['Needed a human', 'num'], ['Share', 'num']].forEach(function (labels) {
-    const th = document.createElement('th');
-    th.textContent = labels[0];
-    if (labels[1]) th.className = labels[1];
-    headRow.appendChild(th);
-  });
-  head.appendChild(headRow);
-  const body = document.createElement('tbody');
+  // Stacked rows rather than a table: four columns of numbers only fit this
+  // narrow card with a sideways scrollbar.
+  const peak = Math.max(1, Math.max.apply(null, properties.map(function (property) {
+    return Number(property.total || 0);
+  })));
   properties.forEach(function (property) {
-    const row = document.createElement('tr');
-    const name = document.createElement('td');
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const top = document.createElement('div');
+    top.className = 'prop-top';
+    const name = document.createElement('span');
     name.textContent = property.name;
-    const total = document.createElement('td');
-    total.className = 'num';
+    name.title = property.name + ' · ' + property.share + '% of guest questions';
+    const total = document.createElement('b');
     total.textContent = Number(property.total || 0).toLocaleString();
-    const needs = document.createElement('td');
-    needs.className = 'num';
-    needs.textContent = Number(property.needsHuman || 0).toLocaleString() + ' (' + property.needsHumanShare + '%)';
-    const share = document.createElement('td');
-    share.className = 'num';
-    share.textContent = property.share + '%';
-    row.append(name, total, needs, share);
-    body.appendChild(row);
+    top.append(name, total);
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    track.title = property.share + '% of your guest questions came from ' + property.name;
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill';
+    // A property with no questions gets an empty track, not a minimum-width stub
+    // that reads as traffic.
+    const volume = Number(property.total || 0);
+    fill.style.width = volume ? Math.max(4, Math.round((volume / peak) * 100)) + '%' : '0';
+    track.appendChild(fill);
+    const note = document.createElement('div');
+    note.className = 'prop-note';
+    note.textContent = Number(property.needsHuman || 0).toLocaleString() + ' needed a human · ' + property.needsHumanShare + '%';
+    note.title = property.needsHuman + ' of ' + property.total + ' messages from ' + property.name + ' needed a human';
+    row.append(top, track, note);
+    container.appendChild(row);
   });
-  table.append(head, body);
-  container.appendChild(table);
+}
+
+// The Operations tab's version of the Analytics capacity bars: the last 24
+// hours grouped into four stretches of the host's day. A per-hour chart needed
+// 24 bars to say what four labelled rows say outright.
+function renderDayParts(container, parts, note) {
+  clearNode(container);
+  const rows = parts || [];
+  if (!rows.length) {
+    if (note) note.textContent = '';
+    container.appendChild(emptyNote('No guest messages in the last 24 hours.'));
+    return;
+  }
+  const peak = Math.max(1, Math.max.apply(null, rows.map(function (part) {
+    return Number(part.inbound || 0);
+  })));
+  rows.forEach(function (part) {
+    const row = document.createElement('div');
+    row.className = 'cap-row';
+    const top = document.createElement('div');
+    top.className = 'cap-top';
+    const label = document.createElement('span');
+    label.textContent = part.label + ' · ' + part.hours;
+    const count = document.createElement('b');
+    count.textContent = Number(part.inbound || 0).toLocaleString();
+    top.append(label, count);
+    const track = document.createElement('div');
+    track.className = 'cap-track';
+    const fill = document.createElement('div');
+    fill.className = 'cap-fill';
+    // A stretch with no messages gets an empty track, not a minimum-width stub
+    // that reads as traffic.
+    const value = Number(part.inbound || 0);
+    fill.style.width = value ? Math.max(4, Math.round((value / peak) * 100)) + '%' : '0';
+    track.appendChild(fill);
+    row.append(top, track);
+    container.appendChild(row);
+  });
+  if (!note) return;
+  const busiest = rows.reduce(function (best, part) {
+    return Number(part.inbound || 0) > Number(best.inbound || 0) ? part : best;
+  }, rows[0]);
+  note.textContent = Number(busiest.inbound || 0)
+    ? 'busiest: ' + String(busiest.label || '').toLowerCase() + ' · ' + busiest.share + '%'
+    : 'a quiet 24 hours';
 }
 
 async function loadOperations() {
@@ -5826,6 +7028,21 @@ async function loadOperations() {
     });
 
     renderAwaiting(operations.awaiting);
+
+    // Same chart family as Analytics: day parts where Analytics has capacity
+    // bars, plus the resolution donut. The live route may predate these fields,
+    // so guard every access.
+    renderDayParts($('opDayParts'), (operations && operations.dayParts) || [], $('opDayPartNote'));
+    const opMix = (operations && operations.mix) || [];
+    renderDonut($('opMixDonut'), opMix);
+    renderMixLegend($('opMixLegend'), opMix);
+    const opMixTotal = opMix.reduce(function (sum, entry) { return sum + Number(entry.n || 0); }, 0);
+    const opMixHandled = opMix.filter(function (entry) {
+      return entry.key === 'fromAnswers' || entry.key === 'byAi';
+    }).reduce(function (sum, entry) { return sum + Number(entry.n || 0); }, 0);
+    $('opMixPct').textContent = opMixTotal
+      ? Math.round((opMixHandled / opMixTotal) * 100) + '%'
+      : '—';
 
     const select = $('testProperty');
     const previousId = select.value;

@@ -1,7 +1,13 @@
 # Twilio A2P 10DLC Campaign Notes
 
-## Status: DENIED (Error 30909)
-The A2P 10DLC campaign was rejected. We will switch to a Toll-Free Number approach.
+## Current readiness: number and routing not verified
+
+- There are currently **no real operator properties or live pilots**; the deployed property records are test/demo data.
+- The prior A2P 10DLC campaign was denied (Error 30909). The repository does not prove whether a toll-free number was subsequently purchased or whether Toll-Free Verification was approved; check the Twilio Console before any real pilot.
+- `wrangler.toml` sets signature validation on and `PUBLIC_URL` to `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms`. Wrangler reports Twilio secret names are configured, but this does not prove the credentials are valid, a number is owned/registered, or the console webhook matches.
+- The exact number's SMS capability/registration status and its inbound webhook URL/method remain **unconfirmed** until an account owner checks Twilio Console. This repository cannot access those account-side settings.
+
+For the first real operator pilot, verify the number and webhook in Twilio Console using the checklist below. The console URL must be an HTTP POST and must exactly match `PUBLIC_URL` while signature validation is enabled.
 
 ## Toll-Free Number Instructions
 
@@ -75,10 +81,10 @@ The A2P 10DLC campaign was rejected. We will switch to a Toll-Free Number approa
 Thanks for opting in to [Property Name] support texts! You'll receive gate codes, WiFi, checkout times, and property info. Msg & data rates may apply. Reply STOP to opt out or HELP for help.
 
 ## Action Items:
-- [ ] Purchase Toll-Free Number from Twilio
-- [ ] Submit Toll-Free Verification (TVC)
-- [ ] Configure webhook URL
-- [ ] Update messaging service settings
+- [ ] Confirm the account has an SMS-capable number assigned for the operator; purchase one only if none exists
+- [ ] Confirm the selected number's applicable Toll-Free Verification or A2P registration is approved for intended traffic
+- [ ] In Twilio Console, verify the number/service inbound webhook is HTTP POST and exactly matches `PUBLIC_URL`
+- [ ] Confirm the Messaging Service includes the selected number and has the expected inbound routing
 - [ ] Test SMS flow end-to-end
 - [ ] Verify rate limiting works
 - [ ] Confirm escalation to host works

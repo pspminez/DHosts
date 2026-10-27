@@ -2,7 +2,7 @@
 -- Run: wrangler d1 execute davenport --remote --file=./schema.sql
 --
 -- This file is the single source of truth: a database built from these tables
--- plus migrations/0000-0006 has exactly this shape and nothing else. Production
+-- plus migrations/0000-0007 has exactly this shape and nothing else. Production
 -- was aligned to it on 2026-10-26 by dropping columns that predated these tables
 -- and that no code read: fifteen on leads (name, phone, property_name, notes,
 -- status, source, pitch and property detail columns) and properties.latitude /
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS hosts (
   name TEXT NOT NULL,
   phone TEXT UNIQUE NOT NULL,         -- E.164, the escalation target
   email TEXT,
-  active INTEGER DEFAULT 1,
+  active INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS properties (
   address TEXT,
   host_id TEXT REFERENCES hosts(id),
   twilio_number TEXT,                 -- the guest-facing number (shared or per-property)
-  active INTEGER DEFAULT 1,
+  active INTEGER DEFAULT 0,
   rate_limit_reply TEXT DEFAULT 'Let me get the host to help you with this.',
   unknown_reply TEXT DEFAULT 'Good question — let me check with your host and get right back to you.',
-  updated_at TEXT DEFAULT (datetime('now'))
+  updated_at TEXT DEFAULT (datetime('now')),
+  stage TEXT NOT NULL DEFAULT 'live' CHECK (stage IN ('draft', 'pilot', 'live'))
 );
 
 -- Messages: append-only transcript for reporting and KB improvement
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS messages (
   body TEXT,                          -- original (may contain codes for outbound)
   body_redacted TEXT,                 -- safe for display/logs
   thread_id TEXT,
-  expires_at TEXT DEFAULT (datetime('now', '+180 days')),
+  expires_at TEXT,
   intent_key TEXT,                    -- e.g. "gate", "wifi", "checkout"
   risk TEXT,                          -- 'low' | 'high' | 'emergency'
   resolution TEXT,                    -- 'keyword' | 'ai' | 'escalated' | 'unrouted' | 'blocked' | 'emergency'
@@ -89,11 +90,11 @@ CREATE TABLE IF NOT EXISTS escalations (
   question TEXT NOT NULL,
   status TEXT DEFAULT 'open',         -- 'open' | 'answered' | 'timeout'
   host_number TEXT,
+  answered_at TEXT,
+  answer_body TEXT,
   host_notified INTEGER,
   thread_id TEXT,
-  expires_at TEXT DEFAULT (datetime('now', '+180 days')),
-  answered_at TEXT,
-  answer_body TEXT
+  expires_at TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_esc_open ON escalations(host_number, status, created_at DESC);
@@ -173,8 +174,30 @@ CREATE TABLE IF NOT EXISTS admin_lead_progress (
   lead_status TEXT NOT NULL CHECK (lead_status IN ('new', 'contacted', 'interested', 'closed', 'converted')),
   checklist_json TEXT NOT NULL DEFAULT '{}',
   property_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  knowledge_json TEXT NOT NULL DEFAULT '{"answers":[],"secrets":[]}'
+);
+
+CREATE TABLE IF NOT EXISTS pilot_profiles (
+  property_id TEXT PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+  lead_id TEXT,
+  client_name TEXT,
+  contact_name TEXT,
+  contact_email TEXT,
+  contact_phone TEXT,
+  location TEXT,
+  started_at TEXT,
+  ends_at TEXT,
+  fee_cents INTEGER,
+  checklist_json TEXT NOT NULL DEFAULT '{}',
+  scorecard_json TEXT NOT NULL DEFAULT '{}',
+  knowledge_json TEXT NOT NULL DEFAULT '{"answers":[],"secrets":[]}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_properties_stage ON properties(stage);
+CREATE INDEX IF NOT EXISTS idx_pilot_profiles_lead ON pilot_profiles(lead_id);
 
 CREATE TABLE IF NOT EXISTS admin_deleted_leads (
   lead_id TEXT PRIMARY KEY,

@@ -59,6 +59,41 @@ expire after 30 days. A five-minute cron recovers interrupted host replies.
 Apply migrations before deploying Worker code that reads or writes the new
 tables.
 
+### Production release checklist
+
+For the pilot dashboard release, use the existing configured production account,
+Worker, KV namespace, and D1 database; do not create replacement resources.
+Before applying changes, confirm the active Cloudflare account and review
+`npx wrangler d1 migrations list davenport-host-co-db --remote`. The pilot
+release should show only `0007_pilot_properties.sql` pending. Review that
+migration and take/verify a D1 backup before proceeding. Then, from the project
+root, apply the additive migration before publishing the Worker:
+
+```powershell
+npx wrangler d1 migrations apply davenport-host-co-db --remote
+npx wrangler deploy --strict --message "Add pilot setup, launch gates, and persistent scorecards"
+```
+
+After deploy, run the authenticated, read-only production check from the repo root
+(`STAYXI_ADMIN_PASSWORD` must be set in your shell; the script does not print it):
+
+```powershell
+$securePassword = Read-Host "Admin password" -AsSecureString
+$env:STAYXI_ADMIN_PASSWORD = [System.Net.NetworkCredential]::new("", $securePassword).Password
+try { npm run check:production } finally { Remove-Item Env:STAYXI_ADMIN_PASSWORD }
+```
+
+It checks public `/health`, Pilot markup, authenticated admin health, and verifies
+pilot records remain inaccessible without authentication; it does not create,
+edit, or activate any property. Then sign in to `/admin` and confirm the Pilot
+tab and metadata-only activity summary load. Exercise setup and launch gates only
+with an explicitly inactive **test property**; tests and demo fixtures are not
+real pilot evidence. Delete test records when finished. Never activate a test
+record on a guest-facing number or send test SMS to guests. Review Worker logs
+and D1 migration status before considering the release complete. If any step
+fails, stop and investigate rather than retrying a potentially partial
+production action.
+
 ## Google Workspace pilot outreach
 
 The Admin Leads panel can send **one individually reviewed first-contact email**
@@ -211,15 +246,24 @@ SMS or paid AI requests.
 
 ---
 
-## Twilio webhook config
+## Twilio webhook and number readiness
 
-In Twilio Console → Messaging → Services → your service → **Inbound Webhook**:
+The currently deployed Worker is configured to validate signatures for:
 
 ```
-POST https://api.stayxi.com/sms (after the custom Worker domain is configured)
+POST https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms
 ```
 
-This must exactly match `PUBLIC_URL` in `wrangler.toml` — the signature is computed over it. Until `api.stayxi.com` is configured and Twilio is switched, keep the currently active workers.dev webhook URL in Twilio and `PUBLIC_URL`.
+The account's secret names and the configured `PUBLIC_URL` are not proof that a
+number is registered, assigned, or correctly routed. Before the first real
+operator pilot, inspect the Twilio Console directly: verify the exact number's
+ownership and SMS capability, its Toll-Free Verification or applicable A2P
+status, and the inbound Messaging Service/number webhook URL and method. The
+actual webhook must exactly match `PUBLIC_URL` in `wrangler.toml` (scheme, host,
+path) while signature validation is enabled. Do not change it to
+`api.stayxi.com` until that custom endpoint is configured and Twilio is switched
+at the same time. A read-only smoke check cannot verify Twilio's console-side
+registration or end-to-end message delivery.
 
 ---
 

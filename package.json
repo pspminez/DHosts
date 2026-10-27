@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "check:ui": "node tools/ui-check.cjs",
     "check:setup": "node tools/check-setup-docs.cjs",
+    "check:production": "node tools/production-smoke.cjs",
     "shot": "node tools/screenshot.cjs",
     "seed:demo": "node tools/seed-demo.cjs"
   },

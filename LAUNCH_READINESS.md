@@ -12,25 +12,30 @@ This file answers one question: **what is actually left before StayXI can take a
 |---|---|---|
 | Guest SMS bot (webhook, routing, escalation, STOP/HELP) | `bot/worker.ts` | Working, `npm test` = 69/69 pass |
 | Property answer library + secrets (gate codes) | D1 + `PROPERTIES` KV | Working |
-| Admin panel (Properties / Leads / Analytics / Operations / Pilot) | inlined in `bot/worker.ts` | Working |
+| Admin panel (Properties / Leads / Analytics / Operations / Pilot) | inlined in `bot/worker.ts` | Deployed; health endpoint returns `ok`, Pilot markup is present, and pilot APIs return 401 without a session |
+| Pilot setup, launch gates, and persistent scorecards | Pilot tab + D1 migration `0007_pilot_properties.sql` | Deployed and locally exercised end-to-end; launch/scorecard audit events record field names and outcomes, not scorecard contents |
+| Pilot activity viewer | Pilot tab + authenticated `pilot-audit` API | Implemented in source and locally tested; deploy Worker before it is available in production. Shows aggregate counts/event metadata only, never scorecard answers or notes |
+| Read-only production smoke check | `npm run check:production` | Implemented and validated against local Wrangler; requires the admin password and the updated Worker deployment for a production pass. GET-only; does not mutate D1 or KV |
+| Pilot integration monitoring | `admin_audit_log` | Launch, completion, and scorecard-save events are auditable without recording scorecard contents; external alerts and dashboards are not configured |
 | One-to-one Gmail outreach (send-only, unsubscribe, suppression) | admin Leads tab | Built, **not connected** (needs Google OAuth) |
 | Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Ready to deploy to Pages |
 | Pilot program + terms | `PILOT_PROGRAM.md` | Written |
 | Lead list | `bot/leads.js` | Re-checked 2026-10-26; **5 of 8 have a verified public email** |
 
-Run `npm test` to confirm the bot logic and lead-data rules before any deploy.
+Run `npm run typecheck`, `npm run check:ui`, and `npm test` to confirm the Worker types, dashboard wiring, pilot-flow integration, and lead-data rules before a deploy.
 
 ---
 
 ## 2. Blockers before a single guest can text you
 
-These are the hard gates. Each needs a purchase or a credential only you can create.
+The Worker and Pilot panel are deployed and have been exercised with local test data. **All current property records are test/demo properties; there are no real operator properties or live pilot results yet.** Test/demo data is not evidence that an operator's guest-facing setup is ready. These are the remaining real-world gates:
 
-1. **Buy the domain (`stayxi.com`) and add it to Cloudflare.** Needed for the site's custom domain, `api.stayxi.com` for the SMS webhook, and for a professional email address. Cloudflare Registrar sells at cost.
-2. **Buy a toll-free number in Twilio and submit Toll-Free Verification (TVC).** Unverified toll-free numbers are heavily filtered and volume-capped. Full steps are in `A2P_NOTES.md`. Expect 1–2 business days.
-3. **Point the Twilio webhook at the Worker.** Change `PUBLIC_URL` in `wrangler.toml` **and** the Twilio webhook URL together — signature validation is ON and computed over that exact URL. Until `api.stayxi.com` exists, keep the current `workers.dev` URL in both places.
-4. **Connect a Google account for outreach.** Admin → Leads → Connect Google account (see `bot/README.md` for the Google Cloud + `wrangler secret` steps). Follow-ups are manual by design.
-5. **Worker secrets.** Already set: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `OPENROUTER_API_KEY`, `ADMIN_PASSWORD` (verified working). Still missing for outreach: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_TOKEN_ENCRYPTION_KEY`, `GMAIL_FROM_EMAIL`, `GMAIL_MAILING_ADDRESS`. Two secrets are set but not referenced by the current code — `TWILIO_MESSAGING_SERVICE_SID` and `VAULT_KEY`. `GET /health` and the Operations tab tell you what is still missing.
+1. **Confirm the domain and public contact channels.** The Worker currently uses its `workers.dev` hostname; configure `stayxi.com`, `api.stayxi.com`, and the public site before presenting a branded guest line. Change `PUBLIC_URL` and the Twilio webhook together only after the custom endpoint is configured, because signatures depend on an exact URL match.
+2. **Verify the actual Twilio number and messaging registration.** The repository notes an earlier rejected A2P 10DLC attempt and describes a toll-free path, but do not assume a toll-free number was purchased or approved. The configured Twilio secret names and a `workers.dev` webhook in `wrangler.toml` do not prove number ownership, SMS capability, Toll-Free Verification/A2P approval, or the webhook saved in Twilio Console. The account owner must check the exact number and inbound Messaging Service/number configuration in Twilio Console and confirm its POST URL exactly matches `PUBLIC_URL` before any real pilot traffic.
+3. **Run a controlled operator test before guest use.** Use the Admin simulation first (no AI, SMS, or log writes). Then, with operator consent and a controlled phone, verify an approved routine reply, unsupported-question escalation, host reply routing, HELP, and STOP. Do not activate a test record on a number used by guests.
+4. **Confirm written pilot terms and privacy/SMS notice.** Agree on property, dates, fee/payment, escalation expectations, operator contact, data responsibilities, and pause procedure. Explain SMS and pilot trend review; use the applicable current Privacy Policy and SMS terms.
+5. **Connect Gmail only if using email outreach.** Google OAuth and sender/mail fields must be configured and checked by the account owner before outreach. Outreach can remain manual/offline.
+6. **Check operations without exposing secret values.** `GET /health` checks D1/KV availability only. The authenticated Operations health endpoint reports configured-secret presence and active properties missing host/text numbers; it does not prove number registration, deliverability, contractual readiness, or host availability.
 
 ---
 
@@ -95,10 +100,10 @@ The admin Leads tab now has a **"With verified email" filter** and a live count,
 
 ## 6. Recommended order of operations
 
-1. `npm test` — confirm green.
-2. Buy `stayxi.com`; add to Cloudflare; point the Pages site at it.
-3. Set up `hello@stayxi.com` and a Google account to send from (§3).
-4. Buy + verify the toll-free number; wire the webhook (§2).
-5. Configure one real property end-to-end in the admin panel and text it yourself.
-6. Send **five** reviewed, personalized pitches to fit-A leads — not fifty.
-7. Review replies, tune the pitch, then repeat.
+1. `npm test` — confirm green; run `npm run check:production` with `STAYXI_ADMIN_PASSWORD` set for read-only deployed checks.
+2. Rehearse Pilot setup and blocked launch checks using only an inactive test/demo property. Do not count fixture activity as operator usage, pilot results, or evidence of willingness to pay.
+3. Complete the domain, Twilio number registration/routing, written operator agreement, privacy/SMS notice, escalation-contact, and pause-procedure gates in §2.
+4. Onboard the first real operator property only after operator approval. With consent, test the line from a controlled phone: supported answer, unsupported escalation, host reply, HELP, and STOP.
+5. Confirm no test code or sample data is in the real property's guest-facing knowledge, messages, or configuration before sharing its number with guests.
+6. Only after the first operator setup is approved, decide whether to contact a small number of fit-A leads. Keep outreach individually reviewed and respect the prospect's stated contact preferences.
+7. Review actual operator results and incidents weekly; pause guest traffic after any critical access, safety, or privacy error until investigated and explicitly cleared.
