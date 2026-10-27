@@ -100,7 +100,7 @@ The admin Leads tab now has a **"With verified email" filter** and a live count,
 
 ## 6. Recommended order of operations
 
-1. `npm test` — confirm green; run `npm run check:production` with `STAYXI_ADMIN_PASSWORD` set for read-only deployed checks.
+1. `npm test` — confirm green; run `npm run check:production` with `STAYXI_ADMIN_PASSWORD` set — in the environment, or in the git-ignored `.dev.vars` at the repo root — for read-only deployed checks.
 2. Rehearse Pilot setup and blocked launch checks using only an inactive test/demo property. Do not count fixture activity as operator usage, pilot results, or evidence of willingness to pay.
 3. Complete the domain, Twilio number registration/routing, written operator agreement, privacy/SMS notice, escalation-contact, and pause-procedure gates in §2.
 4. Onboard the first real operator property only after operator approval. With consent, test the line from a controlled phone: supported answer, unsupported escalation, host reply, HELP, and STOP.

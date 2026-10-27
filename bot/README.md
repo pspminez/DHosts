@@ -75,7 +75,11 @@ npx wrangler deploy --strict --message "Add pilot setup, launch gates, and persi
 ```
 
 After deploy, run the authenticated, read-only production check from the repo root
-(`STAYXI_ADMIN_PASSWORD` must be set in your shell; the script does not print it):
+(`STAYXI_ADMIN_PASSWORD` must be set in your shell; the script does not print it).
+If you keep the password in the git-ignored `.dev.vars` at the repo root as
+`STAYXI_ADMIN_PASSWORD=...`, a plain `npm run check:production` uses it, so the
+password never has to pass through your shell; the environment variable wins when
+both are set.
 
 ```powershell
 $securePassword = Read-Host "Admin password" -AsSecureString
@@ -317,6 +321,7 @@ Or edit the JSON in Cloudflare Dashboard → Workers KV → `PROPERTIES` → fin
 # TWILIO_AUTH_TOKEN=...
 # OPENROUTER_API_KEY=...
 # ADMIN_PASSWORD=...
+# STAYXI_ADMIN_PASSWORD=...  # read by npm run check:production, not by the Worker
 # VALIDATE_SIGNATURE=false   # local dev only — real signatures come from Twilio
 
 wrangler dev --port 8787

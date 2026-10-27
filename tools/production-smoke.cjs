@@ -2,7 +2,12 @@
 // Read-only production smoke check. It sends GET requests only and never prints
 // credentials, property identifiers, contact details, knowledge, or scorecards.
 //
-//   STAYXI_ADMIN_PASSWORD must be set in the environment before running.
+//   STAYXI_ADMIN_PASSWORD must be set in the environment before running, or
+//   kept in the git-ignored .dev.vars at the repo root so a plain `npm run
+//   check:production` works without putting the password in shell history.
+
+const fs = require("fs");
+const path = require("path");
 
 const DEFAULT_BASE_URL = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev";
 const baseUrl = (process.env.STAYXI_SMOKE_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -24,10 +29,28 @@ if ((!isLocalTarget && !isProductionTarget) || parsedBaseUrl.username || parsedB
   console.error("Use the configured production Worker/API origin, or localhost for testing; do not include credentials or a path.");
   process.exit(2);
 }
-const password = process.env.STAYXI_ADMIN_PASSWORD;
+// .dev.vars is local-only and never printed. Reading it here keeps the password
+// out of shell history and chat transcripts; the environment variable still wins
+// so CI can inject it directly.
+function passwordFromDevVars() {
+  try {
+    const text = fs.readFileSync(path.join(__dirname, "..", ".dev.vars"), "utf8");
+    for (const line of text.split(/\r?\n/)) {
+      const match = /^STAYXI_ADMIN_PASSWORD\s*=\s*(.*)$/.exec(line.trim());
+      if (!match) continue;
+      const value = match[1].trim().replace(/^(['"])([\s\S]*)\1$/, "$2");
+      if (value) return value;
+    }
+  } catch {
+    // No .dev.vars is normal; the environment variable is the primary path.
+  }
+  return "";
+}
+
+const password = process.env.STAYXI_ADMIN_PASSWORD || passwordFromDevVars();
 
 if (!password) {
-  console.error("Set STAYXI_ADMIN_PASSWORD in the environment; the password is never read from a file or printed.");
+  console.error("Set STAYXI_ADMIN_PASSWORD in the environment or in the git-ignored .dev.vars at the repo root; the value is never printed.");
   process.exit(2);
 }
 
