@@ -3,1148 +3,713 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StayXI — Guest text support for vacation rentals</title>
-  <meta name="description" content="Give vacation-rental guests a text line for routine property questions. StayXI replies from host-approved information and routes uncertain questions to you.">
+  <title>StayXI — The AI text line for vacation rentals</title>
+  <meta name="description" content="StayXI gives each vacation rental its own text number. Guests text a question about wifi, check-in or parking and get an answer from your approved guide in seconds. Only what needs you reaches you.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0908">
   <link rel="canonical" href="https://stayxi.com/">
   <meta property="og:site_name" content="StayXI">
-  <meta property="og:title" content="StayXI — Guest text support for vacation rentals">
-  <meta property="og:description" content="A guest text line for routine property questions, using information you approve and escalating the rest to you.">
+  <meta property="og:title" content="StayXI — The AI text line for vacation rentals">
+  <meta property="og:description" content="Each property gets its own text number. Guests get an answer from your approved guide in seconds; only what needs you reaches you.">
   <meta property="og:url" content="https://stayxi.com/">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&h=630&q=80">
+  <!-- Swap the og:image host to https://stayxi.com/og.png once the custom domain is live. -->
+  <meta property="og:image" content="https://davenport-host-co.pages.dev/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="StayXI — the AI text line for vacation rentals">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&h=630&q=80">
-  <meta name="theme-color" content="#0e1a26">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e1a26'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='30' font-weight='700' fill='%23eee8dc' text-anchor='middle'%3EXI%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0e1a26;
-      --bg-subtle: #122534;
-      --card: #1a2d41;
-      --card-hover: #223d55;
-      --border: #2a4a6a;
-      --text: #e8eef5;
-      --muted: #7f9aa7;
-      --accent-cyan: #3fd8c5;
-      --accent-blue: #6dd5fa;
-      --accent-purple: #a269d8;
-      --accent-green: #4ade80;
-      --accent-orange: #f8b400;
-      --accent-red: #f87171;
-      --gradient-start: #0e1a26;
-      --gradient-end: #122534;
-      --gradient-radial: radial-gradient(circle at 30% 20%, rgba(63, 216, 197, 0.15), transparent 50%),
-                        radial-gradient(circle at 70% 80%, rgba(164, 105, 216, 0.15), transparent 50%);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Inter", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
-      line-height: 1.6;
-      display: flex;
-      flex-direction: column;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    body::before {
-      content: none;
-    }
-    body::after {
-      content: none;
-    }
-    main { position: relative; z-index: 1; width: 100%; max-width: 78rem; margin: 0 auto; padding: 0 2.25rem 5rem; }
-    :focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; border-radius: 6px; }
-    
-    /* Badges and decorative elements */
-    .badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 0.75rem; color: var(--accent-cyan); }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
-    .pill { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(63, 216, 197, 0.15); font-size: 0.65rem; color: var(--accent-cyan); }
-    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.75rem; }
-    .grad { background: none; color: var(--accent-cyan); }
-    .lede { font-size: 1.05rem; color: var(--muted); max-width: 36rem; margin-bottom: 2rem; }
-    .lede strong { color: var(--text); font-weight: 600; }
-    
-    /* Section headers */
-    .section-head { text-align: center; margin: 0 auto 2rem; max-width: 48rem; }
-    .section-head h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 0.5rem; }
-    .section-head p { color: var(--muted); font-size: 0.95rem; }
-    
-    /* Cards */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
-    .card:hover { border-color: var(--accent-cyan); }
-    .card-grid { display: grid; gap: 1.5rem; }
-    .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
-    .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
-    .card-header h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    
-    /* Metric styles */
-    .metric { text-align: center; }
-    .metric-value { font-size: 2.2rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
-    .metric-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; }
-    .metric-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; background: rgba(63, 216, 197, 0.15); border-radius: 999px; font-size: 0.65rem; color: var(--accent-cyan); margin-left: 0.5rem; }
-    
-    /* Radial progress */
-    .radial-progress { position: relative; width: 140px; height: 140px; }
-    .radial-progress canvas { width: 140px; height: 140px; }
-    .radial-progress .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; line-height: 1.2; }
-    .radial-progress .percent { font-size: 2.5rem; font-weight: 700; color: var(--text); }
-    .radial-progress .label { font-size: 0.8rem; color: var(--muted); }
-    
-    /* Legend */
-    .legend { display: flex; gap: 1.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--muted); }
-    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
-    .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    
-    /* Line graph */
-    .line-graph { position: relative; height: 200px; }
-    .line-graph canvas { width: 100%; height: 100%; }
-    .line-graph .cursor { position: absolute; left: 0; top: 0; width: 1px; height: 100%; background: var(--accent-cyan); pointer-events: none; }
-    .line-graph .tooltip { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; pointer-events: none; display: none; }
-    
-    /* Bar chart */
-    .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
-    .bar { height: 12px; border-radius: 4px; background: linear-gradient(180deg, var(--accent-cyan), var(--accent-blue)); position: relative; }
-    .bar .label { position: absolute; bottom: -18px; font-size: 0.65rem; color: var(--muted); width: 100%; text-align: center; }
-    
-    /* Progress bars */
-    .progress-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); position: relative; overflow: hidden; }
-    .progress-bar .handle { width: 20px; height: 8px; border-radius: 4px; background: var(--accent-cyan); position: absolute; right: 0; top: 0; box-shadow: 0 0 10px var(--accent-cyan); }
-    
-    /* Recent events */
-    .event-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    .event-row { display: flex; gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--border); }
-    .event-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; }
-    .event-text { flex: 1; color: var(--text); }
-    .event-timestamp { font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
-    
-    /* CTA buttons */
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 10px; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: var(--bg); }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63, 216, 197, 0.4); }
-    .btn-secondary { background: var(--card); color: var(--accent-cyan); border: 1px solid var(--border); }
-    .btn-secondary:hover { border-color: var(--accent-cyan); }
-    .btn-accent { background: var(--gradient-radial); color: var(--bg); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.75rem; }
-    
-    /* Tabs / navigation */
-    .tab { padding: 0.5rem 1rem; margin-right: 0.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s ease; }
-    .tab:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
-    .tab.active { background: var(--accent-cyan); color: var(--bg); border-color: var(--accent-cyan); }
-    
-    /* Table */
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    tr:hover td { background: var(--card-hover); }
-    
-    /* Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      .fade-in { animation: none !important; transition: none !important; }
-    }
-    .fade-in { opacity: 0; animation: fadeIn 0.3s ease forwards; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    
-    /* Header */
-    .site-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border); }
-    .brand { display: flex; align-items: center; gap: 0.75rem; }
-    .brand-mark { width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--bg); }
-    .site-nav { display: flex; gap: 1.5rem; }
-    .site-nav a { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 500; transition: color 0.2s; }
-    .site-nav a:hover { color: var(--accent-cyan); }
-    .header-cta { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 20px; background: var(--accent-cyan); color: var(--bg); text-decoration: none; font-weight: 600; font-size: 0.75rem; }
-    
-    /* Hero section */
-    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; padding: 4rem 0; }
-    .hero-copy { max-width: 40rem; }
-    .hero-eyebrow { color: var(--accent-cyan); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
-    h1 { margin: 1rem 0 1.25rem; }
-    .hero-emphasis { color: var(--accent-cyan); font-style: italic; margin-bottom: 1.5rem; display: inline-block; }
-    .lede { max-width: 32rem; margin-bottom: 1.5rem; }
-    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
-    .hero-visual { position: relative; min-height: 400px; border-radius: 16px 16px 24px 16px; background: var(--gradient-radial); box-shadow: 0 24px 55px rgba(24, 53, 70, 0.3); overflow: hidden; }
-    .hero-visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-    .hero-caption { position: absolute; right: 1rem; bottom: 1rem; left: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 1rem; background: rgba(255, 254, 250, 0.9); color: var(--text); }
-    .hero-caption strong { display: block; font-size: 0.85rem; }
-    .hero-caption span { color: var(--muted); font-size: 0.7rem; }
-    .caption-mark { color: var(--accent-orange); font-family: "Lora", serif; font-size: 1.4rem; }
-    
-    /* Sample prompts */
-    .sample-prompts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 1rem 0; color: var(--muted); font-size: 0.75rem; }
-    .sample-prompt { padding: 0.4rem 0.7rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .sample-prompt:hover { border-color: var(--accent-cyan); background: rgba(63, 216, 197, 0.1); }
-    .sample-prompt:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    /* Pricing */
-    .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
-    .price-card { background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--accent-cyan); border-radius: 16px; padding: 1.5rem; transition: all 0.2s; }
-    .price-card:hover { border-color: var(--accent-cyan); transform: translateY(-4px); }
-    .price-card.featured { border-color: var(--accent-purple); }
-    .price-tag { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
-    .price-sub { color: var(--muted); font-size: 0.75rem; margin-bottom: 1rem; }
-    .price-card h3 { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .price-card ul { list-style: none; font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
-    .price-card li { margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.4rem; }
-    .plan-feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
-    .plan-feature .emoji { width: 1rem; font-size: 1rem; }
-    .plan-feature strong { color: var(--text); font-weight: 600; }
-    .plan-feature small { color: var(--muted); font-size: 0.65rem; }
-    .pilot-terms { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; color: var(--muted); font-size: 0.75rem; line-height: 1.5; margin-top: 1rem; }
-    .pilot-terms strong { color: var(--text); }
-    .plan-cta { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0.8rem; border-radius: 20px; color: var(--accent-cyan); text-decoration: none; font-size: 0.7rem; font-weight: 600; background: transparent; border: 1px solid var(--accent-cyan); margin-top: 0.75rem; }
-    .plan-cta:hover { background: var(--accent-cyan); color: var(--bg); }
-    
-    /* How it works */
-    .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 2rem; }
-    .step { text-align: center; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-    .step-num { width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-cyan); color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 0.5rem; font-size: 0.85rem; }
-    .step h4 { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; }
-    .step p { font-size: 0.65rem; color: var(--muted); }
-    
-    /* Footer */
-    footer { position: relative; z-index: 1; text-align: center; padding: 2rem 1.5rem; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4rem; }
-    
-    /* Admin section styles */
-    .admin-section { padding: 3rem 0; }
-    .admin-grid { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; }
-    @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; gap: 1rem; } }
-    
-    /* Tables for admin */
-    .stats-table { width: 100%; }
-    .stats-table th, .stats-table td { padding: 0.5rem; }
-    
-    /* Charts */
-    .chart-wrapper { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
-    .chart-title { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
-  </style>
+  <meta name="twitter:image" content="https://davenport-host-co.pages.dev/og.png">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23121010'/%3E%3Cpath d='M18 44 32 18l14 26' fill='none' stroke='%23ff9a6b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='49' r='3' fill='%23ffc46b'/%3E%3C/svg%3E">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-  <main>
-    <header class="site-header">
-      <a class="brand" href="#" aria-label="StayXI home">
-        <div class="brand-mark">S</div> StayXI
+<body id="top">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff9a6b"></stop>
+        <stop offset="1" stop-color="#ffc46b"></stop>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" id="siteNav" aria-label="Main">
+      <a class="logo" href="#top" aria-label="StayXI home">
+        <span class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 16 12 6l6 10"></path>
+            <circle cx="12" cy="18.5" r="1.2" fill="url(#logo-grad)" stroke="none"></circle>
+          </svg>
+        </span>
+        StayXI
       </a>
-      <nav class="site-nav" aria-label="Main navigation">
-        <a href="#dashboard" class="tab active">Dashboard</a>
-        <a href="#analytics" class="tab">Analytics</a>
-        <a href="#operations" class="tab">Operations</a>
-        <a href="#insights" class="tab">Insights</a>
-      </nav>
-      <a href="#custom-domain" class="header-cta">Connect custom domain</a>
-    </header>
-
-    <section class="hero" aria-labelledby="heroTitle">
-      <div class="hero-copy">
-        <div class="hero-eyebrow">Guest text support for independent vacation rentals</div>
-        <h1 id="heroTitle">Fewer repeat questions.<br><span class="hero-emphasis">More room to host.</span></h1>
-        <p class="lede">Give guests a simple text line for routine property questions. StayXI replies from the answers you approve—and routes the uncertain ones to you.</p>
-        <div class="hero-actions">
-          <a href="#demo-chat" class="btn btn-primary">Try the interactive sample</a>
-          <a href="#pricing" class="btn btn-secondary">See the $49 pilot</a>
-        </div>
+      <ul class="nav-links">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#features">What it does</a></li>
+        <li><a href="#sample">Try the sample</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a class="btn btn-ghost" href="#cta">Talk to us</a>
+        <a class="btn btn-primary btn-sm" href="#pricing">Start free trial</a>
       </div>
-      <div class="hero-visual">
-        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1500&q=85" alt="Sunlit vacation home with a private pool" fetchpriority="high">
-        <div class="hero-caption">
-          <strong>StayXI Pilot Program</strong>
-          <span>One property, 30 days, $49</span>
-          <span class="caption-mark">●</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="dashboard" id="dashboard" aria-labelledby="dashboardTitle">
-      <div class="section-head">
-        <h2 id="dashboardTitle">Dashboard</h2>
-        <p>Overview of your pilot program and property metrics</p>
-      </div>
-      
-      <div class="card-grid card-grid-3">
-        <!-- Core Metrics Card -->
-        <div class="card fade-in">
-          <div class="card-header">
-            <span>CORE METRICS</span>
-            <span class="pill">⋯</span>
-          </div>
-          <div class="metric">
-            <div class="metric-value" id="coreMetric">0</div>
-            <div class="metric-label">Messages Today</div>
-          </div>
-          <div class="metric">
-            <div class="metric-value" id="rateLimit">5</div>
-            <div class="metric-badge">5/5 questions</div>
-          </div>
-        </div>
-        
-        <!-- Resource Allocation Card -->
-        <div class="card fade-in" style="animation-delay: 0.1s;">
-          <div class="card-header">
-            <span>RESOURCE ALLOCATION</span>
-          </div>
-          <div class="radial-progress" id="resourceRadial">
-            <canvas></canvas>
-            <div class="progress-text">
-              <div class="percent" id="resourcePct">94%</div>
-              <div class="label" id="resourceActive">ACTIVE</div>
-            </div>
-          </div>
-          <div class="legend">
-            <div class="legend-item"><span class="dot" style="background: var(--accent-cyan);"></span> Primary Nodes <span>62%</span></div>
-            <div class="legend-item"><span class="dot" style="background: var(--accent-blue);"></span> INSIGHT <span>24%</span></div>
-            <div class="legend-item"><span class="dot" style="background: var(--accent-purple);"></span> SERVICE <span>14%</span></div>
-          </div>
-        </div>
-        
-        <!-- Node Uptime Card -->
-        <div class="card fade-in" style="animation-delay: 0.2s;">
-          <div class="card-header">
-            <span>NODE UPTIME</span>
-          </div>
-          <div class="metric" id="nodeUptime">99.98%</div>
-          <div class="small-chart">
-            <canvas id="uptimeChart" width="120" height="60"></canvas>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
-        <!-- System Throughput Card -->
-        <div class="card fade-in" style="animation-delay: 0.3s;">
-          <div class="card-header">
-            <span>SYSTEM THROUGHPUT</span>
-            <div class="legend" style="justify-content: space-between;">
-              <span>- INPUT FLOW</span>
-              <span>- OUTPUT FLOW</span>
-            </div>
-          </div>
-          <div class="line-graph" id="throughputGraph">
-            <canvas></canvas>
-            <div class="cursor" id="cursorLine"></div>
-            <div class="tooltip" id="tooltip"><span class="cyan">• 42,500</span><span class="blue">• 68,210</span></div>
-          </div>
-          <div class="legend" style="margin-top: 1rem; justify-content: space-between;">
-            <span>JAN</span>
-            <span>FEB</span>
-            <span>MAR</span>
-            <span>APR</span>
-            <span>MAY</span>
-            <span>JUN</span>
-            <span>JUL</span>
-            <span>AUG 15</span>
-            <span>SEP</span>
-            <span>OCT</span>
-            <span>NOV</span>
-          </div>
-        </div>
-        
-        <!-- Volume Metrics Card -->
-        <div class="card fade-in" style="animation-delay: 0.4s;">
-          <div class="card-header">
-            <span>VOLUME METRICS</span>
-          </div>
-          <div class="bar-chart" id="volumeBars">
-            <!-- Bars generated by JS -->
-          </div>
-          <div class="legend" style="margin-top: 1rem;">
-            <span>W1</span>
-            <span>W2</span>
-            <span>W3</span>
-            <span>W4</span>
-            <span>W5</span>
-            <span>W6</span>
-            <span>W7</span>
-            <span>W8</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
-        <!-- Inflow Volume Card -->
-        <div class="card fade-in" style="animation-delay: 0.5s;">
-          <div class="card-header">
-            <span>INFLOW VOLUME</span>
-          </div>
-          <div class="metric">
-            <div class="metric-value" id="inflowValue">SYSTEM</div>
-            <div class="metric-badge"><span class="dot" style="background: var(--accent-green);"></span>↑ 3.2%</div>
-          </div>
-          <div class="small-chart" style="margin-top: 0.75rem;">
-            <canvas id="inflowChart" width="80" height="40"></canvas>
-          </div>
-        </div>
-        
-        <!-- Outflow Volume Card -->
-        <div class="card fade-in" style="animation-delay: 0.6s;">
-          <div class="card-header">
-            <span>OUTFLOW VOLUME</span>
-          </div>
-          <div class="metric">
-            <div class="metric-value" id="outflowValue">VIEW</div>
-            <div class="metric-badge"><span class="dot" style="background: var(--accent-red);"></span>↓ 1.8%</div>
-          </div>
-          <div class="small-chart" style="margin-top: 0.75rem;">
-            <canvas id="outflowChart" width="80" height="40"></canvas>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card-grid card-grid-2" style="margin-top: 2rem;">
-        <!-- Capacity Targets Card -->
-        <div class="card fade-in" style="animation-delay: 0.7s;">
-          <div class="card-header">
-            <span>CAPACITY TARGETS</span>
-          </div>
-          <div class="progress-bars">
-            <div class="progress-bar"><div class="handle" style="width: 85%;"></div><span>CLUSTER ALPHA 85%</span></div>
-            <div class="progress-bar"><div class="handle" style="width: 62%;"></div><span>NODE EPSILON 62%</span></div>
-            <div class="progress-bar"><div class="handle" style="width: 94%;"></div><span>STORAGE ARRAY 94%</span></div>
-            <div class="progress-bar"><div class="handle" style="width: 45%;"></div><span>BANDWIDTH LIMIT 45%</span></div>
-          </div>
-        </div>
-        
-        <!-- Recent Events Card -->
-        <div class="card fade-in" style="animation-delay: 0.8s;">
-          <div class="card-header">
-            <span>RECENT EVENTS</span>
-            <span class="pill">VIEW ALL</span>
-          </div>
-          <div class="event-list" id="eventList">
-            <div class="event-row">
-              <div class="event-icon" style="background: var(--accent-cyan); color: var(--bd);">✓</div>
-              <div class="event-text">SYNC COMPLETED / Node Alpha initialized</div>
-              <span class="event-timestamp">12 MIN AGO</span>
-            </div>
-            <div class="event-row">
-              <div class="event-icon" style="background: var(--accent-blue); color: var(--bd);">+</div>
-              <div class="event-text">NEW CONNECTION / Gateway secure tunnel</div>
-              <span class="event-timestamp">45 MIN AGO</span>
-            </div>
-            <div class="event-row">
-              <div class="event-icon" style="background: var(--accent-red); color: var(--bd);">⏱</div>
-              <div class="event-text">TIMEOUT ERROR / Cluster beta unresponsive</div>
-              <span class="event-timestamp">2 HRS AGO</span>
-            </div>
-            <div class="event-row">
-              <div class="event-icon" style="background: var(--accent-green); color: var(--bd);">🛡</div>
-              <div class="event-text">SECURITY AUDIT / Automated scan passed</div>
-              <span class="event-timestamp">5 HRS AGO</span>
-            </div>
-            <div class="event-row">
-              <div class="event-icon" style="background: var(--accent-cyan); color: var(--bd);">✓</div>
-              <div class="event-text">DATA BACKUP / Archive state saved</div>
-              <span class="event-timestamp">1 DAY AGO</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="admin-section" id="analytics" aria-labelledby="analyticsTitle">
-      <div class="section-head">
-        <h2 id="analyticsTitle">Analytics</h2>
-        <p>Guest question insights and patterns</p>
-      </div>
-      <div class="admin-grid">
-        <div>
-          <div class="chart-wrapper">
-            <div class="chart-title">Daily Message Volume (Last 30 Days)</div>
-            <div class="line-graph" id="analyticsDailyGraph">
-              <canvas></canvas>
-            </div>
-          </div>
-          <div class="chart-wrapper">
-            <div class="chart-title">Weekly Bucket Summary</div>
-            <div class="bar-chart" id="analyticsWeeklyBars">
-              <!-- Bars generated by JS -->
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="chart-wrapper">
-            <div class="chart-theme">Message Resolution Mix</div>
-            <div class="bar-chart" id="analyticsMixBars">
-              <!-- Bars generated by JS -->
-            </div>
-          </div>
-          <div class="chart-wrapper">
-            <div class="chart-title">Top Property Shares</div>
-            <table class="stats-table" id="analyticsPropertiesTable">
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Inbound</th>
-                  <th>% of Total</th>
-                  <th>Last Activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Rows generated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="admin-section" id="operations" aria-labelledby="operationsTitle">
-      <div class="section-head">
-        <h2 id="operationsTitle">Operations</h2>
-        <p>System health and operational metrics</p>
-      </div>
-      <div class="admin-grid">
-        <div>
-          <div class="card">
-            <div class="card-header"><span>KEY METRICS</span></div>
-            <div class="metric">
-              <div class="metric-value" id="guestMessages24h">0</div>
-              <div class="metric-label">Guest Messages (24h)</div>
-            </div>
-            <div class="metric">
-              <div class="metric-value" id="resolved24h">0</div>
-              <div class="metric-label">Resolved (24h)</div>
-            </div>
-            <div class="metric">
-              <div class="metric-value" id="openEscalations">0</div>
-              <div class="metric-label">Open Escalations</div>
-            </div>
-            <div class="metric">
-              <div class="metric-value" id="aiInteractions24h">0</div>
-              <div class="metric-label">AI Interactions (24h)</div>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="card">
-            <div class="card-header"><span>AWAITING QUESTIONS</span></div>
-            <div class="metric" id="openQueue">4</div>
-            <div class="small-text">oldest: 291 min</div>
-            <div class="progress" style="width: 75%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
-              <div class="progress-bar" style="width: 75%; height: 100%; background: var(--accent-cyan);"></div>
-            </div>
-            <div class="small-text" style="margin-top: 0.5rem;">over 1h: 3 | over 4h: 1</div>
-            <div class="property-breakdown">
-              <div>Sample Villa 1: 2 open (oldest: 291 min)</div>
-              <div>Sample Villa 2: 1 open (oldest: 96 min)</div>
-              <div>Sample Villa 3: 1 open (oldest: 38 min)</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="admin-grid">
-        <div>
-          <div class="card health-card">
-            <div class="card-header"><span>HEALTH CHECKS</span></div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Database</span><span id="healthDb">ok</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Property Store</span><span id="healthProp">ok</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Twilio Configured</span><span id="healthTwilio">true</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>AI Configured</span><span id="healthAI">true</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Signature Validation</span><span id="healthSig">true</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Missing Host Phone</span><span id="healthMissingPhone">0</span>
-            </div>
-            <div class="metric" style="justify-content: space-between;">
-              <span>Missing Text Number</span><span id="healthMissingNum">0</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="card health-card">
-            <div class="card-header"><span>RECENT ACTIVITY</span></div>
-            <div class="event-list" style="font-size: 0.75rem;" id="recentEvents">
-              <!-- Generated by JS -->
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="admin-section" id="insights" aria-labelledby="insightsTitle">
-      <div class="section-head">
-        <h2 id="insightsTitle">Insights</h2>
-        <p>Deep dive into guest question patterns</p>
-      </div>
-      <div class="admin-grid">
-        <div>
-          <div class="chart-wrapper">
-            <div class="chart-theme">Theme Distribution</div>
-            <div class="bar-chart" id="insightsThemeBars">
-              <!-- Bars generated by JS -->
-            </div>
-          </div>
-          <div class="chart-wrapper">
-            <div class="chart-title">Unanswered Questions Ranking</div>
-            <div class="event-list" style="font-size: 0.7rem;" id="insightsUnansweredList">
-              <!-- Generated by JS -->
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="chart-wrapper">
-            <div class="chart-theme">Per-Property Analysis</div>
-            <table class="stats-table" id="insightsPropertiesTable">
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Total Messages</th>
-                  <th>Needs Human</th>
-                  <th>% Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Rows generated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="pricing" id="pricing">
-      <div class="section-head">
-        <h2>One property. 30 days. $49.</h2>
-        <p>Setup, testing, and a closeout review included.</p>
-      </div>
-      <div class="pricing">
-        <div class="price-card pilot-card">
-          <h3>Included in the pilot</h3>
-          <ul>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">💬</span><span>A guest text line with answers from your approved property guide</span></li>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">🔔</span><span>Uncertain questions routed to your configured contact</span></li>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">🧪</span><span>Setup, testing, and a day-30 review</span></li>
-          </ul>
-          <div class="pilot-terms">
-            <strong>Terms:</strong> One-time $49 fee, paid before launch. No automatic renewal; continuing requires a separate agreement. StayXI is not emergency service or guaranteed host coverage. Guest SMS/data charges may apply.
-          </div>
-          <a class="plan-cta" href="mailto:hello@stayxi.com?subject=StayXI%2030-day%20pilot">Ask about your pilot</a>
-        </div>
-        
-        <div class="price-card">
-          <h3>Pilot Features</h3>
-          <ul>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">🔒</span><span>Inactive properties marked for cleanup</span></li>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">⚙️</span><span>Create inactive property from pilot</span></li>
-            <li class="plan-feature"><span class="emoji" aria-hidden="true">📊</span><span>Unified dashboard UI</span></li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      &copy; 2026 StayXI · Davenport, Florida · <a href="mailto:hello@stayxi.com" style="color:var(--muted)">hello@stayxi.com</a>
-      <br style="margin-top:1rem;">
-      <a href="/privacy.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Privacy Policy</a>
-      <span style="color:var(--border);">|</span>
-      <a href="/terms.html" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Terms of Service</a>
-      <span style="color:var(--border);">|</span>
-      <a href="/admin" style="color:var(--muted); margin:0 0.5rem; font-size:0.8rem;">Host sign-in</a>
-    </footer>
-  </main>
-
-  <!-- Demo chat (module) -->
-  <div id="demo-chat" style="display:none;">
-    <div class="demo">
-      <div class="demo-heading">
-        <span class="demo-label">Interactive sample</span>
-        <h2>Try a guest question.</h2>
-        <p>Fictional saved-answer sample only—no SMS, AI, host contact, or access codes.</p>
-      </div>
-      <div class="sample-prompts" role="group" aria-label="Try a sample property question">
-        <span>Try:</span>
-        <button type="button" class="sample-prompt" data-sample-question="What time is checkout?">Checkout</button>
-        <button type="button" class="sample-prompt" data-sample-question="Is there a crib?">Unknown question</button>
-        <button type="button" class="sample-prompt" data-sample-question="What is the gate code?">Access codes</button>
-      </div>
-      <div class="demo-header">
-        <span class="phone">Fictional sample property</span>
-        <span id="msgCounter" class="msg-counter">5 sample questions</span>
-      </div>
-      <div class="chat" id="chat" role="log" aria-live="polite" aria-describedby="demoNote" aria-label="Fictional sample text conversation"></div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" aria-label="Ask a fictional property question" placeholder="Type a property question…">
-        <button id="sendChat" type="button">Send</button>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+        <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path>
+        </svg>
+        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12"></path><path d="M18 6 6 18"></path>
+        </svg>
+      </button>
+    </nav>
+    <div class="mobile-menu" id="mobileMenu" hidden>
+      <ul>
+        <li><a class="mobile-link" href="#how">How it works</a></li>
+        <li><a class="mobile-link" href="#features">What it does</a></li>
+        <li><a class="mobile-link" href="#sample">Try the sample</a></li>
+        <li><a class="mobile-link" href="#pricing">Pricing</a></li>
+        <li><a class="mobile-link" href="#faq">FAQ</a></li>
+      </ul>
+      <div class="mobile-actions">
+        <a class="btn btn-secondary" href="#cta">Talk to us</a>
+        <a class="btn btn-primary" href="#pricing">Start free trial</a>
       </div>
     </div>
-  </div>
+  </header>
 
-  <script type="module">
-    import { buildAnalytics, sampleAnalytics } from './tools/analytics.js';
-    import { buildInsights, sampleInsights } from './tools/insights.js';
-    import { sampleOperations } from './tools/operations.js';
-    import { sendDemoMessage } from './api.js';
+  <main>
+    <section class="hero">
+      <div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+      <div class="grid-lines" aria-hidden="true"></div>
+      <div class="noise" aria-hidden="true"></div>
 
-    // Initialize dashboard data
-    const now = new Date();
-    const analyticsData = sampleAnalytics(now);
-    const insightsData = sampleInsights(now);
-    const opsData = sampleOperations(now);
+      <div class="container">
+        <div class="hero-inner">
+          <a class="hero-badge" href="#pricing">
+            <svg class="spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
+            </svg>
+            14-day trial · no setup fee · no card
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </a>
 
-    // ===== Dashboard Rendering =====
-    
-    // Core metrics
-    document.getElementById('coreMetric').textContent = analyticsData.totals.inbound;
-    const rateLimit = 5 - (analyticsData.totals.inbound % 5);
-    document.getElementById('rateLimit').textContent = rateLimit;
-    document.getElementById('msgCounter').textContent = `${rateLimit} sample questions left`;
+          <h1 class="rise" style="--delay:.1s">Your guests text.<br class="hero-br"> Your property <span class="text-gradient">answers</span></h1>
 
-    // Radial progress
-    const resourceCanvas = document.getElementById('resourceRadial').querySelector('canvas');
-    const resourceCtx = resourceCanvas.getContext('2d');
-    const centerX = resourceCanvas.width / 2;
-    const centerY = resourceCanvas.height / 2;
-    const radius = Math.min(centerX, centerY) * 0.7;
-    
-    // Draw radial progress (94% active)
-    const resourcePct = 94;
-    const resourceEndAngle = (resourcePct / 100) * Math.PI * 2;
-    const resourceStartAngle = Math.PI / 2;
-    
-    resourceCtx.clearRect(0, 0, resourceCanvas.width, resourceCanvas.height);
-    resourceCtx.beginPath();
-    resourceCtx.arc(centerX, centerY, radius, resourceStartAngle, resourceStartAngle + resourceEndAngle, false);
-    resourceCtx.strokeStyle = 'var(--accent-cyan)';
-    resourceCtx.lineWidth = 12;
-    resourceCtx.stroke();
-    
-    // Draw inner circle
-    resourceCtx.beginPath();
-    resourceCtx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2);
-    resourceCtx.fillStyle = var(--card);
-    resourceCtx.fill();
-    
-    // Draw percentage text
-    resourceCtx.textAlign = 'center';
-    resourceCtx.textBaseline = 'middle';
-    resourceCtx.font = 'bold 2.5rem var(--text)';
-    resourceCtx.fillText(`${resourcePct}%`, centerX, centerY);
-    resourceCtx.fillStyle = var(--accent-cyan);
-    resourceCtx.fillText('ACTIVE', centerX, centerY + 0.6rem);
+          <p class="hero-lede rise" style="--delay:.2s">StayXI gives each property its own text number. Ask about the wifi, the lockbox, the bins or the parking and the answer comes back in seconds, from the guide you approved — at 3pm or 3am. Only the questions that genuinely need a human ever reach your phone.</p>
 
-    // Node uptime
-    document.getElementById('nodeUptime').textContent = '99.98%';
+          <div class="hero-actions rise" style="--delay:.3s">
+            <a class="btn btn-primary btn-lg" href="#pricing">
+              Start the 14-day trial
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+            <a class="btn btn-secondary btn-lg" href="#sample">Try the sample line</a>
+          </div>
 
-    // Uptime chart
-    const uptimeCanvas = document.getElementById('uptimeChart');
-    const uptimeCtx = uptimeCanvas.getContext('2d');
-    uptimeCtx.clearRect(0, 0, uptimeCanvas.width, uptimeCanvas.height);
-    uptimeCtx.beginPath();
-    uptimeCtx.arc(uptimeCanvas.width / 2, uptimeCanvas.height / 2, 20, 0, Math.PI * 2);
-    uptimeCtx.fillStyle = var(--accent-green);
-    uptimeCtx.fill();
-    uptimeCtx.beginPath();
-    uptimeCtx.moveTo(uptimeCanvas.width / 2, uptimeCanvas.height / 2);
-    uptimeCtx.lineTo(uptimeCanvas.width - 10, 0);
-    uptimeCtx.strokeStyle = var(--text);
-    uptimeCtx.stroke();
+          <p class="hero-note rise" style="--delay:.5s">From $39/mo per property. Cancel any time, no per-message fees.</p>
+        </div>
 
-    // Throughput graph
-    const throughputCanvas = document.getElementById('throughputGraph').querySelector('canvas');
-    const throughputCtx = throughputCanvas.getContext('2d');
-    throughputCanvas.width = throughputCanvas.offsetWidth;
-    throughputCanvas.height = 200;
-    
-    // Sample data for throughput
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV'];
-    const inputData = [12000, 15000, 18000, 16000, 20000, 19000, 22000, 35000, 30000, 28000, 25000];
-    const outputData = [8000, 10000, 12000, 11000, 14000, 13000, 16000, 22000, 19000, 17000, 15000];
-    
-    throughputCtx.clearRect(0, 0, throughputCanvas.width, throughputCanvas.height);
-    throughputCtx.lineWidth = 2;
-    throughputCtx.strokeStyle = var(--accent-cyan);
-    throughputCtx.beginPath();
-    
-    inputData.forEach((val, i) => {
-      const x = (i / (inputData.length - 1)) * throughputCanvas.width + 20;
-      const y = throughputCanvas.height - ((val / 80000) * (throughputCanvas.height - 40)) - 20;
-      if (i === 0) throughputCtx.moveTo(x, y);
-      else throughputCtx.lineTo(x, y);
-    });
-    
-    throughputCtx.stroke();
-    
-    throughputCtx.strokeStyle = var(--accent-blue);
-    throughputCtx.beginPath();
-    outputData.forEach((val, i) => {
-      const x = (i / (outputData.length - 1)) * throughputCanvas.width + 20;
-      const y = throughputCanvas.height - ((val / 80000) * (throughputCanvas.height - 40)) - 20;
-      if (i === 0) throughputCtx.moveTo(x, y);
-      else throughputCtx.lineTo(x, y);
-    });
-    throughputCtx.stroke();
-    
-    // Draw cursor and tooltip at AUG 15
-    const augIndex = 7; // AUG
-    const augX = (augIndex / (inputData.length - 1)) * throughputCanvas.width + 20;
-    const augY = throughputCanvas.height - ((inputData[augIndex] / 80000) * (throughputCanvas.height - 40)) - 20;
-    
-    throughputCtx.strokeStyle = var(--accent-cyan);
-    throughputCtx.beginPath();
-    throughputCtx.moveTo(augX, 0);
-    throughputCtx.lineTo(augX, throughputCanvas.height);
-    throughputCtx.setLineDash([4]);
-    throughputCtx.stroke();
-    throughputCtx.setLineDash([]);
-    
-    // Draw tooltip
-    const tooltip = document.getElementById('tooltip');
-    tooltip.style.left = `${augX + 10}px`;
-    tooltip.style.top = `${augY - 20}px`;
-    tooltip.style.display = 'block';
+        <div class="dash-wrap">
+          <div class="hero-glow" aria-hidden="true"></div>
+          <div class="dash" aria-hidden="true">
+            <aside class="dash-side">
+              <div class="dash-brand">
+                <span class="logo-mark">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 16 12 6l6 10"></path>
+                    <circle cx="12" cy="18.5" r="1.2" fill="url(#logo-grad)" stroke="none"></circle>
+                  </svg>
+                </span>
+                StayXI
+              </div>
+              <ul class="dash-nav">
+                <li class="active">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                  <span>Activity</span>
+                  <span class="dash-count">3</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                  <span>Guide</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"></path><path d="m3 7 2 2 4-4"></path><path d="M13 6h8"></path><path d="M13 12h8"></path><path d="M13 18h8"></path></svg>
+                  <span>Questions</span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+                  <span>Coverage</span>
+                </li>
+              </ul>
+              <p class="dash-label">Guide sections</p>
+              <ul class="dash-guide">
+                <li><span class="guide-dot" style="background:hsl(20 70% 65%)"></span>Check-in &amp; arrival</li>
+                <li><span class="guide-dot" style="background:hsl(210 70% 65%)"></span>Wifi &amp; parking</li>
+                <li><span class="guide-dot" style="background:hsl(300 70% 65%)"></span>House rules</li>
+                <li><span class="guide-dot" style="background:hsl(120 70% 65%)"></span>Departure</li>
+              </ul>
+              <div class="dash-guests">
+                <span class="monogram" style="background:linear-gradient(135deg,hsl(210 70% 62%),hsl(250 70% 48%))">DM</span>
+                <span class="monogram" style="background:linear-gradient(135deg,hsl(20 70% 62%),hsl(60 70% 48%))">MK</span>
+                <span class="monogram" style="background:linear-gradient(135deg,hsl(300 70% 62%),hsl(340 70% 48%))">PS</span>
+                <span>+2 guests</span>
+              </div>
+            </aside>
 
-    // Volume bars
-    const volumeBars = document.getElementById('volumeBars');
-    const weekLabels = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'];
-    const weekData = [15000, 18000, 12000, 22000, 18000, 25000, 16000, 30000];
-    
-    volumeBars.innerHTML = weekLabels.map((label, i) => `
-      <div class="bar" style="width: ${((weekData[i] / 30000) * 100)}%">
-        <div class="label">${label}</div>
+            <div class="dash-main">
+              <div class="dash-top">
+                <div class="dash-title"><b>Activity</b><span>Cedar House</span></div>
+                <div class="dash-tabs"><span class="on">Today</span><span>This stay</span><span>All</span></div>
+              </div>
+              <div class="dash-grid">
+                <div class="kpi depth">
+                  <p class="kpi-label">Answered today</p>
+                  <div class="kpi-line"><span class="kpi-value">12</span><span class="kpi-delta amber">auto</span></div>
+                </div>
+                <div class="kpi depth">
+                  <p class="kpi-label">Routed to you</p>
+                  <div class="kpi-line"><span class="kpi-value">2</span><span class="kpi-delta orange">needs you</span></div>
+                </div>
+                <div class="kpi depth">
+                  <p class="kpi-label">Median reply</p>
+                  <div class="kpi-line"><span class="kpi-value">6s</span><span class="kpi-delta muted">from guide</span></div>
+                </div>
+
+                <div class="dash-chart-card depth">
+                  <div class="dash-chart-head">
+                    <p>Questions this week</p>
+                    <span>Last 7 days</span>
+                  </div>
+                  <svg class="dash-chart" viewBox="0 0 400 120" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="chart-area" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#ff7a45" stop-opacity="0.35"></stop>
+                        <stop offset="1" stop-color="#ff7a45" stop-opacity="0"></stop>
+                      </linearGradient>
+                      <linearGradient id="chart-stroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0" stop-color="#ff7a45"></stop>
+                        <stop offset="1" stop-color="#ffb547"></stop>
+                      </linearGradient>
+                    </defs>
+                    <line x1="0" x2="400" y1="30" y2="30" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>
+                    <line x1="0" x2="400" y1="60" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>
+                    <line x1="0" x2="400" y1="90" y2="90" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>
+                    <path class="chart-area" d="M0,104 L30.8,83.9 L61.5,95.9 L92.3,71.8 L123.1,87.9 L153.8,59.8 L184.6,75.8 L215.4,47.8 L246.2,63.8 L276.9,35.7 L307.7,51.8 L338.5,23.7 L369.2,43.8 L400,15.6 L400,120 L0,120 Z" fill="url(#chart-area)"></path>
+                    <path class="chart-line" pathLength="1" d="M0,104 L30.8,83.9 L61.5,95.9 L92.3,71.8 L123.1,87.9 L153.8,59.8 L184.6,75.8 L215.4,47.8 L246.2,63.8 L276.9,35.7 L307.7,51.8 L338.5,23.7 L369.2,43.8 L400,15.6" fill="none" stroke="url(#chart-stroke)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <circle class="chart-dot" cx="400" cy="15.6" r="4" fill="#ffb547"></circle>
+                  </svg>
+                  <div class="dash-chart-foot">
+                    <div><p>Answered by StayXI</p><strong>84%</strong></div>
+                    <div><p>Routed to you</p><strong>16%</strong></div>
+                    <div><p>Guide sections used</p><strong>4</strong></div>
+                  </div>
+                </div>
+
+                <div class="dash-recent depth">
+                  <p>Recent messages</p>
+                  <ul>
+                    <li class="dash-msg"><span class="monogram" style="background:linear-gradient(135deg,hsl(210 70% 62%),hsl(250 70% 48%))">DM</span><span>“Can we check in early?”</span><span class="tag tag-orange">Routed</span></li>
+                    <li class="dash-msg"><span class="monogram" style="background:linear-gradient(135deg,hsl(20 70% 62%),hsl(60 70% 48%))">MK</span><span>Wifi password</span><span class="tag tag-amber">Answered</span></li>
+                    <li class="dash-msg"><span class="monogram" style="background:linear-gradient(135deg,hsl(300 70% 62%),hsl(340 70% 48%))">PS</span><span>“Where do we park the second car?”</span><span class="tag tag-orange">Routed</span></li>
+                    <li class="dash-msg"><span class="monogram" style="background:linear-gradient(135deg,hsl(120 70% 62%),hsl(160 70% 48%))">PS</span><span>Trash and recycling day</span><span class="tag tag-amber">Answered</span></li>
+                    <li class="dash-msg"><span class="monogram" style="background:linear-gradient(135deg,hsl(40 70% 62%),hsl(80 70% 48%))">SB</span><span>“Is the hot tub open?”</span><span class="tag tag-orange">Routed</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dash-fade" aria-hidden="true"></div>
+        </div>
       </div>
-    `).join('');
+    </section>
 
-    // Inflow/Outflow charts
-    const inflowCanvas = document.getElementById('inflowChart');
-    const inflowCtx = inflowCanvas.getContext('2d');
-    inflowCanvas.width = inflowCanvas.offsetWidth;
-    inflowCanvas.height = 40;
-    inflowCtx.clearRect(0, 0, inflowCanvas.width, inflowCanvas.height);
-    inflowCtx.beginPath();
-    inflowCtx.arc(15, 20, 15, 0, Math.PI * 2);
-    inflowCtx.fillStyle = var(--accent-green);
-    inflowCtx.fill();
-    inflowCtx.beginPath();
-    inflowCtx.arc(inflowCanvas.width - 15, 20, 15, 0, Math.PI * 2);
-    inflowCtx.fillStyle = var(--accent-green);
-    inflowCtx.fill();
-    inflowCtx.fillText('↑ 3.2%', 20, 25);
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">What it does</p>
+          <h2>It answers. You get a summary.</h2>
+          <p>No app for guests, no inbox for you to babysit. The line reads the question, answers it from your guide, and quietly files the result.</p>
+        </div>
 
-    const outflowCanvas = document.getElementById('outflowChart');
-    const outflowCtx = outflowCanvas.getContext('2d');
-    outflowCanvas.width = outflowCanvas.offsetWidth;
-    outflowCanvas.height = 40;
-    outflowCtx.clearRect(0, 0, outflowCanvas.width, outflowCanvas.height);
-    outflowCtx.beginPath();
-    outflowCtx.arc(15, 20, 15, 0, Math.PI * 2);
-    outflowCtx.fillStyle = var(--accent-red);
-    outflowCtx.fill();
-    outflowCtx.beginPath();
-    outflowCtx.arc(outflowCanvas.width - 15, 20, 15, 0, Math.PI * 2);
-    outflowCtx.fillStyle = var(--accent-red);
-    outflowCtx.fill();
-    outflowCtx.fillText('↓ 1.8%', 20, 25);
+        <div class="features-grid">
+          <div class="reveal span-2">
+            <article class="feature depth">
+              <div class="feature-visual">
+                <div class="tl-wrap">
+                  <div class="tl-panel depth">
+                    <div class="tl-head">
+                      <span class="monogram" style="background:linear-gradient(135deg,hsl(20 70% 62%),hsl(60 70% 48%))">CH</span>
+                      <div>
+                        <p class="tl-name">Cedar House</p>
+                        <p class="tl-sub">+1 (555) 014-2288</p>
+                      </div>
+                      <span class="tl-live">Live</span>
+                    </div>
+                    <div class="bubbles">
+                      <div class="bubble guest"><span class="bubble-label">Guest</span><p>Hi! What is the wifi password?</p></div>
+                      <div class="bubble bot"><span class="bubble-label">StayXI</span><p>Network: CedarGuest · Password: porch-light-42</p></div>
+                      <div class="bubble guest"><span class="bubble-label">Guest</span><p>Amazing, thank you!</p></div>
+                      <div class="tl-note"><span class="dot-sm"></span>Answered in 4s, from your approved guide</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="feature-body">
+                <h3>A plain number, answered in seconds</h3>
+                <p>Guests text the number in their confirmation message. No app, no login, no link — and no wait until you are free.</p>
+              </div>
+            </article>
+          </div>
 
-    // Fade in animation
-    const fadeElements = document.querySelectorAll('.fade-in');
-    fadeElements.forEach((el, i) => {
-      setTimeout(() => {
-        el.style.opacity = '1';
-        el.style.transform = 'none';
-      }, 100 + i * 100);
-    });
+          <div class="reveal" style="--delay:.08s">
+            <article class="feature depth">
+              <div class="feature-visual">
+                <div class="guide-visual">
+                  <ul class="guide-list">
+                    <li class="guide-row depth"><span class="guide-dot" style="background:hsl(20 70% 65%)"></span><span class="guide-label">Check-in &amp; arrival</span><span class="guide-detail">4 answers</span><span class="guide-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span></li>
+                    <li class="guide-row depth"><span class="guide-dot" style="background:hsl(210 70% 65%)"></span><span class="guide-label">Wifi &amp; parking</span><span class="guide-detail">3 answers</span><span class="guide-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span></li>
+                    <li class="guide-row depth"><span class="guide-dot" style="background:hsl(300 70% 65%)"></span><span class="guide-label">House rules</span><span class="guide-detail">5 answers</span><span class="guide-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span></li>
+                    <li class="guide-row depth"><span class="guide-dot" style="background:hsl(120 70% 65%)"></span><span class="guide-label">Departure</span><span class="guide-detail">2 answers</span><span class="guide-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="feature-body">
+                <h3>Grounded in your guide</h3>
+                <p>It drafts one from the welcome book you already have. You approve the facts; it answers only from them.</p>
+              </div>
+            </article>
+          </div>
 
-    // ===== Analytics Rendering =====
-    
-    // Daily series
-    const dailyCanvas = document.getElementById('analyticsDailyGraph').querySelector('canvas');
-    const dailyCtx = dailyCanvas.getContext('2d');
-    dailyCanvas.width = dailyCanvas.offsetWidth;
-    dailyCanvas.height = 200;
-    
-    // Build daily series from sample data
-    const windowDays = 30;
-    const totalDays = windowDays * 2;
-    const empty = buildDailySeries([], totalDays, now);
-    const daily = empty.map((day, index) => {
-      const weekday = [4, 7, 5, 9, 12, 10, 6][index % [4, 7, 5, 9, 12, 10, 6].length];
-      const inbound = weekday + Math.floor(index / 12) + (index % 9 === 4 ? 4 : 0);
-      const outbound = Math.max(0, inbound - 1 - (index % 4));
-      const escalated = index % 13 === 5 ? 3 : index % 5 === 2 ? 2 : index % 7 === 0 ? 1 : 0;
-      return { day: day.day, inbound, outbound, escalated };
-    });
-    
-    // Draw daily graph
-    dailyCtx.clearRect(0, 0, dailyCanvas.width, dailyCanvas.height);
-    dailyCtx.lineWidth = 2;
-    
-    // Draw input flow (cyan)
-    dailyCtx.strokeStyle = var(--accent-cyan);
-    dailyCtx.beginPath();
-    daily.map((day, i) => {
-      const x = (i / (daily.length - 1)) * dailyCanvas.width;
-      const y = dailyCanvas.height - ((day.inbound / 50000) * (dailyCanvas.height - 40)) - 20;
-      if (i === 0) dailyCtx.moveTo(x, y);
-      else dailyCtx.lineTo(x, y);
-    });
-    dailyCtx.stroke();
-    
-    // Draw output flow (blue)
-    dailyCtx.strokeStyle = var(--accent-blue);
-    dailyCtx.beginPath();
-    daily.map((day, i) => {
-      const x = (i / (daily.length - 1)) * dailyCanvas.width;
-      const y = dailyCanvas.height - ((day.outbound / 50000) * (dailyCanvas.height - 40)) - 20;
-      if (i === 0) dailyCtx.moveTo(x, y);
-      else dailyCtx.lineTo(x, y);
-    });
-    dailyCtx.stroke();
-    
-    // Weekly buckets
-    const weeklyBars = document.getElementById('analyticsWeeklyBars');
-    const weeklyData = [4, 7, 5, 9, 12, 10, 6]; // SAMPLE_WEEK_PATTERN
-    weeklyBars.innerHTML = weeklyData.map((val, i) => `
-      <div class="bar" style="height: ${val * 2}px;">
-        <span>W${i + 1}</span>
+          <div class="reveal" style="--delay:.16s">
+            <article class="feature depth">
+              <div class="feature-visual">
+                <div class="esc-visual">
+                  <div class="esc-q depth">“Can we bring our dog this time?”</div>
+                  <span class="esc-tag">Not covered by your guide</span>
+                  <span class="esc-line" aria-hidden="true"></span>
+                  <div class="esc-routed depth">
+                    <span class="monogram" style="background:linear-gradient(135deg,hsl(250 70% 62%),hsl(290 70% 48%))">YO</span>
+                    <div>
+                      <p>Routed to you</p>
+                      <p>+1 ••• 0142 · 12s ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="feature-body">
+                <h3>The hard 20% comes to you</h3>
+                <p>Money, damage, maintenance, complaints — routed to you instantly with the guest, property and question attached.</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="reveal span-2" style="--delay:.08s">
+            <article class="feature depth">
+              <div class="feature-visual">
+                <div class="log-visual">
+                  <ul class="log-list">
+                    <li class="log-row"><span class="log-q">Wifi password</span><span class="log-count">14×</span><span class="tag tag-amber">Answered</span></li>
+                    <li class="log-row"><span class="log-q">Check-in time</span><span class="log-count">9×</span><span class="tag tag-amber">Answered</span></li>
+                    <li class="log-row"><span class="log-q">Where to park</span><span class="log-count">6×</span><span class="tag tag-amber">Answered</span></li>
+                    <li class="log-row"><span class="log-q">Trash and recycling</span><span class="log-count">3×</span><span class="tag tag-muted">Routed</span></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="feature-body">
+                <h3>A digest, not an inbox</h3>
+                <p>One summary a day instead of a stream of pings: what was asked, what was answered, and the two things that needed you.</p>
+              </div>
+            </article>
+          </div>
+        </div>
       </div>
-    `).join('');
-    
-    // Message resolution mix
-    const mixBars = document.getElementById('analyticsMixBars');
-    const mixLabels = ['From your answers', 'Answered by AI', 'Escalated to you', 'Unrouted or blocked'];
-    const mixData = [178, 68, 33, 9]; // From sampleAnalytics mix
-    const totalMix = mixData.reduce((a, b) => a + b, 0);
-    
-    mixBars.innerHTML = mixLabels.map((label, i) => {
-      const pct = Math.round((mixData[i] / totalMix) * 100);
-      return `<div class="bar" style="height: ${pct}%; background: ${i === 0 ? 'var(--accent-cyan)' : i === 1 ? 'var(--accent-blue)' : i === 2 ? 'var(--accent-purple)' : 'var(--accent-red)'};">
-        <span>${label}: ${pct}%</span>
-      </div>`;
-    }).join('');
-    
-    // Properties table
-    const propertiesTable = document.getElementById('analyticsPropertiesTable').querySelector('tbody');
-    const sampleProperties = [
-      { id: 'sample-a', name: 'Sample Villa A', inbound: 168, lastActivity: new Date(now.getTime() - 45 * 60000).toLocaleDateString() },
-      { id: 'sample-b', name: 'Sample Villa B', inbound: 121, lastActivity: new Date(now.getTime() - 3 * 3600000).toLocaleTimeString() },
-      { id: 'sample-c', name: 'Sample Villa C', inbound: 74, lastActivity: new Date(now.getTime() - 26 * 3600000).toLocaleTimeString() },
-      { id: 'sample-d', name: 'Sample Villa D', inbound: 39, lastActivity: new Date(now.getTime() - 50 * 3600000).toLocaleTimeString() },
-    ];
-    
-    propertiesTable.innerHTML = sampleProperties.map(prop => `
-      <tr>
-        <td>${prop.name}</td>
-        <td>${prop.inbound}</td>
-        <td>${Math.round((prop.inbound / 402) * 100)}%</td>
-        <td>${prop.lastActivity}</td>
-      </tr>
-    `).join('');
+    </section>
 
-    // ===== Operations Rendering =====
-    
-    document.getElementById('guestMessages24h').textContent = opsData.metrics.guestMessages24h;
-    document.getElementById('resolved24h').textContent = opsData.metrics.resolvedGuestMessages24h;
-    document.getElementById('openEscalations').textContent = opsData.metrics.openEscalations;
-    document.getElementById('aiInteractions24h').textContent = opsData.metrics.aiInteractions24h;
-    
-    document.getElementById('openQueue').textContent = opsData.awaiting.open;
-    // oldest minutes already hardcoded in HTML
-    
-    document.getElementById('healthDb').textContent = opsData.health.database;
-    document.getElementById('healthProp').textContent = opsData.health.propertyStore;
-    document.getElementById('healthTwilio').textContent = opsData.health.twilioConfigured ? 'true' : 'false';
-    document.getElementById('healthAI').textContent = opsData.health.aiConfigured ? 'true' : 'false';
-    document.getElementById('healthSig').textContent = opsData.health.signatureValidationEnabled ? 'true' : 'false';
-    document.getElementById('healthMissingPhone').textContent = opsData.health.missingHostPhone;
-    document.getElementById('healthMissingNum').textContent = opsData.health.missingTextNumber;
-
-    // Recent events for operations
-    const opsEventList = document.getElementById('recentEvents');
-    opsEventList.innerHTML = [
-      { kind: 'message', text: 'What time is checkout?', minutesAgo: 45 },
-      { kind: 'escalation', text: 'Trash bins were not collected', minutesAgo: 240 },
-      { kind: 'message', text: 'Is early check-in possible?', minutesAgo: 430 },
-      { kind: 'escalation', text: 'Wi-Fi keeps dropping', minutesAgo: 1400 },
-    ].map(event => `
-      <div class="event-row">
-        <span style="color: var(--accent-cyan);">•</span>
-        <span>${event.text}</span>
-        <span style="color: var(--muted);">${event.minutesAgo} min ago</span>
+    <section class="section" id="how">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">How it works</p>
+          <h2>About ten minutes of your time, once</h2>
+        </div>
+        <div class="steps" role="list">
+          <div class="steps-line" aria-hidden="true"></div>
+          <div class="step reveal" role="listitem">
+            <span class="step-num depth">1</span>
+            <div>
+              <h3>Send the welcome book you already have</h3>
+              <p>A PDF, a notes app, a listing link — whatever you hand guests today. The guide is drafted from it automatically.</p>
+            </div>
+          </div>
+          <div class="step reveal" role="listitem" style="--delay:.1s">
+            <span class="step-num depth">2</span>
+            <div>
+              <h3>Approve the facts, once</h3>
+              <p>You correct anything wrong and sign off. From then on the line answers only from that approved guide, never from guesses.</p>
+            </div>
+          </div>
+          <div class="step reveal" role="listitem" style="--delay:.2s">
+            <span class="step-num depth">3</span>
+            <div>
+              <h3>Put the number in your confirmation</h3>
+              <p>Guests text it and get an answer in seconds. Anything that needs a person arrives with the whole thread attached.</p>
+            </div>
+          </div>
+        </div>
       </div>
-    `).join('');
+    </section>
 
-    // ===== Insights Rendering =====
-    
-    // Theme distribution bars
-    const insightsThemeBars = document.getElementById('insightsThemeBars');
-    const sampleThemes = [
-      { intentKey: 'wifi', total: 96, escalated: 8, unresolved: 2 },
-      { intentKey: 'checkout', total: 71, escalated: 3, unresolved: 1 },
-      { intentKey: 'gate', total: 64, escalated: 5, unresolved: 0 },
-      { intentKey: 'trash', total: 38, escalated: 12, unresolved: 1 },
-      { intentKey: 'pool_heat', total: 27, escalated: 9, unresolved: 0 },
-      { intentKey: 'parking', total: 19, escalated: 2, unresolved: 0 },
-    ];
-    
-    insightsThemeBars.innerHTML = sampleThemes.map(theme => {
-      const pct = Math.round((theme.total / 417) * 100);
-      const color = theme.intentKey === 'wifi' ? 'var(--accent-cyan)' : 
-                    theme.intentKey === 'checkout' ? 'var(--accent-blue)' :
-                    theme.intentKey === 'gate' ? 'var(--accent-purple)' :
-                    theme.intentKey === 'trash' ? 'var(--accent-orange)' :
-                    theme.intentKey === 'pool_heat' ? 'var(--accent-green)' : 'var(--accent-red)';
-      return `<div class="bar" style="height: ${pct}%; background: ${color};">
-        <span>${theme.intentKey}: ${pct}%</span>
-      </div>`;
-    }).join('');
-    
-    // Unanswered questions ranking
-    const insightsUnansweredList = document.getElementById('insightsUnansweredList');
-    const unansweredRanking = sampleThemes
-      .filter(t => t.escalated + t.unresolved > 0)
-      .map(t => ({
-        key: t.intentKey,
-        label: themeLabel(t.intentKey),
-        total: t.total,
-        needsHuman: t.escalated + t.unresolved,
-        escalated: t.escalated,
-        unresolved: t.unresolved,
-      }))
-      .sort((a, b) => b.needsHuman - a.needsHuman || b.total - a.total);
-    
-    insightsUnansweredList.innerHTML = unansweredRanking.map(u => `
-      <div class="event-row" style="padding: 0.5rem; border-top: 1px solid var(--border);">
-        <span style="color: var(--accent-red); font-weight: bold;">${u.label}</span>
-        <span>${u.total} total, ${u.needsHuman} needs human</span>
-        <span style="color: var(--muted);">${u.escalated} escalated, ${u.unresolved} unresolved</span>
+    <section class="section" id="sample">
+      <div class="container">
+        <div class="sample-grid">
+          <div class="sample-copy">
+            <div class="section-head left reveal">
+              <p class="eyebrow">The interactive sample</p>
+              <h2>Ask it like a guest would</h2>
+              <p>This is the real flow, running against a sample property. Ask a routine question and watch it answer; ask something it was never told and watch it hand over.</p>
+            </div>
+            <ul class="checklist reveal" style="--delay:.1s">
+              <li><span class="check-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>A normal phone number — no app, no login, no link to click.</li>
+              <li><span class="check-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Routine questions answered in seconds from your approved guide.</li>
+              <li><span class="check-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Anything uncovered, or involving money or maintenance, goes straight to you.</li>
+            </ul>
+            <p class="sample-note reveal" style="--delay:.2s">Sample property, sample answers. Your line runs on your guide — this is only a demonstration.</p>
+          </div>
+
+          <div class="reveal" style="--delay:.1s">
+            <div class="sample-card depth">
+              <div class="sample-head">
+                <span class="sample-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </span>
+                <div>
+                  <p class="sample-title">Cedar House</p>
+                  <p class="sample-sub">+1 (555) 014-2288 · sample line</p>
+                </div>
+                <span class="live-pill"><span class="dot-sm"></span>Live</span>
+                <button class="icon-btn" id="resetSample" type="button" aria-label="Reset the sample conversation">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                </button>
+              </div>
+
+              <div class="sample-messages" id="sampleMessages" aria-live="polite" aria-label="Sample text conversation">
+                <div class="msg bot">
+                  <span class="msg-label">StayXI</span>
+                  <p class="msg-text">Hi! This is the Cedar House assistant. Ask me anything about your stay.</p>
+                  <span class="msg-source">Answered from Guide · Guest line</span>
+                </div>
+              </div>
+
+              <div class="sample-prompts">
+                <p class="prompt-label">Try asking</p>
+                <div class="prompt-wrap" id="samplePrompts"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    `).join('');
-    
-    // Per-property analysis table
-    const insightsPropertiesTable = document.getElementById('insightsPropertiesTable').querySelector('tbody');
-    insightsPropertiesTable.innerHTML = sampleProperties.map((prop, i) => {
-      const total = analyticsData.properties[i]?.inbound || 168;
-      const unresolved = Math.round(total * 0.14); // 14% unresolved rate
-      return `
-        <tr>
-          <td>${prop.name}</td>
-          <td>${total}</td>
-          <td>${unresolved}</td>
-          <td>${Math.round((unresolved / total) * 100)}%</td>
-        </tr>
-      `;
-    }).join('');
-    
-    function themeLabel(intentKey) {
-      const key = String(intentKey == null ? "" : intentKey).trim().toLowerCase();
-      if (!key) return "Unclassified";
-      const labels = {
-        wifi: "Wi-Fi", wifi_password: "Wi-Fi", checkout: "Checkout", checkin: "Check-in",
-        check_in: "Check-in", early_checkin: "Early check-in", late_checkout: "Late checkout",
-        gate: "Gate code", gate_code: "Gate code", door_code: "Door code", lock: "Door lock",
-        lockout: "Locked out", trash: "Trash and bins", pool: "Pool", pool_heat: "Pool heater",
-        parking: "Pets", pets: "Pets", rules: "House rules", ac: "Air conditioning",
-        thermostat: "Thermostat", tv: "TV", internet: "Internet", noise: "Noise complaint",
-        maintenance: "Maintenance", emergency: "Emergency", rate_limit: "Rate limited",
-        unknown: "Unclassified",
-      };
-      if (labels[key]) return labels[key];
-      return key.replace(/[_-]+/g, " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
-    }
+    </section>
 
-    // ===== Demo Chat Functionality =====
-    
-    const chat = document.getElementById('chat');
-    const chatInput = document.getElementById('chatInput');
-    const sendChatBtn = document.getElementById('sendChat');
-    const msgCounter = document.getElementById('msgCounter');
-    const packagePrompt = document.getElementById('packagePrompt');
-    const samplePromptButtons = [...document.querySelectorAll('.sample-prompt')];
-    let sampleComplete = false;
-    
-    function addMsg(text, isGuest) {
-      const wrap = document.createElement('div');
-      wrap.className = 'msg' + (isGuest ? ' msg-guest' : ' msg-bot');
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble' + (isGuest ? ' bubble-guest' : ' bubble-bot');
-      bubble.textContent = text;
-      wrap.appendChild(bubble);
-      chat.appendChild(wrap);
-      chat.scrollTop = chat.scrollHeight;
-    }
-    
-    addMsg("Welcome to the fictional StayXI sample. Ask about checkout, trash, parking, pets, or quiet hours. If a question is unknown or sensitive, the sample will direct you to the host; it cannot contact anyone.", false);
-    updateCounter(5);
-    
-    function updateCounter(remaining) {
-      if (msgCounter) {
-        msgCounter.textContent = remaining === 0
-          ? 'Sample complete'
-          : remaining + ' sample question' + (remaining === 1 ? '' : 's') + ' left';
-      }
-    }
-    
-    function showPackageUpsell() {
-      sampleComplete = true;
-      if (packagePrompt) packagePrompt.style.display = 'block';
-      if (chatInput) chatInput.disabled = true;
-      if (sendChatBtn) sendChatBtn.disabled = true;
-      samplePromptButtons.forEach((button) => { button.disabled = true; });
-    }
-    
-    async function sendCurrentMessage() {
-      const message = chatInput.value.trim();
-      if (!message) return;
-      
-      addMsg(message, true);
-      chatInput.value = '';
-      sendChatBtn.disabled = true;
-      
-      try {
-        const response = await sendDemoMessage(message);
-        
-        if (response.showPackage) {
-          addMsg(response.reply, false);
-          showPackageUpsell();
-        } else {
-          addMsg(response.reply, false);
-          if (response.remaining !== undefined) {
-            updateCounter(response.remaining);
-            if (response.remaining <= 0) showPackageUpsell();
-          }
-        }
-      } catch (error) {
-        addMsg(`Error: ${error.message}`, false);
-      } finally {
-        sendChatBtn.disabled = sampleComplete;
-        samplePromptButtons.forEach((button) => { button.disabled = sampleComplete; });
-      }
-    }
-    
-    sendChatBtn.addEventListener('click', sendCurrentMessage);
-    chatInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') sendCurrentMessage();
-    });
-    samplePromptButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        chatInput.value = button.dataset.sampleQuestion || '';
-        sendCurrentMessage();
-      });
-    });
-    
-    // Restore demo questions button
-    const restoreDemoBtn = document.getElementById('restoreDemoBtn');
-    if (restoreDemoBtn) {
-      restoreDemoBtn.addEventListener('click', () => {
-        sampleComplete = false;
-        if (packagePrompt) packagePrompt.style.display = "none";
-        if (chatInput) chatInput.disabled = false;
-        if (sendChatBtn) sendChatBtn.disabled = false;
-        samplePromptButtons.forEach((button) => { button.disabled = false; });
-        updateCounter(5);
-      });
-    }
-  </script>
+    <section class="section">
+      <div class="container">
+        <div class="section-head left reveal">
+          <p class="eyebrow">What you see</p>
+          <h2>A digest, not another inbox</h2>
+        </div>
+
+        <div class="showcase-grid">
+          <div class="reveal">
+            <div class="tabs" role="tablist" aria-label="Product views">
+              <button class="tab-btn active" type="button" role="tab" aria-selected="true" aria-pressed="true" data-showcase-tab="log">
+                <span class="tab-title">Activity digest</span>
+                <span class="tab-desc">Every conversation, what was auto-answered, and the handful that needed a human.</span>
+              </button>
+              <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-pressed="false" data-showcase-tab="questions">
+                <span class="tab-title">What guests ask</span>
+                <span class="tab-desc">The same six questions, ranked. Fix the welcome book and the next arrival asks less.</span>
+              </button>
+              <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-pressed="false" data-showcase-tab="coverage">
+                <span class="tab-title">How much it handles</span>
+                <span class="tab-desc">The share answered without you, by guide section. Flat sections are where to add an answer.</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="reveal" style="--delay:.1s">
+            <div class="showcase-panel depth">
+              <div class="panel" data-showcase-panel="log">
+                <ul class="msg-list">
+                  <li class="msg-row first"><span class="monogram" style="background:linear-gradient(135deg,hsl(210 70% 62%),hsl(250 70% 48%))">DM</span><div class="msg-body"><p class="msg-q">“Can we check in early?”</p><p class="msg-status routed">Routed to you · 12s ago</p></div><span class="msg-time">2m</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(20 70% 62%),hsl(60 70% 48%))">MK</span><div class="msg-body"><p class="msg-q">“What is the wifi password?”</p><p class="msg-status">Answered from Guide · Wifi</p></div><span class="msg-time">18m</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(300 70% 62%),hsl(340 70% 48%))">PS</span><div class="msg-body"><p class="msg-q">“Where do we park the second car?”</p><p class="msg-status routed">Routed to you · 1h ago</p></div><span class="msg-time">1h</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(120 70% 62%),hsl(160 70% 48%))">PS</span><div class="msg-body"><p class="msg-q">“Which bin goes out tonight?”</p><p class="msg-status">Answered from Guide · Departure</p></div><span class="msg-time">3h</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(40 70% 62%),hsl(80 70% 48%))">SB</span><div class="msg-body"><p class="msg-q">“Is the hot tub open this week?”</p><p class="msg-status routed">Routed to you · 4h ago</p></div><span class="msg-time">4h</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(210 70% 62%),hsl(250 70% 48%))">DM</span><div class="msg-body"><p class="msg-q">“Thanks, one more thing — late checkout?”</p><p class="msg-status">Answered from Guide · Departure</p></div><span class="msg-time">5h</span></li>
+                  <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(170 70% 62%),hsl(210 70% 48%))">AK</span><div class="msg-body"><p class="msg-q">“How does the coffee maker work?”</p><p class="msg-status">Answered from Guide · Appliances</p></div><span class="msg-time">1d</span></li>
+                </ul>
+              </div>
+
+              <div class="panel" data-showcase-panel="questions" hidden>
+                <div class="panel-head"><p class="panel-title">Most asked this stay</p><span class="panel-meta">38 messages</span></div>
+                <ul class="q-list">
+                  <li class="q-row"><span class="q-rank">1</span><span class="q-main"><span class="q-text">Where is the wifi password?</span><span class="bar"><span class="bar-fill" style="width:100%"></span></span></span><span class="q-count">14×</span></li>
+                  <li class="q-row"><span class="q-rank">2</span><span class="q-main"><span class="q-text">What time is check-in?</span><span class="bar"><span class="bar-fill" style="width:64%"></span></span></span><span class="q-count">9×</span></li>
+                  <li class="q-row"><span class="q-rank">3</span><span class="q-main"><span class="q-text">Where do we park?</span><span class="bar"><span class="bar-fill" style="width:43%"></span></span></span><span class="q-count">6×</span></li>
+                  <li class="q-row"><span class="q-rank">4</span><span class="q-main"><span class="q-text">How does the coffee maker work?</span><span class="bar"><span class="bar-fill" style="width:29%"></span></span></span><span class="q-count">4×</span></li>
+                  <li class="q-row"><span class="q-rank">5</span><span class="q-main"><span class="q-text">Which bin goes out tonight?</span><span class="bar"><span class="bar-fill" style="width:21%"></span></span></span><span class="q-count">3×</span></li>
+                  <li class="q-row"><span class="q-rank">6</span><span class="q-main"><span class="q-text">Can we check out late?</span><span class="bar"><span class="bar-fill" style="width:14%"></span></span></span><span class="q-count">2×</span></li>
+                </ul>
+              </div>
+
+              <div class="panel" data-showcase-panel="coverage" hidden>
+                <div class="panel-head"><p class="panel-title">Answered without you</p><span class="panel-meta">By guide section</span></div>
+                <ul class="cov-list">
+                  <li class="cov-row"><span class="cov-name">Check-in &amp; arrival</span><span class="cov-bar"><span class="cov-fill" style="width:98%;background:hsl(20 75% 62%)"></span></span><span class="cov-pct">98%</span></li>
+                  <li class="cov-row"><span class="cov-name">Wifi &amp; parking</span><span class="cov-bar"><span class="cov-fill" style="width:95%;background:hsl(210 75% 62%)"></span></span><span class="cov-pct">95%</span></li>
+                  <li class="cov-row"><span class="cov-name">House rules</span><span class="cov-bar"><span class="cov-fill" style="width:88%;background:hsl(300 75% 62%)"></span></span><span class="cov-pct">88%</span></li>
+                  <li class="cov-row"><span class="cov-name">Departure</span><span class="cov-bar"><span class="cov-fill" style="width:84%;background:hsl(120 75% 62%)"></span></span><span class="cov-pct">84%</span></li>
+                  <li class="cov-row"><span class="cov-name">Appliances</span><span class="cov-bar"><span class="cov-fill" style="width:61%;background:hsl(40 75% 62%)"></span></span><span class="cov-pct">61%</span></li>
+                </ul>
+                <p class="cov-note">Appliances escalate most often — the monthly review suggests what to add next.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="metrics-section">
+      <div class="container">
+                <dl class="metrics">
+          <div class="metric reveal">
+            <dd class="metric-value"><span data-count="39" data-prefix="$">$39</span></dd>
+            <dt class="metric-label">Per property, per month</dt>
+          </div>
+          <div class="metric reveal" style="--delay:.08s">
+            <dd class="metric-value"><span data-count="10" data-suffix=" min">10 min</span></dd>
+            <dt class="metric-label">To set up a property</dt>
+          </div>
+          <div class="metric reveal" style="--delay:.16s">
+            <dd class="metric-value"><span data-count="24" data-suffix="/7">24/7</span></dd>
+            <dt class="metric-label">Answers, including 2am</dt>
+          </div>
+          <div class="metric reveal" style="--delay:.24s">
+            <dd class="metric-value"><span data-count="0">0</span></dd>
+            <dt class="metric-label">Apps for guests to install</dt>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+        <section class="section" id="pricing">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">Pricing</p>
+          <h2>Priced per property, not per message</h2>
+          <p>Unlimited guest texts on every plan. No setup fee, no onboarding call, cancel any time.</p>
+        </div>
+
+        <div class="plans">
+          <article class="plan depth reveal">
+            <div class="plan-head"><h3>Solo</h3></div>
+            <p class="plan-tagline">One property, fully answered.</p>
+            <div class="plan-price"><strong>$39</strong><span>/mo</span></div>
+            <a class="btn btn-secondary btn-lg" href="#cta">Start free trial</a>
+            <ul class="plan-features">
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>1 property and its text number</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Unlimited guest messages</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>AI answers from your approved guide</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Escalation to you with full context</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Daily digest</li>
+            </ul>
+          </article>
+
+          <article class="plan depth reveal featured" style="--delay:.08s">
+            <div class="plan-head"><h3>Portfolio</h3><span class="plan-tag">Most popular</span></div>
+            <p class="plan-tagline">Up to 4 properties, one dashboard.</p>
+            <div class="plan-price"><strong>$99</strong><span>/mo</span></div>
+            <a class="btn btn-primary btn-lg" href="#cta">Start free trial</a>
+            <ul class="plan-features">
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Up to 4 properties, a number each</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Everything in Solo</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>One guide per property, approved once</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>A separate guide per property, approved once</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Weekly coverage review with suggested guide edits</li>
+            </ul>
+          </article>
+
+          <article class="plan depth reveal" style="--delay:.16s">
+            <div class="plan-head"><h3>Operator</h3></div>
+            <p class="plan-tagline">Up to 12 properties, for co-hosts.</p>
+            <div class="plan-price"><strong>$249</strong><span>/mo</span></div>
+            <a class="btn btn-secondary btn-lg" href="#cta">Talk to us</a>
+            <ul class="plan-features">
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Up to 12 properties</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Everything in Portfolio</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Route by property to different team members</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Webhook into your existing tools</li>
+              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Priority review of guide changes</li>
+            </ul>
+          </article>
+        </div>
+
+        <p class="plan-note reveal" style="--delay:.15s">Monthly, cancel any time. Messaging and the number are included — no per-message charges, no annual lock-in. StayXI answers routine property questions; it is not an emergency service and never replaces a call to 911.</p>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="container">
+        <div class="faq-wrap">
+          <div class="section-head reveal">
+            <h2>Questions, answered</h2>
+          </div>
+          <div class="reveal">
+                        <ul class="faq-list depth">
+              <li class="faq-item open">
+                <button class="faq-q" type="button" aria-expanded="true" aria-controls="faq-a-1">
+                  <span>Does the AI invent answers?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-1"><div class="faq-body-inner"><p class="faq-a">It answers only from the guide you approved. If a question falls outside it — or touches money, damage, maintenance or a complaint — it stops and hands the guest to you rather than improvising. Every reply is logged against the guide section it came from, so you can always see how an answer was reached.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-2">
+                  <span>What does the guest see when it cannot help?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-2"><div class="faq-body-inner"><p class="faq-a">A short, honest message: that the question has been passed to the host, who will reply directly. The guest is never left in silence and never given a made-up answer to a real problem.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-3">
+                  <span>Do guests know they are texting a bot?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-3"><div class="faq-body-inner"><p class="faq-a">Yes. It introduces itself as the property assistant on the first message. Pretending otherwise is how a host ends up with the review nobody wants.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-4">
+                  <span>Do I have to give up my own number?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-4"><div class="faq-body-inner"><p class="faq-a">No. Guests text a separate number that StayXI provides, and you put it in the confirmation message. Your personal number stays private, and an existing business number can be ported later if you prefer.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-5">
+                  <span>Will it read my Airbnb and Vrbo messages?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-5"><div class="faq-body-inner"><p class="faq-a">No. This is an SMS line. Platform threads stay exactly where they are, for the questions that arrive inside the app. The text line covers the guest who has already left the platform, is driving, or will never open another app.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-6">
+                  <span>What about emergencies?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-6"><div class="faq-body-inner"><p class="faq-a">It is not an emergency service. Urgent wording — lockout, leak, smoke, no heat — is routed to you immediately, but guests should always be told to call for anything dangerous, and 911 for anything life-threatening.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-7">
+                  <span>How long does setup really take?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-7"><div class="faq-body-inner"><p class="faq-a">About ten minutes: send the welcome book you already give guests, correct anything the draft got wrong, and approve it. There is no call to book and no implementation project.</p></div></div>
+              </li>
+              <li class="faq-item">
+                <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-8">
+                  <span>What happens after the 14-day trial?</span>
+                  <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+                </button>
+                <div class="faq-body" id="faq-a-8"><div class="faq-body-inner"><p class="faq-a">It continues monthly at your plan rate unless you cancel, which you can do from the dashboard in a couple of clicks. No setup fee, no per-message charges, no annual commitment.</p></div></div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section" id="cta">
+      <div class="container">
+        <div class="reveal">
+          <div class="cta-panel depth">
+            <div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+            <div class="grid-lines" aria-hidden="true"></div>
+            <div class="noise" aria-hidden="true"></div>
+            <div class="cta-inner">
+              <h2>Put your guest texts on autopilot</h2>
+              <p>Start a 14-day trial on one property. Send the welcome book you already have, approve the guide, and the line answers its first guest the same day.</p>
+              <form class="cta-form" id="pilotForm" novalidate>
+                <label class="sr-only" for="pilotEmail">Email</label>
+                <input class="cta-input" id="pilotEmail" name="email" type="email" required autocomplete="email" placeholder="you@yourhostcompany.com">
+                <button class="btn btn-primary btn-lg" id="pilotSubmit" type="submit">
+                  <span class="btn-label">Start the trial</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </button>
+              </form>
+              <div class="success-pill" id="pilotSuccess" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                Thanks — check your inbox for the next step.
+              </div>
+              <div class="form-error" id="pilotError" role="alert" hidden></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="logo" href="#top" aria-label="StayXI home">
+            <span class="logo-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 16 12 6l6 10"></path>
+                <circle cx="12" cy="18.5" r="1.2" fill="url(#logo-grad)" stroke="none"></circle>
+              </svg>
+            </span>
+            StayXI
+          </a>
+          <p class="footer-blurb">The AI text line for independent vacation rentals. A Davenport Host Co product.</p>
+        </div>
+        <div class="footer-col">
+          <p class="footer-title">Product</p>
+          <ul class="footer-links">
+            <li><a href="#how">How it works</a></li>
+            <li><a href="#features">What it does</a></li>
+            <li><a href="#sample">Try the sample</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <p class="footer-title">Company</p>
+          <ul class="footer-links">
+            <li><a href="#top">About Davenport Host Co</a></li>
+            <li><a href="mailto:hello@stayxi.com">Contact</a></li>
+            <li><a href="/admin">Host sign-in</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <p class="footer-title">Legal</p>
+          <ul class="footer-links">
+            <li><a href="./privacy.html">Privacy</a></li>
+            <li><a href="./terms.html">Terms</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 Davenport Host Co.</p>
+        <p>Not emergency service or guaranteed host coverage.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./main.js" defer></script>
 </body>
 </html>

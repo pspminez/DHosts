@@ -1,6 +1,6 @@
 # StayXI — Launch Readiness
 
-_Status snapshot: 2026-10-27. This is an operating checklist, not legal or financial advice._
+_Status snapshot: 2026-11-02. This is an operating checklist, not legal or financial advice._
 
 This file answers one question: **what is actually left before StayXI can take a paying pilot property?** Everything below is either *built*, *blocked on a purchase/credential only you can provide*, or *still to do*. Be honest with yourself about which column each item is in before spending money.
 
@@ -18,7 +18,7 @@ This file answers one question: **what is actually left before StayXI can take a
 | Read-only production smoke check | `npm run check:production` | All six checks pass against production (2026-10-27): Worker health, Pilot markup, authenticated D1/KV health, pilot records API, unauthenticated rejection, and the metadata-only audit API. GET-only; does not mutate D1 or KV |
 | Pilot integration monitoring | `admin_audit_log` | Launch, completion, and scorecard-save events are auditable without recording scorecard contents; external alerts and dashboards are not configured |
 | One-to-one Gmail outreach (send-only, unsubscribe, suppression) | admin Leads tab | Built, **not connected** (needs Google OAuth) |
-| Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Deployed to Pages; `davenport-host-co.pages.dev` matches `site/index.html` byte-for-byte (2026-10-27) |
+| Marketing site | `site/index.html`, `privacy.html`, `terms.html` | Deployed to Pages on 2026-11-02 with the restyled landing, privacy, and terms pages; `davenport-host-co.pages.dev` serves `site/index.html` byte-for-byte and includes a branded social preview image |
 | Pilot program + terms | `PILOT_PROGRAM.md` | Written |
 | Lead list | `bot/leads.js` | Re-checked 2026-10-26; **5 of 8 have a verified public email** |
 
