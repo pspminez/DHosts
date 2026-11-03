@@ -10,6 +10,13 @@ test("answers a sample FAQ without AI or SMS", () => {
   assert.equal(result.smsSent, false);
 });
 
+test("answers the sample wifi question with demo-only credentials", () => {
+  const result = previewDemoMessage("What is the wifi password?");
+  assert.equal(result.action, "answer");
+  assert.match(result.reply, /CedarGuest/);
+  assert.match(result.reply, /porch-light-42/);
+});
+
 test("does not expose access credentials in the public sample", () => {
   const result = previewDemoMessage("What is the gate code?");
   assert.equal(result.action, "answer");
@@ -29,7 +36,16 @@ test("routes emergencies and high-risk messages away from AI", () => {
   assert.match(refund.reply, /contact the host/i);
 });
 
-test("fails closed for unknown and off-topic sample questions", () => {
-  assert.match(previewDemoMessage("Is there a crib?").reply, /can't confirm/i);
+test("hands off legitimate questions the guide does not cover", () => {
+  const crib = previewDemoMessage("Is there a crib?");
+  assert.equal(crib.action, "not_covered");
+  assert.match(crib.reply, /handed to the host/i);
+
+  const dog = previewDemoMessage("Can we bring our dog this time?");
+  assert.equal(dog.action, "not_covered");
+  assert.match(dog.reply, /handed to the host/i);
+});
+
+test("keeps off-topic replies for genuinely non-stay messages", () => {
   assert.match(previewDemoMessage("Tell me a joke").reply, /only demonstrates property-stay questions/i);
 });

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- When stayxi.com is connected, replace the host in every <loc> below. -->
+<!-- Update the host in every <loc> below if the site moves. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://davenport-host-co.pages.dev/</loc>

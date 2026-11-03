@@ -1007,7 +1007,7 @@ async function handleDemoChat(request: Request, env: Env) {
 
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
   const rateLimitKey = `demo_chat_rate:${clientIp}`;
-  const maxMessages = (await env.PROPERTIES.get("demo_max_questions")) ? Number(env.PROPERTIES.get("demo_max_questions")) : 5;
+  const maxMessages = Number(await env.PROPERTIES.get("demo_max_questions")) || 100;
   let currentCount: number;
   try {
     const storedCount = await env.PROPERTIES.get(rateLimitKey);
@@ -1022,7 +1022,7 @@ async function handleDemoChat(request: Request, env: Env) {
   if (currentCount >= maxMessages) {
     return new Response(JSON.stringify({
       error: "Demo limit reached",
-      reply: "You've tried the five-message demo. Ask about the one-property, 30-day pilot below; ongoing pricing is not set and there is no automatic renewal.",
+      reply: "You've reached today's demo limit. Start a 14-day trial on one property to run the same line against your own guide.",
       showPackage: true,
     }), { headers: corsHeaders });
   }

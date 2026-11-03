@@ -4,8 +4,5 @@
 name = "davenport-host-co"
 pages_build_output_dir = "."
 
-# Pin the runtime date. Newer defaults turn on Node compatibility, which makes
-# the Pages Functions bundler pull in `unenv` polyfills that import node:stream;
-# the Pages publisher rejects that module and the deploy fails. The only
-# function here is the /api proxy and needs nothing from the newer default.
-compatibility_date = "2024-09-23"
+# Serve 404.html, with a real 404 status, for paths that do not match a file.
+not_found_handling = "404-page"

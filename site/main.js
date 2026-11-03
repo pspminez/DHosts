@@ -104,7 +104,7 @@
   var replies = [
     {
       q: "What is the wifi password?",
-      a: "For this sample property, ask the host for Wi-Fi access. The demo doesn't include network credentials.",
+      a: "Network: CedarGuest · Password: porch-light-42",
       source: "Wifi & parking"
     },
     {

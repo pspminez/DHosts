@@ -47,6 +47,7 @@ test("routes legal, refund, damage, and safety topics away from AI", () => {
 
 test("permits AI only for plausible property-stay questions", () => {
   assert.equal(planGuestMessage("Is there an iron in the house?", property).action, "ai");
+  assert.equal(planGuestMessage("Can we bring our dog this time?", property).action, "ai");
   assert.equal(planGuestMessage("Who won the game last night?", property).action, "off_topic");
 });
 

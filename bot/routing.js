@@ -39,7 +39,7 @@ const HIGH_RISK_PATTERNS = [
   { intentKey: "safety_or_security_concern", pattern: /\b(?:unsafe|not safe|security issue|intruder|threaten(?:ed)?|harass(?:ed|ment)?|injur(?:y|ed))\b/ },
 ];
 
-const PROPERTY_TERMS = /\b(?:property|rental|villa|house|home|room|bedroom|bathroom|kitchen|amenit(?:y|ies)|guest|stay|reservation|booking|check[\s-]?(?:in|out)|arrival|departure|checkout|wifi|wi fi|internet|password|gate|door|key|lock|parking|pool|hot tub|heater|thermostat|air conditioning|a ?c|trash|garbage|pet|quiet hours|laundry|washer|dryer|dishwasher|towel|linen|tv|television|host|house rules|appliance|coffee|grill|maintenance|broken|not working|where is|how do i|can i|do you have|is there)\b/;
+const PROPERTY_TERMS = /\b(?:property|rental|villa|house|home|room|bedroom|bathroom|kitchen|amenit(?:y|ies)|guest|stay|reservation|booking|check[\s-]?(?:in|out)|arrival|departure|checkout|wifi|wi fi|internet|password|gate|door|key|lock|parking|pool|hot tub|heater|thermostat|air conditioning|a ?c|trash|garbage|pets?|dogs?|quiet hours|laundry|washer|dryer|dishwasher|towel|linen|tv|television|host|house rules|appliance|coffee|grill|maintenance|broken|not working|where is|how do i|can i|do you have|is there)\b/;
 
 export function planGuestMessage(body, property) {
   const normalized = normalise(body).trim();
