@@ -275,7 +275,6 @@ svg {
   position: absolute;
   border-radius: 9999px;
   filter: blur(64px);
-  will-change: transform;
 }
 
 .aurora .a1 {
@@ -430,6 +429,7 @@ html.js .reveal.in {
 
 .logo {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 10px;
   font-size: 15px;
@@ -480,8 +480,8 @@ html.js .reveal.in {
 
 .menu-btn {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 12px;
   transition: background-color 0.2s;
@@ -573,7 +573,7 @@ html.js .reveal.in {
 .hero-badge {
   position: relative;
   display: inline-flex;
-  height: 32px;
+  min-height: 44px;
   align-items: center;
   gap: 8px;
   border-radius: 12px;
@@ -1564,8 +1564,8 @@ section[id] { scroll-margin-top: 96px; }
 
 .icon-btn {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   place-items: center;
   border-radius: 10px;
@@ -1697,6 +1697,9 @@ section[id] { scroll-margin-top: 96px; }
 }
 
 .prompt {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   border-radius: 12px;
   background: rgb(255 255 255 / 0.03);
   padding: 6px 12px;
@@ -2306,6 +2309,9 @@ section[id] { scroll-margin-top: 96px; }
 
 .cta-input {
   height: 52px;
+  /* In the column layout the form stacks, so `flex: 1` resolves against the
+     block axis and collapses the field to its line height. */
+  min-height: 52px;
   min-width: 0;
   flex: 1;
   border: 1px solid var(--line-strong);
@@ -2354,6 +2360,17 @@ section[id] { scroll-margin-top: 96px; }
   padding: 80px 0 40px;
 }
 
+/* Sections below the first screen skip style, layout and paint until they come
+   close to the viewport. `auto` in contain-intrinsic-size keeps the height each
+   section had the last time it rendered, so anchors and the scrollbar hold. */
+main > .section,
+main > .cta-section,
+main > .metrics-section,
+.site-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 .footer-grid {
   display: grid;
   gap: 48px;
@@ -2380,11 +2397,14 @@ section[id] { scroll-margin-top: 96px; }
 .footer-links {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   margin-top: 16px;
 }
 
 .footer-links a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
   font-size: 14px;
   color: var(--muted);
   transition: color 0.2s;

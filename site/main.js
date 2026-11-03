@@ -11,9 +11,26 @@
   var menuBtn = document.getElementById("menuBtn");
   var mobileMenu = document.getElementById("mobileMenu");
 
-  function onScroll() {
-    if (nav) nav.classList.toggle("scrolled", window.scrollY > 12);
+  // Reading scrollY inside the scroll handler forces a layout on every event,
+  // and re-toggling the class repaints the blurred nav even when the state did
+  // not change. Batch to one frame and only touch the DOM on a real change.
+  var scrolled = null;
+  var scrollFrame = 0;
+
+  function applyScrollState() {
+    scrollFrame = 0;
+    if (!nav) return;
+    var next = window.scrollY > 12;
+    if (next === scrolled) return;
+    scrolled = next;
+    nav.classList.toggle("scrolled", next);
   }
+
+  function onScroll() {
+    if (scrollFrame) return;
+    scrollFrame = requestAnimationFrame(applyScrollState);
+  }
+
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -257,7 +274,6 @@
         var active = other === tab;
         other.classList.toggle("active", active);
         other.setAttribute("aria-selected", active ? "true" : "false");
-        other.setAttribute("aria-pressed", active ? "true" : "false");
       });
       panels.forEach(function (panel) {
         panel.hidden = panel.getAttribute("data-showcase-panel") !== key;
