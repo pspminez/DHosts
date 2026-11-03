@@ -7,13 +7,15 @@
   <meta name="description" content="StayXI gives each vacation rental its own text number. Guests text a question about wifi, check-in or parking and get an answer from your approved guide in seconds. Only what needs you reaches you.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0908">
-  <link rel="canonical" href="https://stayxi.com/">
+  <!-- Absolute URLs use the host that serves the site today. When stayxi.com is
+       registered and attached, swap it here, in og:url/og:image and twitter:image,
+       and in robots.txt, sitemap.xml and the two legal pages. -->
+  <link rel="canonical" href="https://davenport-host-co.pages.dev/">
   <meta property="og:site_name" content="StayXI">
   <meta property="og:title" content="StayXI — The AI text line for vacation rentals">
   <meta property="og:description" content="Each property gets its own text number. Guests get an answer from your approved guide in seconds; only what needs you reaches you.">
-  <meta property="og:url" content="https://stayxi.com/">
+  <meta property="og:url" content="https://davenport-host-co.pages.dev/">
   <meta property="og:type" content="website">
-  <!-- Swap the og:image host to https://stayxi.com/og.png once the custom domain is live. -->
   <meta property="og:image" content="https://davenport-host-co.pages.dev/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -538,7 +540,6 @@
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Up to 4 properties, a number each</li>
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Everything in Solo</li>
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>One guide per property, approved once</li>
-              <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>A separate guide per property, approved once</li>
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Weekly coverage review with suggested guide edits</li>
             </ul>
           </article>
@@ -642,19 +643,19 @@
             <div class="cta-inner">
               <h2>Put your guest texts on autopilot</h2>
               <p>Start a 14-day trial on one property. Send the welcome book you already have, approve the guide, and the line answers its first guest the same day.</p>
-              <form class="cta-form" id="pilotForm" novalidate>
-                <label class="sr-only" for="pilotEmail">Email</label>
-                <input class="cta-input" id="pilotEmail" name="email" type="email" required autocomplete="email" placeholder="you@yourhostcompany.com">
-                <button class="btn btn-primary btn-lg" id="pilotSubmit" type="submit">
+              <form class="cta-form" id="trialForm" novalidate>
+                <label class="sr-only" for="trialEmail">Email</label>
+                <input class="cta-input" id="trialEmail" name="email" type="email" required autocomplete="email" placeholder="you@yourhostcompany.com">
+                <button class="btn btn-primary btn-lg" id="trialSubmit" type="submit">
                   <span class="btn-label">Start the trial</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
                 </button>
               </form>
-              <div class="success-pill" id="pilotSuccess" hidden>
+              <div class="success-pill" id="trialSuccess" hidden>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
                 Thanks — check your inbox for the next step.
               </div>
-              <div class="form-error" id="pilotError" role="alert" hidden></div>
+              <div class="form-error" id="trialError" role="alert" hidden></div>
             </div>
           </div>
         </div>

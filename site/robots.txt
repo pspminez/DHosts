@@ -1,0 +1,7 @@
+# StayXI marketing site.
+# /admin is served by the Worker, not Pages, and should stay out of search.
+User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: https://davenport-host-co.pages.dev/sitemap.xml

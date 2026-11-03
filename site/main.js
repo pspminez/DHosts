@@ -1,5 +1,5 @@
 // StayXI landing page behavior: nav, reveals, counters, sample chat,
-// product-view tabs, FAQ accordion and the pilot lead form.
+// product-view tabs, FAQ accordion and the trial lead form.
 (function () {
   "use strict";
 
@@ -104,12 +104,12 @@
   var replies = [
     {
       q: "What is the wifi password?",
-      a: "Network: CedarGuest · Password: porch-light-42",
+      a: "For this sample property, ask the host for Wi-Fi access. The demo doesn't include network credentials.",
       source: "Wifi & parking"
     },
     {
       q: "What time is check-in?",
-      a: "Any time after 3pm. The lockbox code is 4421 — the box is left of the blue door.",
+      a: "Check-in starts at 3pm. Door and lockbox codes aren't included in the demo — your host shares access details directly.",
       source: "Check-in & arrival"
     },
     {
@@ -271,13 +271,13 @@
     });
   });
 
-  /* ---------- Pilot lead form ---------- */
+  /* ---------- Trial lead form ---------- */
 
-  var form = document.getElementById("pilotForm");
-  var emailInput = document.getElementById("pilotEmail");
-  var submitBtn = document.getElementById("pilotSubmit");
-  var successBox = document.getElementById("pilotSuccess");
-  var errorBox = document.getElementById("pilotError");
+  var form = document.getElementById("trialForm");
+  var emailInput = document.getElementById("trialEmail");
+  var submitBtn = document.getElementById("trialSubmit");
+  var successBox = document.getElementById("trialSuccess");
+  var errorBox = document.getElementById("trialError");
 
   function showError(message) {
     if (!errorBox) return;

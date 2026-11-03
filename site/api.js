@@ -1,12 +1,10 @@
 // site/api.js
 
-// Hosted Pages deployments (production alias and every per-commit preview like
-// <hash>.davenport-host-co.pages.dev) talk to the Worker's workers.dev URL,
-// because api.stayxi.com is not configured yet. Once the custom domain is live,
-// only the real custom domain should use it.
-const API_BASE_URL = window.location.hostname.endsWith('davenport-host-co.pages.dev')
-  ? 'https://davenport-host-co-bot.davenport-host-co-bot.workers.dev'
-  : 'https://api.stayxi.com';
+// Every call goes to this site's own /api/* path. The Pages Function in
+// functions/api/[[path]].js forwards those requests to the Worker, so the page
+// works on the pages.dev alias, on every preview deployment, and on stayxi.com
+// without a hostname check, a CORS preflight, or a domain decision.
+const API_BASE_URL = "";
 
 export async function callWorkerApi(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
