@@ -43,6 +43,21 @@
     });
   }
 
+  /* ---------- Aurora ---------- */
+
+  // The blurred aurora spans are expensive to composite. Stop them while the
+  // hero is offscreen instead of animating a region nobody can see.
+  var hero = document.querySelector(".hero");
+
+  if (hero && "IntersectionObserver" in window) {
+    var heroObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        document.documentElement.classList.toggle("hero-away", !entry.isIntersecting);
+      });
+    });
+    heroObserver.observe(hero);
+  }
+
   /* ---------- Scroll reveals ---------- */
 
   var revealEls = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
