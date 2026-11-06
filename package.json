@@ -12,6 +12,8 @@
     "check:landing": "node tools/check-landing.cjs",
     "check:lighthouse": "node tools/lighthouse.cjs",
     "check:predeploy": "npm run check:production && npm run check:lighthouse",
+    "build:site": "node tools/build-site.cjs",
+    "deploy:site": "node tools/build-site.cjs && cd site && wrangler pages deploy dist --branch main",
     "check:production": "node tools/production-smoke.cjs",
     "shot": "node tools/screenshot.cjs",
     "seed:demo": "node tools/seed-demo.cjs"

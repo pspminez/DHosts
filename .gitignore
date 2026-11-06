@@ -3,6 +3,7 @@ node_modules/
 .claude/
 .shots/
 dist/
+site/dist/
 .dev.vars
 .dev.vars.*
 

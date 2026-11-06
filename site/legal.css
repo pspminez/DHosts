@@ -68,7 +68,9 @@ body::before {
   filter: blur(26px);
 }
 
-[:focus-visible] {
+:focus-visible {
+  /* Was written as [:focus-visible], which is not a valid selector and so never
+     applied; the legal pages had no visible keyboard focus ring. */
   outline: 2px solid rgb(255 122 69 / 0.7);
   outline-offset: 3px;
   border-radius: 6px;

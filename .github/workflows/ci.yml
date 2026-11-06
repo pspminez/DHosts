@@ -35,6 +35,11 @@ jobs:
       - name: Tests
         run: npm test
 
+      # Staging the site is what produces the minified stylesheet, so a minifier
+      # that drops a declaration the page needs fails here instead of at deploy.
+      - name: Build the site
+        run: npm run build:site
+
   predeploy:
     name: Pre-deploy gate
     # The gate reads the live Worker and Pages deployment, so it only runs where
