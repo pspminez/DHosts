@@ -5,6 +5,8 @@
 //   node tools/screenshot.cjs analytics 1440 analytics-demo
 //   node tools/screenshot.cjs insights 390 insights-phone
 //   node tools/screenshot.cjs login 1440 login-desktop   (the sign-in screen)
+//   node tools/screenshot.cjs landing 1440 landing-desktop
+//   node tools/screenshot.cjs landing 390 landing-phone   (the marketing site)
 //
 // Why this exists: every check in tools/ui-check.cjs is structural — it proves
 // the script runs and the numbers are right, not that the result looks sane.
@@ -212,6 +214,9 @@ function connect(url) {
   // "login" is not a tab: it is the state before unlock, so it must NOT be driven
   // past the password card.
   const isLogin = tab === "login";
+  // The marketing site is served from site/ with relative asset paths, so it is
+  // loaded in place rather than copied into .shots/ like the inline admin page.
+  const isLanding = tab === "landing";
   // The host portal is its own page. "host" and "host-guide" render the sample
   // dashboard; "host-login" stops at the sign-in card.
   const isHost = tab === "host" || tab === "host-guide" || tab === "host-login";
@@ -288,14 +293,16 @@ function connect(url) {
   // fading nav item would be captured half-applied and look like a state bug.
   const pinTransitions = "<style>*{transition:none!important;animation:none!important}</style>";
 
-  let html = isHost ? extractHostPage() : extractPage();
-  html = html.replace("</head>", pinTransitions + "</head>");
-  html = html.replace("<script>", (isHost ? hostShim : shim) + "\n<script>");
-  if (!isHost) html = html.replace("</body>", drive + "\n</body>");
-
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const pageFile = path.join(OUT_DIR, name + ".html");
-  fs.writeFileSync(pageFile, html);
+  let pageFile = "";
+  if (!isLanding) {
+    let html = isHost ? extractHostPage() : extractPage();
+    html = html.replace("</head>", pinTransitions + "</head>");
+    html = html.replace("<script>", (isHost ? hostShim : shim) + "\n<script>");
+    if (!isHost) html = html.replace("</body>", drive + "\n</body>");
+    pageFile = path.join(OUT_DIR, name + ".html");
+    fs.writeFileSync(pageFile, html);
+  }
 
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "stayxi-shot-"));
   const chrome = spawn(
@@ -324,7 +331,9 @@ function connect(url) {
       screenWidth: width,
       screenHeight: 900,
     });
-    let pageUrl = "file:///" + path.resolve(pageFile).replace(/\\/g, "/");
+    let pageUrl = isLanding
+      ? "file:///" + path.resolve("site/index.html").replace(/\\/g, "/")
+      : "file:///" + path.resolve(pageFile).replace(/\\/g, "/");
     if (isHost) {
       pageUrl += isHostLogin ? "?signedout=1" : "?sample=1" + (hostView === "guide" ? "&view=guide" : "");
     }
@@ -334,7 +343,14 @@ function connect(url) {
     // Do not trust the in-page timers: on a narrow, emulated-mobile viewport
     // they sometimes had not run yet and the shot captured the login card.
     // Forcing the same reveal here makes the capture deterministic.
-    if (!isLogin && !isHost) {
+    if (isLanding) {
+      // Reveal-on-scroll sections start hidden; a full-page capture never
+      // scrolls them into view, so show them and stop the motion first.
+      await client.send("Runtime.evaluate", {
+        expression: "(() => { const style = document.createElement('style'); style.textContent = '*{transition:none!important;content-visibility:visible!important}'; document.head.appendChild(style); document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in')); })()",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } else if (!isLogin && !isHost) {
       await client.send("Runtime.evaluate", { expression: "reveal(); " + switchCall });
       await new Promise((resolve) => setTimeout(resolve, 400));
     }

@@ -54,6 +54,25 @@ if (!password) {
   process.exit(2);
 }
 
+// The marketing site is a separate Pages project, so it gets its own origin
+// rather than the Worker base URL above.
+const DEFAULT_LANDING_URL = "https://davenport-host-co.pages.dev";
+const landingUrl = (process.env.STAYXI_LANDING_URL || DEFAULT_LANDING_URL).replace(/\/+$/, "");
+let parsedLandingUrl;
+try {
+  parsedLandingUrl = new URL(landingUrl);
+} catch {
+  console.error("STAYXI_LANDING_URL must be a valid HTTPS URL.");
+  process.exit(2);
+}
+const allowedLandingHosts = new Set(["davenport-host-co.pages.dev"]);
+const isLocalLanding = parsedLandingUrl.protocol === "http:" && localHosts.has(parsedLandingUrl.hostname);
+const isProductionLanding = parsedLandingUrl.protocol === "https:" && allowedLandingHosts.has(parsedLandingUrl.hostname);
+if ((!isLocalLanding && !isProductionLanding) || parsedLandingUrl.username || parsedLandingUrl.password || parsedLandingUrl.pathname !== "/" || parsedLandingUrl.search || parsedLandingUrl.hash) {
+  console.error("Use the production Pages origin, or localhost for testing; do not include credentials or a path.");
+  process.exit(2);
+}
+
 const headers = { "x-admin-password": password };
 let failures = 0;
 
@@ -66,6 +85,18 @@ async function get(path, authenticated = false) {
   });
   if (response.status !== 200) {
     throw new Error(`${path} returned HTTP ${response.status}`);
+  }
+  return response;
+}
+
+async function getLanding(pathAndQuery) {
+  const response = await fetch(landingUrl + pathAndQuery, {
+    method: "GET",
+    redirect: "error",
+    signal: AbortSignal.timeout(10000),
+  });
+  if (response.status !== 200) {
+    throw new Error(`${pathAndQuery} returned HTTP ${response.status}`);
   }
   return response;
 }
@@ -132,6 +163,39 @@ await check("authenticated pilot activity API", async () => {
     throw new Error("audit API exposed scorecard or field contents");
   }
   return "metadata-only response; no scorecard values or property details are printed";
+});
+
+await check("landing stats render without JavaScript", async () => {
+  const html = await (await getLanding(`/?smoke=${Date.now()}`)).text();
+  const metrics = [...html.matchAll(/<dd class="metric-value"><span>([^<]*)<\/span><\/dd>/g)].map((match) => match[1]);
+  if (JSON.stringify(metrics) !== JSON.stringify(["$39", "10 min", "24/7", "0"])) {
+    throw new Error("stats markup is " + JSON.stringify(metrics));
+  }
+  if (/data-count/.test(html)) throw new Error("stats still depend on a count-up");
+  return "4 static values, no counter attributes";
+});
+
+await check("landing Portfolio plan lists five features", async () => {
+  const html = await (await getLanding(`/?smoke=${Date.now()}`)).text();
+  const lists = [...html.matchAll(/<ul class="plan-features">([\s\S]*?)<\/ul>/g)].map((match) => match[1]);
+  const bullets = [...(lists[1] || "").matchAll(/<\/svg><\/span>([^<]+)<\/li>/g)].map((match) => match[1]);
+  const expected = [
+    "Up to 4 properties, a number each",
+    "Everything in Solo",
+    "One dashboard across all four",
+    "A separate approved guide per property — no shared facts between houses",
+    "Weekly coverage review with suggested guide edits",
+  ];
+  if (JSON.stringify(bullets) !== JSON.stringify(expected)) {
+    throw new Error("Portfolio bullets are " + JSON.stringify(bullets));
+  }
+  return "5 bullets";
+});
+
+await check("landing JavaScript has no counter", async () => {
+  const js = await (await getLanding(`/main.js?smoke=${Date.now()}`)).text();
+  if (/runCounter|data-count/.test(js)) throw new Error("counter code is still served");
+  return "static values only";
 });
 
 console.log(failures ? `PRODUCTION SMOKE: FAIL (${failures} checks)` : "PRODUCTION SMOKE: PASS");
