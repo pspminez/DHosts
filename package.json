@@ -7,7 +7,7 @@
     "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs",
     "test:unit": "node --test bot/*.test.js",
     "typecheck": "tsc --noEmit",
-    "check:ui": "node tools/ui-check.cjs",
+    "check:ui": "node tools/ui-check.cjs && node tools/host-ui-check.cjs",
     "check:setup": "node tools/check-setup-docs.cjs",
     "check:production": "node tools/production-smoke.cjs",
     "shot": "node tools/screenshot.cjs",

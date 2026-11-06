@@ -72,6 +72,7 @@ function makeElement(tag) {
     },
     click() {},
     focus() {},
+    scrollIntoView() {},
     querySelectorAll() {
       return [];
     },
@@ -182,6 +183,7 @@ async function runPage({ html, script, routes }) {
     "renderLeads: renderLeads",
     "loadPilots: loadPilots",
     "loadHosts: loadHosts",
+    "manageHost: manageHost",
     "openPilot: openPilot",
     "showTab: showTab",
     "unlock: unlock",
@@ -439,6 +441,28 @@ const SESSIONS = {
     page.registry.hostsList.children.map((row) => [row.children[0].children[0].textContent, row.children[1].textContent]),
     [["Sunset Villa", "Portal on"], ["Harbor House", "Portal off"]],
   );
+  check("hosts summary counts the open portals", page.registry.hostsSummary.textContent, "1 of 2 portals on");
+  check(
+    "a live portal and an off portal use different pill styles",
+    page.registry.hostsList.children.map((row) => row.children[1].className),
+    ["pill live", "pill paused"],
+  );
+  check(
+    "each host row reports its guide size",
+    page.registry.hostsList.children.map((row) => row.children[2].textContent),
+    ["2 guide sections", "0 guide sections"],
+  );
+  check(
+    "only a live portal offers signing the host out",
+    page.registry.hostsList.children.map((row) => row.children[3].children.length),
+    [3, 2],
+  );
+  // Manage is the path from the Hosts list to the passcode field; it must land
+  // on the property editor rather than leaving the list up.
+  page.helpers.showTab("hosts");
+  await page.helpers.manageHost("SUNSET");
+  check("manage opens the property editor", page.registry.propView.classList.contains("hidden"), false);
+  check("manage closes the hosts list", page.registry.hostsView.classList.contains("hidden"), true);
   page.helpers.showTab("properties");
 
   // ---- change password ----------------------------------------------------

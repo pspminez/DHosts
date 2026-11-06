@@ -3993,7 +3993,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .hidden { display:none; }
   /* Cards in a grid, like the dashboards' tiles. As full-width rows each card
      stranded three numbers across a metre of empty surface. */
-  #propList { display:grid; grid-template-columns:repeat(auto-fill,minmax(23rem,1fr));
+  /* min() keeps a single card from being forced wider than a narrow phone,
+     which pushed the whole page into a sideways scroll. */
+  #propList { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(23rem,100%),1fr));
          gap:1rem; align-items:start; }
   .propcard { position:relative; border:1px solid var(--border); cursor:pointer;
          display:flex; flex-direction:column;

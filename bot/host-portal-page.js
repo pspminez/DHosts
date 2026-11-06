@@ -151,7 +151,7 @@ export const HOST_HTML = `<!DOCTYPE html>
   .guide-list { display:flex; flex-direction:column; gap:9px; }
   .guide-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr) auto;
     gap:9px; align-items:start; padding:11px; border:1px solid var(--line); border-radius:12px; background:var(--card-2); }
-  .guide-row input,.guide-row textarea { width:100%; padding:8px 10px; border:1px solid var(--line);
+  .guide-row input,.guide-row textarea { width:100%; min-width:0; padding:8px 10px; border:1px solid var(--line);
     border-radius:9px; background:rgba(11,9,8,.6); color:var(--text); font-size:12.5px; }
   .guide-row textarea { min-height:62px; resize:vertical; }
   .guide-row input::placeholder,.guide-row textarea::placeholder { color:var(--faint); }
@@ -235,13 +235,20 @@ export const HOST_HTML = `<!DOCTYPE html>
     .stat-row,.coverage-summary { grid-template-columns:1fr; }
     .activity-grid { grid-template-columns:1fr; }
     .chart-card { min-height:0; }
-    .guide-row { grid-template-columns:1fr 1fr; }
+    /* minmax(0,1fr), not 1fr: an input's min-content width was forcing the
+       columns wider than a phone, clipping the fields at the card edge. */
+    .guide-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
     .guide-row .guide-reply { grid-column:1 / -1; }
     .guide-row .remove { grid-column:2; grid-row:1; justify-self:end; margin-top:16px; }
     .q-row { grid-template-columns:minmax(0,1fr) 84px; }
     .q-row .q-theme { display:none; }
     .coverage-row { grid-template-columns:110px minmax(0,1fr); }
     .coverage-row .counts { grid-column:2; text-align:left; }
+  }
+
+  @media (max-width:600px) {
+    .guide-row { grid-template-columns:minmax(0,1fr); gap:4px 9px; }
+    .guide-row .remove { grid-column:1; grid-row:auto; justify-self:end; margin-top:0; }
   }
 </style>
 </head>
