@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Unit suite plus the landing-page and setup-docs checks.
+      - name: Tests
+        run: npm test
+
+  predeploy:
+    name: Pre-deploy gate
+    # The gate reads the live Worker and Pages deployment, so it only runs where
+    # the admin password secret exists: on main and on manual runs. Fork pull
+    # requests have no secrets and would fail here for the wrong reason.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Lighthouse needs a Chrome binary; the runner image does not ship one that
+      # CHROME_PATH points at. The action exports the installed path.
+      - id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Check the admin password secret is configured
+        env:
+          STAYXI_ADMIN_PASSWORD: ${{ secrets.STAYXI_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "${STAYXI_ADMIN_PASSWORD}" ]; then
+            echo "::error::Add STAYXI_ADMIN_PASSWORD as a repository secret; the live smoke check authenticates with it."
+            exit 1
+          fi
+
+      # Production smoke (Worker + landing page) then the Lighthouse floors.
+      - name: Pre-deploy gate
+        env:
+          STAYXI_ADMIN_PASSWORD: ${{ secrets.STAYXI_ADMIN_PASSWORD }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm run check:predeploy
