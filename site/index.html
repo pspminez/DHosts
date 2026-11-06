@@ -7,23 +7,24 @@
   <meta name="description" content="StayXI gives each vacation rental its own text number. Guests text a question about wifi, check-in or parking and get an answer from your approved guide in seconds. Only what needs you reaches you.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0908">
-  <!-- Absolute URLs use the host that serves the site today. Update them together
-       if the site moves to another origin. -->
-  <link rel="canonical" href="https://davenport-host-co.pages.dev/">
+  <!-- Absolute URLs use the production marketing origin. Update canonical/OG
+       here, privacy.html, terms.html, sitemap.xml, robots.txt, and site/_redirects
+       together if the site moves. -->
+  <link rel="canonical" href="https://stayxi.com/">
   <meta property="og:site_name" content="StayXI">
   <meta property="og:title" content="StayXI — The AI text line for vacation rentals">
   <meta property="og:description" content="Each property gets its own text number. Guests get an answer from your approved guide in seconds; only what needs you reaches you.">
-  <meta property="og:url" content="https://davenport-host-co.pages.dev/">
+  <meta property="og:url" content="https://stayxi.com/">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://davenport-host-co.pages.dev/og.png">
+  <meta property="og:image" content="https://stayxi.com/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="StayXI — the AI text line for vacation rentals">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="https://davenport-host-co.pages.dev/og.png">
+  <meta name="twitter:image" content="https://stayxi.com/og.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23121010'/%3E%3Cpath d='M18 44 32 18l14 26' fill='none' stroke='%23ff9a6b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='49' r='3' fill='%23ffc46b'/%3E%3C/svg%3E">
   <script>document.documentElement.classList.add("js");</script>
-  <link rel="preload" href="./fonts/fraunces-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body id="top">
@@ -55,8 +56,9 @@
         <li><a href="#faq">FAQ</a></li>
       </ul>
       <div class="nav-actions">
+        <a class="nav-admin" href="/admin">Admin login</a>
         <a class="btn btn-ghost" href="#cta">Talk to us</a>
-        <a class="btn btn-primary btn-sm" href="#pricing">Start free trial</a>
+        <a class="btn btn-primary btn-sm" href="#pricing">Request a trial</a>
       </div>
       <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
         <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -77,7 +79,12 @@
       </ul>
       <div class="mobile-actions">
         <a class="btn btn-secondary" href="#cta">Talk to us</a>
-        <a class="btn btn-primary" href="#pricing">Start free trial</a>
+        <a class="btn btn-primary" href="#pricing">Request a trial</a>
+      </div>
+      <div class="mobile-signin">
+        <p>Sign in</p>
+        <a href="/host">Host portal</a>
+        <a href="/admin">Admin panel</a>
       </div>
     </div>
   </header>
@@ -94,7 +101,7 @@
             <svg class="spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
             </svg>
-            14-day trial · no setup fee · no card
+            14-day trial · setup included · no card required
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
             </svg>
@@ -106,7 +113,7 @@
 
           <div class="hero-actions rise" style="--delay:.3s">
             <a class="btn btn-primary btn-lg" href="#pricing">
-              Start the 14-day trial
+              Request the 14-day trial
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
               </svg>
@@ -114,7 +121,7 @@
             <a class="btn btn-secondary btn-lg" href="#sample">Try the sample line</a>
           </div>
 
-          <p class="hero-note rise" style="--delay:.5s">From $39/mo per property. Cancel any time, no per-message fees.</p>
+          <p class="hero-note rise" style="--delay:.5s">From $39/mo per property. Invoiced manually, with no automatic renewal.</p>
         </div>
 
         <div class="dash-wrap">
@@ -373,7 +380,7 @@
             <div class="section-head left reveal">
               <p class="eyebrow">The interactive sample</p>
               <h2>Ask it like a guest would</h2>
-              <p>This is the real flow, running against a sample property. Ask a routine question and watch it answer; ask something it was never told and watch it hand over.</p>
+              <p>This calls the live demo endpoint against a sample property. Ask a routine question and watch it answer; ask something it was never told and watch it hand over.</p>
             </div>
             <ul class="checklist reveal" style="--delay:.1s">
               <li><span class="check-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>A normal phone number — no app, no login, no link to click.</li>
@@ -393,7 +400,7 @@
                   <p class="sample-title">Cedar House</p>
                   <p class="sample-sub">+1 (555) 014-2288 · sample line</p>
                 </div>
-                <span class="live-pill"><span class="dot-sm"></span>Live</span>
+                <span class="live-pill"><span class="dot-sm"></span>Demo</span>
                 <button class="icon-btn" id="resetSample" type="button" aria-label="Reset the sample conversation">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
                 </button>
@@ -403,9 +410,18 @@
                 <div class="msg bot">
                   <span class="msg-label">StayXI</span>
                   <p class="msg-text">Hi! This is the Cedar House assistant. Ask me anything about your stay.</p>
-                  <span class="msg-source">Answered from Guide · Guest line</span>
+                  <span class="msg-source">Answered from Guide · sample line</span>
                 </div>
               </div>
+
+              <form class="sample-composer" id="sampleForm">
+                <label class="sr-only" for="sampleInput">Ask the sample property a question</label>
+                <input class="sample-input" id="sampleInput" name="question" type="text" maxlength="2000" autocomplete="off" enterkeyhint="send" placeholder="Ask about wifi, check-in, parking…">
+                <button class="sample-send" id="sampleSend" type="submit">
+                  Send
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </button>
+              </form>
 
               <div class="sample-prompts">
                 <p class="prompt-label">Try asking</p>
@@ -513,7 +529,7 @@
         <div class="section-head reveal">
           <p class="eyebrow">Pricing</p>
           <h2>Priced per property, not per message</h2>
-          <p>Unlimited guest texts on every plan. No setup fee, no onboarding call, cancel any time.</p>
+          <p>Unlimited guest texts on every plan. Setup is included, and every trial is arranged by email before anything goes live.</p>
         </div>
 
         <div class="plans">
@@ -521,7 +537,7 @@
             <div class="plan-head"><h3>Solo</h3></div>
             <p class="plan-tagline">One property, fully answered.</p>
             <div class="plan-price"><strong>$39</strong><span>/mo</span></div>
-            <a class="btn btn-secondary btn-lg" href="#cta">Start free trial</a>
+            <a class="btn btn-secondary btn-lg" href="#cta">Request a trial</a>
             <ul class="plan-features">
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>1 property and its text number</li>
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Unlimited guest messages</li>
@@ -535,7 +551,7 @@
             <div class="plan-head"><h3>Portfolio</h3><span class="plan-tag">Most popular</span></div>
             <p class="plan-tagline">Up to 4 properties, one dashboard.</p>
             <div class="plan-price"><strong>$99</strong><span>/mo</span></div>
-            <a class="btn btn-primary btn-lg" href="#cta">Start free trial</a>
+            <a class="btn btn-primary btn-lg" href="#cta">Request a trial</a>
             <ul class="plan-features">
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Up to 4 properties, a number each</li>
               <li><span class="plan-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>Everything in Solo</li>
@@ -559,7 +575,7 @@
           </article>
         </div>
 
-        <p class="plan-note reveal" style="--delay:.15s">Monthly, cancel any time. Messaging and the number are included — no per-message charges, no annual lock-in. StayXI answers routine property questions; it is not an emergency service and never replaces a call to 911.</p>
+        <p class="plan-note reveal" style="--delay:.15s">Prices shown are monthly planning rates. Current trials are invoiced manually at the agreed rate, with no automatic renewal. Messaging and the number are included — no per-message charges, no annual lock-in. StayXI answers routine property questions; it is not an emergency service and never replaces a call to 911.</p>
       </div>
     </section>
 
@@ -618,14 +634,14 @@
                   <span>How long does setup really take?</span>
                   <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
                 </button>
-                <div class="faq-body" id="faq-a-7"><div class="faq-body-inner"><p class="faq-a">About ten minutes: send the welcome book you already give guests, correct anything the draft got wrong, and approve it. There is no call to book and no implementation project.</p></div></div>
+                <div class="faq-body" id="faq-a-7"><div class="faq-body-inner"><p class="faq-a">About ten minutes once we have the book: send the welcome guide you already give guests, correct anything the draft got wrong, and approve it. We set up and test the line with you before any guest uses it. There is no self-serve signup yet.</p></div></div>
               </li>
               <li class="faq-item">
                 <button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-a-8">
                   <span>What happens after the 14-day trial?</span>
                   <span class="faq-plus depth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
                 </button>
-                <div class="faq-body" id="faq-a-8"><div class="faq-body-inner"><p class="faq-a">It continues monthly at your plan rate unless you cancel, which you can do from the dashboard in a couple of clicks. No setup fee, no per-message charges, no annual commitment.</p></div></div>
+                <div class="faq-body" id="faq-a-8"><div class="faq-body-inner"><p class="faq-a">Before the trial ends, we will email you the next step. There is no automatic charge or renewal, and no self-serve cancellation yet — reply to that email or contact hello@stayxi.com to stop. No setup fee, no per-message charges, no annual commitment.</p></div></div>
               </li>
             </ul>
           </div>
@@ -642,18 +658,18 @@
             <div class="noise" aria-hidden="true"></div>
             <div class="cta-inner">
               <h2>Put your guest texts on autopilot</h2>
-              <p>Start a 14-day trial on one property. Send the welcome book you already have, approve the guide, and the line answers its first guest the same day.</p>
+              <p>Request a 14-day trial on one property. We will reply by email to arrange setup, agree the details, and test the line before any guest uses it.</p>
               <form class="cta-form" id="trialForm" novalidate>
                 <label class="sr-only" for="trialEmail">Email</label>
                 <input class="cta-input" id="trialEmail" name="email" type="email" required autocomplete="email" placeholder="you@yourhostcompany.com">
                 <button class="btn btn-primary btn-lg" id="trialSubmit" type="submit">
-                  <span class="btn-label">Start the trial</span>
+                  <span class="btn-label">Request the trial</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
                 </button>
               </form>
               <div class="success-pill" id="trialSuccess" hidden>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
-                Thanks — check your inbox for the next step.
+                Thanks — we will email you to arrange the trial and setup.
               </div>
               <div class="form-error" id="trialError" role="alert" hidden></div>
             </div>
@@ -693,7 +709,8 @@
           <ul class="footer-links">
             <li><a href="#top">About Davenport Host Co</a></li>
             <li><a href="mailto:hello@stayxi.com">Contact</a></li>
-            <li><a href="/admin">Host sign-in</a></li>
+            <li><a href="/host">Host sign-in</a></li>
+            <li><a href="/admin">Admin sign-in</a></li>
           </ul>
         </div>
         <div class="footer-col">

@@ -1,15 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  ADMIN_SESSION_REMEMBER_TTL_SECONDS,
   ADMIN_SESSION_TTL_SECONDS,
   adminSessionClearCookie,
   adminSessionSetCookie,
+  adminSessionTtlSeconds,
   adminSessionValid,
   createAdminSession,
   getCookieValue,
   hashSessionToken,
+  listAdminSessions,
   randomSessionToken,
   revokeAdminSession,
+  revokeAdminSessionById,
 } from "./admin-session.js";
 
 // Stand-in for the Workers KV namespace. It records every write so a test can
@@ -18,6 +22,7 @@ class FakeKV {
   constructor() {
     this.values = new Map();
     this.writes = [];
+    this.listSnapshots = new Map();
   }
   async get(key) {
     return this.values.has(key) ? this.values.get(key) : null;
@@ -28,6 +33,21 @@ class FakeKV {
   }
   async delete(key) {
     this.values.delete(key);
+  }
+  // Page size 1 so listing has to follow its cursor. The cursor walks a
+  // snapshot, like real KV, so revoking during a page walk skips nothing.
+  async list({ prefix = "", cursor } = {}) {
+    const snapshot = cursor === undefined
+      ? [...this.values.keys()].filter((name) => name.startsWith(prefix)).sort()
+      : this.listSnapshots.get(prefix) || [];
+    if (cursor === undefined) this.listSnapshots.set(prefix, snapshot);
+    const start = cursor ? Number(cursor) : 0;
+    const end = Math.min(start + 1, snapshot.length);
+    return {
+      keys: snapshot.slice(start, end).map((name) => ({ name })),
+      list_complete: end >= snapshot.length,
+      cursor: end >= snapshot.length ? undefined : String(end),
+    };
   }
 }
 
@@ -48,6 +68,19 @@ test("creates a session token that is stored only as a hash", async () => {
     "no stored key contains the token",
   );
   assert.equal(write.options.expirationTtl, ADMIN_SESSION_TTL_SECONDS);
+});
+
+test("session lifetime is configurable and invalid values fall back safely", () => {
+  assert.equal(ADMIN_SESSION_TTL_SECONDS, 12 * 60 * 60);
+  assert.equal(ADMIN_SESSION_REMEMBER_TTL_SECONDS, 30 * 24 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({}, false), 12 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({}, true), 30 * 24 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_HOURS: "4" }, false), 4 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_REMEMBER_DAYS: "7" }, true), 7 * 24 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_HOURS: "nope" }, false), 12 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_REMEMBER_DAYS: "0" }, true), 30 * 24 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_HOURS: "1000" }, false), 30 * 24 * 60 * 60);
+  assert.equal(adminSessionTtlSeconds({ ADMIN_SESSION_REMEMBER_DAYS: "400" }, true), 365 * 24 * 60 * 60);
 });
 
 test("generates a distinct token every time", () => {
@@ -114,12 +147,66 @@ test("the session cookie is HttpOnly, Secure, and Strict", () => {
   assert.match(cookie, /SameSite=Strict/);
   assert.match(cookie, /Path=\//);
   assert.match(cookie, new RegExp(`Max-Age=${ADMIN_SESSION_TTL_SECONDS}`));
-  assert.equal(ADMIN_SESSION_TTL_SECONDS, 60 * 60 * 24 * 3);
+
+  const remembered = adminSessionSetCookie(randomSessionToken(), ADMIN_SESSION_REMEMBER_TTL_SECONDS);
+  assert.match(remembered, new RegExp(`Max-Age=${ADMIN_SESSION_REMEMBER_TTL_SECONDS}`));
+
+  const browserSession = adminSessionSetCookie(randomSessionToken(), 0);
+  assert.doesNotMatch(browserSession, /Max-Age/);
+  assert.match(browserSession, /HttpOnly/);
 
   const cleared = adminSessionClearCookie();
   assert.match(cleared, /^admin_session=;/);
   assert.match(cleared, /Max-Age=0/);
   assert.match(cleared, /HttpOnly/);
+});
+
+test("lists sessions with metadata, marks the current one, and revokes another by id", async () => {
+  const kv = new FakeKV();
+  await createAdminSession(kv, "current-token", {
+    id: "CURRENT",
+    createdAt: "2026-11-05T12:00:00.000Z",
+    ip: "203.0.113.5",
+    userAgent: "Chrome on Windows",
+  });
+  await createAdminSession(kv, "other-token", {
+    id: "OTHER",
+    createdAt: "2026-11-04T12:00:00.000Z",
+    ip: "198.51.100.9",
+    userAgent: "Safari on macOS",
+  });
+
+  const listed = await listAdminSessions(kv, "current-token");
+  assert.deepEqual(
+    listed.map((session) => [session.id, session.current, session.ip, session.userAgent]),
+    [
+      ["CURRENT", true, "203.0.113.5", "Chrome on Windows"],
+      ["OTHER", false, "198.51.100.9", "Safari on macOS"],
+    ],
+  );
+  assert.ok(listed.every((session) => !session.legacy));
+
+  assert.deepEqual(await revokeAdminSessionById(kv, "OTHER", "current-token"), { revoked: true, current: false });
+  assert.equal(await adminSessionValid(kv, "other-token"), false);
+
+  // The server refuses the caller's own session; signing out is a separate path.
+  assert.deepEqual(await revokeAdminSessionById(kv, "CURRENT", "current-token"), { revoked: false, current: true });
+  assert.equal(await adminSessionValid(kv, "current-token"), true);
+});
+
+test("a legacy session value still signs in and can be listed and revoked", async () => {
+  const kv = new FakeKV();
+  const token = "legacy-session-token";
+  await kv.put(`admin:session:${await hashSessionToken(token)}`, "1");
+
+  assert.equal(await adminSessionValid(kv, token), true);
+  const listed = await listAdminSessions(kv, "");
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].legacy, true);
+  assert.match(listed[0].id, /^legacy-/);
+
+  assert.deepEqual(await revokeAdminSessionById(kv, listed[0].id, ""), { revoked: true, current: false });
+  assert.equal(await adminSessionValid(kv, token), false);
 });
 
 test("reads the session cookie out of a multi-cookie header", () => {

@@ -133,41 +133,36 @@
 
   /* ---------- Sample conversation ---------- */
 
-  var replies = [
-    {
-      q: "What is the wifi password?",
-      a: "Network: CedarGuest · Password: porch-light-42",
-      source: "Wifi & parking"
-    },
-    {
-      q: "What time is check-in?",
-      a: "Check-in starts at 3pm. Door and lockbox codes aren't included in the demo — your host shares access details directly.",
-      source: "Check-in & arrival"
-    },
-    {
-      q: "Where do we park?",
-      a: "One car in the driveway. A second car can park on the street past the mailbox.",
-      source: "Wifi & parking"
-    },
-    {
-      q: "Which bin goes out tonight?",
-      a: "Trash goes out Tuesday night; recycling every other Thursday.",
-      source: "Departure"
-    },
-    {
-      q: "Can we bring our dog?",
-      a: "That is not in the guide, so it comes to you with the guest and the question attached.",
-      source: "No guide match",
-      routed: true
-    }
+  // These are only the offered questions. Every answer comes from the Worker's
+  // /api/chat endpoint, so the page demonstrates the real demo routing instead
+  // of a local script pretending to be one.
+  var samplePrompts = [
+    "What is the wifi password?",
+    "What time is check-in?",
+    "Where do we park?",
+    "Which bin goes out tonight?",
+    "Can we bring our dog?"
   ];
+
+  var SAMPLE_SECTIONS = {
+    faq_wi_fi: "Wifi & parking",
+    faq_parking: "Wifi & parking",
+    faq_check_in: "Check-in & arrival",
+    faq_checkout: "Departure",
+    faq_trash: "Departure",
+    faq_quiet_hours: "House rules",
+    faq_gate_access: "Access details"
+  };
 
   var sampleBox = document.getElementById("sampleMessages");
   var promptBox = document.getElementById("samplePrompts");
+  var sampleForm = document.getElementById("sampleForm");
+  var sampleInput = document.getElementById("sampleInput");
+  var sampleSend = document.getElementById("sampleSend");
   var resetBtn = document.getElementById("resetSample");
   var sampleIntro = sampleBox ? sampleBox.innerHTML : "";
   var sampleBusy = false;
-  var sampleTimer = null;
+  var sampleGeneration = 0;
 
   function scrollSample() {
     if (sampleBox) sampleBox.scrollTop = sampleBox.scrollHeight;
@@ -192,9 +187,7 @@
     if (source) {
       var chip = document.createElement("span");
       chip.className = "msg-source" + (routed ? " routed" : "");
-      chip.textContent = routed
-        ? "Routed to you · " + source
-        : "Answered from Guide · " + source;
+      chip.textContent = source;
       wrap.appendChild(chip);
     }
 
@@ -204,18 +197,48 @@
 
   function setSampleBusy(busy) {
     sampleBusy = busy;
+    if (sampleSend) sampleSend.disabled = busy;
     if (!promptBox) return;
     promptBox.querySelectorAll("button").forEach(function (button) {
       button.disabled = busy;
     });
   }
 
-  function askSample(index, button) {
-    if (sampleBusy || !replies[index]) return;
-    var reply = replies[index];
+  function removeTyping(node) {
+    if (node && node.parentNode) node.parentNode.removeChild(node);
+  }
+
+  function sampleOutcome(data) {
+    if (data.action === "answer") {
+      var source = data.intentKey === "faq_gate_access"
+        ? "Sample guide · access codes withheld"
+        : "Answered from Guide · " + (SAMPLE_SECTIONS[data.intentKey] || "Sample guide");
+      return { text: data.reply, source: source, routed: false };
+    }
+    if (data.action === "emergency") {
+      return { text: data.reply, source: "Safety reply · call 911 if there is danger", routed: true };
+    }
+    if (data.action === "escalate") {
+      return { text: data.reply, source: "Routed to host · high-risk question", routed: true };
+    }
+    if (data.action === "not_covered") {
+      return { text: data.reply, source: "Routed to host · not covered by the sample guide", routed: true };
+    }
+    if (data.action === "off_topic") {
+      return { text: data.reply, source: "Outside property questions", routed: false };
+    }
+    if (data.action === "clarify") {
+      return { text: data.reply, source: "Needs a clearer question", routed: false };
+    }
+    return { text: data.reply, source: "Sample reply", routed: false };
+  }
+
+  function askSample(question, button) {
+    if (sampleBusy) return;
+    var generation = ++sampleGeneration;
     setSampleBusy(true);
     if (button) button.classList.add("done");
-    addBubble("guest", reply.q);
+    addBubble("guest", question);
 
     var typing = document.createElement("div");
     typing.className = "typing";
@@ -226,34 +249,72 @@
       scrollSample();
     }
 
-    sampleTimer = window.setTimeout(function () {
-      if (typing.parentNode) typing.parentNode.removeChild(typing);
-      addBubble("bot", reply.a, reply.source, reply.routed);
-      setSampleBusy(false);
-      sampleTimer = null;
-    }, 850);
+    import("./api.js")
+      .then(function (api) { return api.sendDemoMessage(question); })
+      .then(function (data) {
+        if (generation !== sampleGeneration) return;
+        removeTyping(typing);
+        // The demo limit comes back as a 200 with a friendly reply and an error
+        // code, so surface that reply instead of the generic outage message.
+        if (data && data.error) {
+          var limited = new Error(data.error);
+          limited.userMessage = data.reply;
+          throw limited;
+        }
+        if (!data || typeof data.reply !== "string" || !data.reply) {
+          throw new Error("The sample line returned an empty reply.");
+        }
+        var outcome = sampleOutcome(data);
+        addBubble("bot", outcome.text, outcome.source, outcome.routed);
+      })
+      .catch(function (error) {
+        if (generation !== sampleGeneration) return;
+        removeTyping(typing);
+        var message = error && error.userMessage
+          ? error.userMessage
+          : "The sample line is unavailable right now. Please try again, or email hello@stayxi.com.";
+        addBubble("bot", message, "Demo unavailable", true);
+      })
+      .then(function () {
+        if (generation !== sampleGeneration) return;
+        setSampleBusy(false);
+      });
   }
 
   if (promptBox) {
-    replies.forEach(function (reply, index) {
+    samplePrompts.forEach(function (question) {
       var button = document.createElement("button");
       button.type = "button";
       button.className = "prompt";
-      button.textContent = reply.q;
-      button.addEventListener("click", function () { askSample(index, button); });
+      button.textContent = question;
+      button.addEventListener("click", function () { askSample(question, button); });
       promptBox.appendChild(button);
+    });
+  }
+
+  if (sampleForm && sampleInput) {
+    sampleForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (sampleBusy) return;
+      var question = sampleInput.value.trim();
+      if (!question) {
+        sampleInput.focus();
+        return;
+      }
+      sampleInput.value = "";
+      askSample(question, null);
     });
   }
 
   if (resetBtn) {
     resetBtn.addEventListener("click", function () {
-      if (sampleTimer !== null) window.clearTimeout(sampleTimer);
-      sampleTimer = null;
+      sampleGeneration += 1;
       setSampleBusy(false);
       if (sampleBox) {
         sampleBox.innerHTML = sampleIntro;
         scrollSample();
       }
+      if (sampleInput) sampleInput.value = "";
       if (promptBox) {
         promptBox.querySelectorAll(".prompt.done").forEach(function (button) {
           button.classList.remove("done");
@@ -346,7 +407,7 @@
         .catch(function (error) {
           showError(error instanceof Error ? error.message : "Something went wrong. Email hello@stayxi.com instead.");
           submitBtn.disabled = false;
-          if (label) label.textContent = "Start the trial";
+          if (label) label.textContent = "Request the trial";
         });
     });
   }

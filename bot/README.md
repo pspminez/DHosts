@@ -209,7 +209,7 @@ npx wrangler d1 execute davenport-host-co-db --remote --command "INSERT INTO pro
 
 *Option A (admin UI — easiest):*
 1. Open `https://stayxi.com/admin` once the Pages custom domain is configured (the current temporary URL is `https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin`)
-2. Enter your `ADMIN_PASSWORD`
+2. Sign in with `ADMIN_PASSWORD`, then change it under **Account** so the deployment secret is no longer the sign-in password
 3. Select the property → import reviewed `secrets` and `answers` JSON through **Knowledge import** (start with `bot/knowledge/template.json`; copy approved examples into `answers`). Sensitive access and critical answers are staged for review before publishing.
 
 *Option B (CLI — non-critical data only; bypasses critical-item review):*
@@ -298,7 +298,11 @@ Or edit the JSON in Cloudflare Dashboard → Workers KV → `PROPERTIES` → fin
 | `TWILIO_ACCOUNT_SID` | Identifies your Twilio account |
 | `TWILIO_AUTH_TOKEN` | Signs webhook requests + sends outbound SMS |
 | `OPENROUTER_API_KEY` | Calls Claude (via OpenRouter) for unscripted questions |
-| `ADMIN_PASSWORD` | Protects the `/admin` editor and all `/admin/api/*` routes |
+| `ADMIN_PASSWORD` | Bootstrap/recovery password for `/admin` and every `/admin/api/*` route. A password changed from **Account** is stored as a salted PBKDF2 hash in KV and takes precedence; delete that KV key (`admin:credential`) to fall back to the secret. |
+
+The **Account** tab lists active admin sessions, can revoke any browser except the current one, and shows recent `admin_audit_log` activity (password changes, revoked sessions, and property or pilot changes). Sign-in is throttled per IP: five wrong passwords within fifteen minutes lock that address for fifteen minutes, and the sign-in card shows the retry time; a successful sign-in clears the count.
+
+A normal admin session lasts `ADMIN_SESSION_HOURS` (default 12) and uses a browser-session cookie, so closing the browser also ends it. Ticking **Keep me signed in** on the sign-in card uses `ADMIN_SESSION_REMEMBER_DAYS` (default 30) and a persistent cookie. Both values are deployment settings in `wrangler.toml`; missing, non-numeric, or non-positive values fall back to the defaults. Password changes are recorded in `admin_audit_log` as `admin_password_changed`, with no password, hash, or salt in the audit row.
 
 ---
 

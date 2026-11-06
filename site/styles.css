@@ -4,6 +4,19 @@
   ember accent, aurora hero, depth edges instead of painted borders.
 */
 
+/* One face for the whole site, matching the admin panel. Variable weights cover
+   every heading and body size without a second request. */
+@font-face {
+  font-family: "DM Sans";
+  src: url("fonts/dm-sans-latin.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
 @font-face {
   font-family: "Fraunces Display";
   src: url("fonts/fraunces-600-latin.woff2") format("woff2");
@@ -43,8 +56,8 @@
   --window: 20px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --shadow-glow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces Display", Georgia, "Times New Roman", serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 *,
@@ -95,8 +108,8 @@ h1, h2, h3, h4, p, ul, ol, dl, dd, dt, figure {
   padding: 0;
 }
 
-/* Display face: headings, plan prices and metric figures only. Body copy and
-   UI text stay on the system stack. */
+/* Display type uses the same family as body copy; weight and tracking carry
+   the hierarchy instead of a second face. */
 h1,
 h2,
 .metric-value,
@@ -478,6 +491,28 @@ html.js .reveal.in {
   gap: 8px;
 }
 
+.nav-admin {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  border-radius: 12px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--muted);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-admin:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--fg);
+}
+
+@media (max-width: 1023px) {
+  .nav-actions .btn-ghost { display: none; }
+}
+
 .menu-btn {
   display: grid;
   width: 44px;
@@ -538,6 +573,43 @@ html.js .reveal.in {
   margin-top: 8px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
+}
+
+.mobile-signin {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.mobile-signin p {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.mobile-signin a {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--control);
+  background: rgb(255 255 255 / 0.04);
+  font-size: 14px;
+  color: var(--muted);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.mobile-signin a:hover {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--fg);
 }
 
 @media (min-width: 768px) {
@@ -1676,6 +1748,64 @@ section[id] { scroll-margin-top: 96px; }
   50% { opacity: 1; }
 }
 
+.sample-composer {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+.sample-input {
+  min-width: 0;
+  min-height: 46px;
+  flex: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: rgb(11 9 8 / 0.6);
+  padding: 0 13px;
+  font-size: 16px;
+  color: var(--fg);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.08);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sample-input::placeholder { color: var(--faint); }
+
+.sample-input:focus {
+  outline: none;
+  border-color: rgb(255 122 69 / 0.7);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(255 122 69 / 0.4);
+}
+
+.sample-send {
+  display: inline-flex;
+  min-height: 46px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 12px;
+  background: var(--fg);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 8px 24px -12px rgb(255 255 255 / 0.5);
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.sample-send:hover { background: #fff; }
+
+.sample-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.sample-send svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 .sample-prompts {
   border-top: 1px solid var(--line);
   padding: 16px;
@@ -2127,8 +2257,7 @@ section[id] { scroll-margin-top: 96px; }
   font-size: 46px;
   font-weight: 600;
   line-height: 1;
-  /* Fraunces puts the currency glyph tight against the first digit, so the
-     -0.04em the sans stack used closes the gap entirely. */
+  /* Keep the currency glyph from crowding the first digit at display sizes. */
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
 }

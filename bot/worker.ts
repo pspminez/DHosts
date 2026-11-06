@@ -38,22 +38,58 @@ import { parseHostReply } from "./host-replies.js";
 import {
   adminSessionClearCookie,
   adminSessionSetCookie,
+  adminSessionTtlSeconds,
   adminSessionValid,
   createAdminSession,
   getCookieValue,
+  listAdminSessions,
   randomSessionToken,
   revokeAdminSession,
+  revokeAdminSessionById,
 } from "./admin-session.js";
+import { clearLoginFailures, loginLock, noteLoginFailure } from "./admin-login.js";
+import {
+  adminPasswordConfigured,
+  adminPasswordProblem,
+  revokeAllAdminSessions,
+  saveAdminPassword,
+  verifyAdminPassword,
+} from "./admin-password.js";
 import { buildAnalytics, buildMix, sampleAnalytics } from "./analytics.js";
 import { buildDayParts, sampleOperations } from "./operations.js";
 import { buildInsights, sampleInsights } from "./insights.js";
 import { canLaunchPilot, measurePilot, normaliseKnowledge, pilotCode } from "./pilots.js";
+import {
+  buildHostOverview,
+  clearHostLoginFailures,
+  clearHostPasscode,
+  createHostSession,
+  getHostSession,
+  hostLoginLock,
+  hostPasscodeProblem,
+  hostPortalStatus,
+  hostRange,
+  hostSessionClearCookie,
+  hostSessionCookie,
+  hostSessionTtlSeconds,
+  loadHostPasscode,
+  normalizeHostGuide,
+  noteHostLoginFailure,
+  revokeAllHostSessions,
+  revokeHostSession,
+  sampleHostOverview,
+  saveHostPasscode,
+  verifyHostPasscode,
+} from "./host-portal.js";
+import { HOST_HTML } from "./host-portal-page.js";
 
 interface Env {
   OPENROUTER_API_KEY: string;
   TWILIO_ACCOUNT_SID: string;
   TWILIO_AUTH_TOKEN: string;
   ADMIN_PASSWORD: string;
+  ADMIN_SESSION_HOURS?: string;
+  ADMIN_SESSION_REMEMBER_DAYS?: string;
   PUBLIC_URL?: string;
   VALIDATE_SIGNATURE?: string;
   // Per-deployment entitlement for the paid guest-question report. See
@@ -147,7 +183,7 @@ function isCriticalKnowledgeItem(item: { topic?: string; keywords?: string[]; re
 
 async function recordAdminAudit(
   env: Env,
-  propertyId: string,
+  propertyId: string | null,
   action: string,
   changedFields: string[],
 ) {
@@ -178,6 +214,9 @@ export default {
       }
       if ((request.method === "POST" || request.method === "OPTIONS") && url.pathname === "/api/chat") {
         return await handleDemoChat(request, env);
+      }
+      if (url.pathname === "/host" || url.pathname === "/host/" || url.pathname.startsWith("/host/api/")) {
+        return await handleHost(request, env, url);
       }
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
         return await handleAdmin(request, env, url);
@@ -1661,14 +1700,6 @@ async function handleLeadCapture(request: Request, env: Env) {
  * Admin page + API
  * ------------------------------------------------------------------ */
 
-/** Constant-time string compare for the admin password. */
-function timingSafeEqualStr(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 function insightsEntitled(env: Env): boolean {
   return String(env.INSIGHTS_ENTITLED || "").toLowerCase() === "true";
 }
@@ -1722,6 +1753,253 @@ async function loadAwaitingQueue(env: Env) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Host portal
+ * ------------------------------------------------------------------ */
+
+function hostJson(data: unknown, status = 200, extra: Record<string, string> = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...extra },
+  });
+}
+
+function hostLockout(result: { retryAfterSeconds: number }) {
+  const minutes = Math.max(1, Math.ceil(result.retryAfterSeconds / 60));
+  return hostJson({
+    error: `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    retryAfterSeconds: result.retryAfterSeconds,
+  }, 429, { "Retry-After": String(result.retryAfterSeconds) });
+}
+
+async function handleHost(request: Request, env: Env, url: URL) {
+  // The page itself is public and contains no data. Every /host/api/* call
+  // below is authenticated separately with the host session cookie.
+  if (url.pathname === "/host" || url.pathname === "/host/") {
+    return new Response(HOST_HTML, {
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store, must-revalidate" },
+    });
+  }
+
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const token = getCookieValue(cookieHeader, "host_session");
+  const session = token ? await getHostSession(env.PROPERTIES, token) : null;
+
+  if (url.pathname === "/host/api/login" && request.method === "POST") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return hostJson({ error: "Invalid JSON" }, 400);
+    }
+    const data = body && typeof body === "object" && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {};
+    const houseCode = typeof data.houseCode === "string" ? data.houseCode.trim().toUpperCase() : "";
+    const passcode = typeof data.passcode === "string" ? data.passcode : "";
+    if (!/^[A-Z0-9_-]{2,20}$/.test(houseCode) || !passcode) {
+      return hostJson({ error: "Enter your house code and passcode." }, 400);
+    }
+
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const lock = await hostLoginLock(env.PROPERTIES, ip, houseCode);
+    if (lock.locked) return hostLockout(lock);
+
+    const property = await env.DB.prepare(
+      `SELECT p.id AS id, COALESCE(NULLIF(p.display_name, ''), p.id) AS name,
+              COALESCE(h.name, '') AS hostName
+       FROM properties p LEFT JOIN hosts h ON h.id = p.host_id WHERE p.id = ?1`
+    ).bind(houseCode).first<{ id: string; name: string; hostName: string }>();
+    const credential = property ? await loadHostPasscode(env.PROPERTIES, houseCode) : null;
+    const valid = credential ? await verifyHostPasscode(credential, passcode) : false;
+    if (!property || !valid) {
+      const failure = await noteHostLoginFailure(env.PROPERTIES, ip, houseCode);
+      if (failure.locked) return hostLockout(failure);
+      return hostJson({ error: "Incorrect house code or passcode." }, 401);
+    }
+
+    await clearHostLoginFailures(env.PROPERTIES, ip, houseCode);
+    const remember = data.remember === true;
+    const ttl = hostSessionTtlSeconds(remember);
+    const newToken = randomSessionToken();
+    await createHostSession(env.PROPERTIES, newToken, {
+      propertyId: property.id,
+      houseCode,
+      hostName: property.hostName,
+    }, ttl);
+    return hostJson({ success: true, property }, 200, {
+      "Set-Cookie": hostSessionCookie(newToken, remember ? ttl : 0),
+    });
+  }
+
+  if (url.pathname === "/host/api/logout" && request.method === "POST") {
+    if (token) await revokeHostSession(env.PROPERTIES, token);
+    return hostJson({ success: true }, 200, { "Set-Cookie": hostSessionClearCookie() });
+  }
+
+  if (url.pathname === "/host/api/overview" && request.method === "GET") {
+    if (url.searchParams.get("sample") === "1") {
+      return hostJson(sampleHostOverview(url.searchParams.get("range") || "stay"));
+    }
+    if (!session) return hostJson({ error: "Sign in to view this dashboard." }, 401);
+
+    const propertyId = session.propertyId;
+    const range = hostRange(url.searchParams.get("range"));
+    const since = range.id === "all" ? "-30 days" : "-7 days";
+    // "Today" is the calendar day rather than a rolling 24 hours: a host
+    // opening the portal in the morning expects last night's messages to have
+    // rolled over. Other ranges are rolling windows.
+    const inRange = range.id === "today"
+      ? "date(m.created_at) = date('now')"
+      : "m.created_at >= datetime('now', ?2)";
+    const aiInRange = range.id === "today"
+      ? "date(created_at) = date('now')"
+      : "created_at >= datetime('now', ?2)";
+
+    try {
+      const statsStmt = env.DB.prepare(
+        `SELECT COUNT(*) AS inbound,
+                COALESCE(SUM(CASE WHEN m.resolution IN ('keyword','kb','ai') THEN 1 ELSE 0 END), 0) AS answered,
+                COALESCE(SUM(CASE WHEN m.resolution IN ('escalated','escalate','emergency') THEN 1 ELSE 0 END), 0) AS routed
+         FROM messages m
+         WHERE m.property_id = ?1 AND m.direction = 'in' AND ${inRange}`
+      );
+      const latencyStmt = env.DB.prepare(
+        `SELECT latency_ms AS latencyMs FROM ai_interactions
+         WHERE property_id = ?1 AND latency_ms > 0 AND ${aiInRange}
+         ORDER BY created_at DESC LIMIT 500`
+      );
+      const coverageStmt = env.DB.prepare(
+        `SELECT COALESCE(m.intent_key, 'unknown') AS intentKey, COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN m.resolution IN ('keyword','kb','ai') THEN 1 ELSE 0 END), 0) AS answered,
+                COALESCE(SUM(CASE WHEN m.resolution IN ('escalated','escalate','emergency') THEN 1 ELSE 0 END), 0) AS routed
+         FROM messages m
+         WHERE m.property_id = ?1 AND m.direction = 'in' AND ${inRange}
+         GROUP BY m.intent_key ORDER BY total DESC LIMIT 20`
+      );
+
+      const [property, statsRow, latencies, daily, recent, questions, coverage] = await Promise.all([
+        env.DB.prepare(
+          `SELECT p.id AS id, COALESCE(NULLIF(p.display_name, ''), p.id) AS name,
+                  COALESCE(h.name, '') AS hostName
+           FROM properties p LEFT JOIN hosts h ON h.id = p.host_id WHERE p.id = ?1`
+        ).bind(propertyId).first<{ id: string; name: string; hostName: string }>(),
+        (range.id === "today" ? statsStmt.bind(propertyId) : statsStmt.bind(propertyId, since))
+          .first<{ inbound: number | null; answered: number | null; routed: number | null }>(),
+        (range.id === "today" ? latencyStmt.bind(propertyId) : latencyStmt.bind(propertyId, since))
+          .all<{ latencyMs: number | null }>(),
+        env.DB.prepare(
+          `SELECT date(created_at) AS day, COUNT(*) AS inbound
+           FROM messages
+           WHERE property_id = ?1 AND direction = 'in' AND created_at >= datetime('now', '-6 days')
+           GROUP BY day ORDER BY day`
+        ).bind(propertyId).all<{ day: string; inbound: number }>(),
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(body_redacted, ''), 'Message received') AS text,
+                  resolution, intent_key AS intentKey,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', created_at) AS at
+           FROM messages
+           WHERE property_id = ?1 AND direction = 'in'
+           ORDER BY created_at DESC LIMIT 6`
+        ).bind(propertyId).all<{ text: string; resolution: string | null; intentKey: string | null; at: string }>(),
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(body_redacted, ''), 'Message received') AS text,
+                  resolution, intent_key AS intentKey,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', created_at) AS at
+           FROM messages
+           WHERE property_id = ?1 AND direction = 'in'
+           ORDER BY created_at DESC LIMIT 30`
+        ).bind(propertyId).all<{ text: string; resolution: string | null; intentKey: string | null; at: string }>(),
+        (range.id === "today" ? coverageStmt.bind(propertyId) : coverageStmt.bind(propertyId, since))
+          .all<{ intentKey: string; total: number; answered: number; routed: number }>(),
+      ]);
+
+      if (!property) return hostJson({ error: "Property not found" }, 404);
+
+      // Critical answers (codes, safety, check-in) are never shown or edited in
+      // the host portal; the operator manages those through admin review.
+      const kv = await env.PROPERTIES.get<{ answers?: { topic?: string; keywords?: string[]; reply?: string }[] }>(
+        `prop:${propertyId}`,
+        "json",
+      );
+      const answers = (kv?.answers || []).filter((answer) => !isCriticalKnowledgeItem(answer));
+
+      return hostJson(buildHostOverview({
+        sample: false,
+        range: range.id,
+        property,
+        stats: statsRow || {},
+        latencies: (latencies.results || []).map((row) => row.latencyMs),
+        daily: daily.results || [],
+        recent: recent.results || [],
+        questions: questions.results || [],
+        coverage: coverage.results || [],
+        answers,
+      }));
+    } catch (err) {
+      console.error("Host overview query failed:", errorMessage(err) || err);
+      return hostJson({ error: "Could not load the dashboard." }, 500);
+    }
+  }
+
+  if (url.pathname === "/host/api/guide" && request.method === "PUT") {
+    if (!session) return hostJson({ error: "Sign in to update the guide." }, 401);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return hostJson({ error: "Invalid JSON" }, 400);
+    }
+    const data = body && typeof body === "object" && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {};
+    let answers: { topic: string; keywords: string[]; reply: string }[];
+    try {
+      answers = normalizeHostGuide(data.answers);
+    } catch (err) {
+      return hostJson({ error: errorMessage(err) || "Invalid guide." }, 400);
+    }
+    if (answers.some((answer) => isCriticalKnowledgeItem(answer))) {
+      return hostJson({
+        error: "Access, safety and check-in answers are managed by StayXI. Ask us to update those.",
+      }, 403);
+    }
+
+    try {
+      const exists = await env.DB.prepare("SELECT id FROM properties WHERE id = ?1")
+        .bind(session.propertyId)
+        .first<{ id: string }>();
+      if (!exists) return hostJson({ error: "Property not found" }, 404);
+
+      const key = `prop:${session.propertyId}`;
+      const current = ((await env.PROPERTIES.get(key, "json")) || {}) as Record<string, unknown> & {
+        answers?: { topic?: string; keywords?: string[]; reply?: string }[];
+      };
+      // Preserve everything the host cannot see: secrets, addons and the
+      // operator-managed critical answers stay exactly as they were.
+      const protectedAnswers = (Array.isArray(current.answers) ? current.answers : [])
+        .filter((answer) => isCriticalKnowledgeItem(answer));
+      await env.PROPERTIES.put(key, JSON.stringify({
+        ...current,
+        answers: [...answers, ...protectedAnswers],
+      }));
+      try {
+        await env.DB.prepare(
+          "INSERT INTO admin_audit_log (property_id, actor_id, action, changed_fields_json) VALUES (?1, 'host_portal', 'host_guide_updated', ?2)"
+        ).bind(session.propertyId, JSON.stringify(["answers"])).run();
+      } catch (auditErr) {
+        console.error("Could not audit the host guide update:", errorMessage(auditErr) || auditErr);
+      }
+      return hostJson({ success: true, answers });
+    } catch (err) {
+      console.error("Host guide update failed:", errorMessage(err) || err);
+      return hostJson({ error: "Could not save the guide." }, 500);
+    }
+  }
+
+  return hostJson({ error: "Not found" }, 404);
+}
+
 async function handleAdmin(request: Request, env: Env, url: URL) {
   // Login logger - tracks all admin access attempts
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -1739,8 +2017,15 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     "Content-Type": "application/json",
     "Cache-Control": "no-store"
   };
-  const adminJson = (data: unknown, status = 200) =>
-    new Response(JSON.stringify(data), { status, headers: corsHeaders });
+  const adminJson = (data: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
+    new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, ...extraHeaders } });
+  const loginLockout = (retryAfterSeconds: number) => {
+    const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+    return adminJson({
+      error: `Too many failed sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      retryAfterSeconds,
+    }, 429, { "Retry-After": String(retryAfterSeconds) });
+  };
 
   // Handle preflight
   if (request.method === "OPTIONS") {
@@ -1750,23 +2035,24 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
 
   // Admin API: every request must carry either the admin password header (used
   // only to establish a session) or a valid session cookie. Fails closed (503)
-  // when ADMIN_PASSWORD is not configured — the previous open endpoints let
-  // anyone read gate codes and rewrite property data.
+  // when no password is configured at all — the previous open endpoints let
+  // anyone read gate codes and rewrite property data. The password is the
+  // panel-changed credential when one exists, otherwise ADMIN_PASSWORD.
   const isSessionEndpoint = url.pathname === "/admin/api/login" || url.pathname === "/admin/api/logout";
 
   if (url.pathname.startsWith("/admin/api/") && !isSessionEndpoint) {
-    const expected = env.ADMIN_PASSWORD;
-    if (!expected) {
-      console.error("Admin API access denied: ADMIN_PASSWORD is not configured.");
-      return adminJson({ error: "Admin access is not configured" }, 503);
-    }
-
     // Accept either the x-admin-password header or a valid session cookie. The
     // cookie is a random token validated against KV, never the password itself.
     const got = request.headers.get("x-admin-password") || "";
-    const headerOk = timingSafeEqualStr(got, expected);
+    const headerOk = got ? await verifyAdminPassword(env, got) : false;
     const sessionOk = !headerOk && await adminSessionValid(env.PROPERTIES, adminSessionCookie);
     if (!headerOk && !sessionOk) {
+      // Check configuration only after a failed attempt, so a normal
+      // authenticated call does not pay for an extra KV read.
+      if (!(await adminPasswordConfigured(env))) {
+        console.error("Admin API access denied: no admin password is configured.");
+        return adminJson({ error: "Admin access is not configured" }, 503);
+      }
       console.log(`[${timestamp}] AUTH FAILURE: ${clientIp} (${userAgent}) endpoint=${url.pathname} method=${request.method} header=${authHeaderPresent} session=${adminSessionCookie ? 'present' : 'absent'}`);
       return adminJson({ error: "Unauthorized" }, 401);
     }
@@ -1775,22 +2061,43 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
 
   // Establish a session: verify the password, then issue a random HttpOnly cookie.
   if (url.pathname === "/admin/api/login" && request.method === "POST") {
-    const expected = env.ADMIN_PASSWORD;
-    if (!expected) {
-      console.error("Admin login denied: ADMIN_PASSWORD is not configured.");
+    if (!(await adminPasswordConfigured(env))) {
+      console.error("Admin login denied: no admin password is configured.");
       return adminJson({ error: "Admin access is not configured" }, 503);
     }
-    const got = request.headers.get("x-admin-password") || "";
-    if (!timingSafeEqualStr(got, expected)) {
-      console.log(`[${timestamp}] LOGIN FAILURE: ${clientIp} (${userAgent})`);
-      return adminJson({ error: "Unauthorized" }, 401);
+    // Refuse before touching the password if this address is already locked.
+    const lock = await loginLock(env.PROPERTIES, clientIp);
+    if (lock.locked) {
+      console.log(`[${timestamp}] LOGIN BLOCKED (locked): ${clientIp} (${userAgent}) retryAfter=${lock.retryAfterSeconds}s`);
+      return loginLockout(lock.retryAfterSeconds);
     }
+    const got = request.headers.get("x-admin-password") || "";
+    if (!(await verifyAdminPassword(env, got))) {
+      const failure = await noteLoginFailure(env.PROPERTIES, clientIp);
+      console.log(`[${timestamp}] LOGIN FAILURE: ${clientIp} (${userAgent}) failures=${failure.failures}`);
+      if (failure.locked) return loginLockout(failure.retryAfterSeconds);
+      return adminJson({
+        error: `Incorrect password. ${failure.attemptsRemaining} attempt${failure.attemptsRemaining === 1 ? "" : "s"} left.`,
+      }, 401);
+    }
+    // "Keep me signed in" is explicit and opt-in. Without it the cookie is a
+    // browser-session cookie and the KV record still expires on the short TTL.
+    let remember = false;
+    try {
+      const body = await request.json();
+      remember = Boolean(body && typeof body === "object" && !Array.isArray(body) &&
+        (body as Record<string, unknown>).remember === true);
+    } catch {
+      // An empty or non-JSON body means a non-remembered session.
+    }
+    await clearLoginFailures(env.PROPERTIES, clientIp);
     const token = randomSessionToken();
-    await createAdminSession(env.PROPERTIES, token);
+    const ttlSeconds = adminSessionTtlSeconds(env, remember);
+    await createAdminSession(env.PROPERTIES, token, { ip: clientIp, userAgent }, ttlSeconds);
     const headers = new Headers(corsHeaders as Record<string, string>);
-    headers.append("Set-Cookie", adminSessionSetCookie(token));
+    headers.append("Set-Cookie", adminSessionSetCookie(token, remember ? ttlSeconds : 0));
     headers.append("Set-Cookie", "admin_auth=; Path=/; Max-Age=0; Secure; SameSite=Strict");
-    console.log(`[${timestamp}] LOGIN SUCCESS: ${clientIp} (${userAgent})`);
+    console.log(`[${timestamp}] LOGIN SUCCESS: ${clientIp} (${userAgent}) remembered=${remember ? "yes" : "no"}`);
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
   }
 
@@ -1802,6 +2109,200 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     const headers = new Headers(corsHeaders as Record<string, string>);
     headers.append("Set-Cookie", adminSessionClearCookie());
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+  }
+
+  // Change the password from the panel. A Worker cannot rewrite its own
+  // wrangler secret, so the new password is stored as a salted PBKDF2 hash in
+  // KV and takes precedence over ADMIN_PASSWORD from then on. Every existing
+  // session is revoked; this browser gets a fresh one so it stays signed in.
+  if (url.pathname === "/admin/api/password" && request.method === "POST") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return adminJson({ error: "Invalid JSON" }, 400);
+    }
+    const data = body && typeof body === "object" && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {};
+    const currentPassword = typeof data.currentPassword === "string" ? data.currentPassword : "";
+    const newPassword = typeof data.newPassword === "string" ? data.newPassword : "";
+    if (!(await verifyAdminPassword(env, currentPassword))) {
+      console.log(`[${timestamp}] PASSWORD CHANGE FAILURE: ${clientIp} (${userAgent})`);
+      return adminJson({ error: "Current password is incorrect" }, 401);
+    }
+    const problem = adminPasswordProblem(newPassword);
+    if (problem) return adminJson({ error: problem }, 400);
+    try {
+      await saveAdminPassword(env.PROPERTIES, newPassword);
+      await revokeAllAdminSessions(env.PROPERTIES);
+      const token = randomSessionToken();
+      await createAdminSession(env.PROPERTIES, token, { ip: clientIp, userAgent }, adminSessionTtlSeconds(env, false));
+      // Audit the lifecycle event only: no password, hash, or salt is recorded.
+      try {
+        await recordAdminAudit(env, null, "admin_password_changed", []);
+      } catch (auditErr) {
+        console.error("Could not audit the admin password change:", errorMessage(auditErr) || auditErr);
+      }
+      const headers = new Headers(corsHeaders as Record<string, string>);
+      headers.append("Set-Cookie", adminSessionSetCookie(token, 0));
+      console.log(`[${timestamp}] PASSWORD CHANGED: ${clientIp} (${userAgent})`);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+    } catch (err) {
+      console.error("Could not change the admin password:", errorMessage(err) || err);
+      return adminJson({ error: "Could not change the admin password" }, 500);
+    }
+  }
+
+  // Signed-in browsers, newest first. Only descriptive metadata is returned;
+  // the stored key is a hash of the session token and never leaves the Worker.
+  if (url.pathname === "/admin/api/sessions" && request.method === "GET") {
+    try {
+      const sessions = await listAdminSessions(env.PROPERTIES, adminSessionCookie);
+      return adminJson({
+        sessions: sessions.map(({ id, current, createdAt, ip, userAgent, legacy }) => ({
+          id, current, createdAt, ip, userAgent, legacy,
+        })),
+      });
+    } catch (err) {
+      console.error("Could not load admin sessions:", errorMessage(err) || err);
+      return adminJson({ error: "Could not load sessions" }, 500);
+    }
+  }
+
+  // Revoke another browser. The current session has its own sign-out button and
+  // is refused here so a mis-click cannot lock the operator out of the panel.
+  if (url.pathname === "/admin/api/sessions" && request.method === "DELETE") {
+    const id = (url.searchParams.get("id") || "").trim();
+    if (!id) return adminJson({ error: "Session id required" }, 400);
+    try {
+      const result = await revokeAdminSessionById(env.PROPERTIES, id, adminSessionCookie);
+      if (result.current) {
+        return adminJson({ error: "You cannot revoke the session you are using" }, 400);
+      }
+      if (!result.revoked) return adminJson({ error: "Session not found" }, 404);
+      console.log(`[${timestamp}] SESSION REVOKED: ${clientIp} (${userAgent}) session=${id.slice(0, 12)}`);
+      try {
+        await recordAdminAudit(env, null, "admin_session_revoked", []);
+      } catch (auditErr) {
+        console.error("Could not audit the admin session revocation:", errorMessage(auditErr) || auditErr);
+      }
+      return adminJson({ success: true });
+    } catch (err) {
+      console.error("Could not revoke an admin session:", errorMessage(err) || err);
+      return adminJson({ error: "Could not revoke session" }, 500);
+    }
+  }
+
+  // Recent admin activity. Only the action and its property are returned: the
+  // audit row's changed-field names are not needed in this list and are kept out
+  // of the response, matching the pilot activity endpoint's privacy choice.
+  if (url.pathname === "/admin/api/audit" && request.method === "GET") {
+    const rawLimit = Number(url.searchParams.get("limit") || 20);
+    const limit = Number.isFinite(rawLimit) ? Math.min(50, Math.max(1, Math.floor(rawLimit))) : 20;
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT a.created_at AS createdAt, a.action, a.property_id AS propertyId,
+                p.display_name AS propertyName
+         FROM admin_audit_log a LEFT JOIN properties p ON p.id = a.property_id
+         ORDER BY a.created_at DESC, a.id DESC LIMIT ?1`
+      ).bind(limit).all<{
+        createdAt: string;
+        action: string;
+        propertyId: string | null;
+        propertyName: string | null;
+      }>();
+      return adminJson({ events: results || [] });
+    } catch (err) {
+      console.error("Could not load admin activity:", errorMessage(err) || err);
+      return adminJson({ error: "Could not load admin activity" }, 500);
+    }
+  }
+
+  // Host portal access is per property: the operator sets a passcode, the host
+  // signs in with the house code and that passcode. The hash never leaves KV.
+  if (url.pathname === "/admin/api/host-portal" && request.method === "GET") {
+    const propertyId = (url.searchParams.get("propertyId") || "").trim().toUpperCase();
+    if (!propertyId) return adminJson({ error: "Property id required" }, 400);
+    try {
+      return adminJson(await hostPortalStatus(env.PROPERTIES, propertyId));
+    } catch (err) {
+      console.error("Could not read host portal status:", errorMessage(err) || err);
+      return adminJson({ error: "Could not read host portal status" }, 500);
+    }
+  }
+
+  if (url.pathname === "/admin/api/host-portal" && request.method === "POST") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return adminJson({ error: "Invalid JSON" }, 400);
+    }
+    const data = body && typeof body === "object" && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {};
+    const propertyId = typeof data.propertyId === "string" ? data.propertyId.trim().toUpperCase() : "";
+    const passcode = typeof data.passcode === "string" ? data.passcode : "";
+    if (!propertyId) return adminJson({ error: "Property id required" }, 400);
+    const problem = hostPasscodeProblem(passcode);
+    if (problem) return adminJson({ error: problem }, 400);
+    try {
+      const property = await env.DB.prepare("SELECT id FROM properties WHERE id = ?1")
+        .bind(propertyId).first<{ id: string }>();
+      if (!property) return adminJson({ error: "Property not found" }, 404);
+      await saveHostPasscode(env.PROPERTIES, propertyId, passcode);
+      await revokeAllHostSessions(env.PROPERTIES, propertyId);
+      try {
+        await recordAdminAudit(env, propertyId, "host_portal_passcode_set", []);
+      } catch (auditErr) {
+        console.error("Could not audit the host portal passcode:", errorMessage(auditErr) || auditErr);
+      }
+      return adminJson({ success: true });
+    } catch (err) {
+      console.error("Could not save the host portal passcode:", errorMessage(err) || err);
+      return adminJson({ error: errorMessage(err) || "Could not save the passcode" }, 500);
+    }
+  }
+
+  if (url.pathname === "/admin/api/host-portal" && request.method === "DELETE") {
+    const propertyId = (url.searchParams.get("propertyId") || "").trim().toUpperCase();
+    if (!propertyId) return adminJson({ error: "Property id required" }, 400);
+    try {
+      await clearHostPasscode(env.PROPERTIES, propertyId);
+      await revokeAllHostSessions(env.PROPERTIES, propertyId);
+      try {
+        await recordAdminAudit(env, propertyId, "host_portal_disabled", []);
+      } catch (auditErr) {
+        console.error("Could not audit the host portal change:", errorMessage(auditErr) || auditErr);
+      }
+      return adminJson({ success: true });
+    } catch (err) {
+      console.error("Could not turn off the host portal:", errorMessage(err) || err);
+      return adminJson({ error: "Could not turn off the host portal" }, 500);
+    }
+  }
+
+  // Sign every browser out of one property's host portal without changing the
+  // passcode. The operator uses this after a lost device or a staffing change.
+  if (url.pathname === "/admin/api/host-portal/sessions" && request.method === "DELETE") {
+    const propertyId = (url.searchParams.get("propertyId") || "").trim().toUpperCase();
+    if (!propertyId) return adminJson({ error: "Property id required" }, 400);
+    try {
+      const property = await env.DB.prepare("SELECT id FROM properties WHERE id = ?1")
+        .bind(propertyId).first<{ id: string }>();
+      if (!property) return adminJson({ error: "Property not found" }, 404);
+      await revokeAllHostSessions(env.PROPERTIES, propertyId);
+      try {
+        await recordAdminAudit(env, propertyId, "host_portal_sessions_revoked", []);
+      } catch (auditErr) {
+        console.error("Could not audit the host sign-out:", errorMessage(auditErr) || auditErr);
+      }
+      return adminJson({ success: true });
+    } catch (err) {
+      console.error("Could not sign out host sessions:", errorMessage(err) || err);
+      return adminJson({ error: "Could not sign out the host" }, 500);
+    }
   }
 
   if (url.pathname === "/admin/api/gmail/status" && request.method === "GET") {
@@ -2338,6 +2839,51 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
     }
   }
 
+  // Admin API: Host dashboards. One row per property with the host identity,
+  // portal status and guide size, so the Hosts tab can show every portal at a
+  // glance. The passcode hash never leaves KV.
+  if (url.pathname === "/admin/api/hosts" && request.method === "GET") {
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT p.id, COALESCE(NULLIF(p.display_name, ''), p.id) AS name, p.active,
+                p.host_id AS hostId, COALESCE(h.name, '') AS hostName,
+                COALESCE(h.email, '') AS hostEmail
+         FROM properties p LEFT JOIN hosts h ON h.id = p.host_id
+         ORDER BY p.display_name, p.id`
+      ).all<{
+        id: string;
+        name: string;
+        active: number;
+        hostId: string | null;
+        hostName: string;
+        hostEmail: string;
+      }>();
+      const hosts: Array<{
+        id: string;
+        name: string;
+        active: number;
+        hostId: string | null;
+        hostName: string;
+        hostEmail: string;
+        hostPortal: { configured: boolean; updatedAt: string | null };
+        guideSections: number;
+      }> = [];
+      for (const property of results || []) {
+        const portal = await hostPortalStatus(env.PROPERTIES, property.id);
+        const kv = (await env.PROPERTIES.get(`prop:${property.id}`, "json")) as { answers?: unknown[] } | null;
+        hosts.push({
+          ...property,
+          hostPortal: portal,
+          guideSections: Array.isArray(kv?.answers) ? kv.answers.length : 0,
+        });
+      }
+      return adminJson({ hosts });
+    } catch (err) {
+      console.error("Could not load host dashboards:", errorMessage(err) || err);
+      return adminJson({ error: "Could not load host dashboards" }, 500);
+    }
+  }
+
   // Admin API: Get single property
   if (url.pathname === "/admin/api/property" && request.method === "GET") {
     const id = url.searchParams.get("id");
@@ -2393,11 +2939,13 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         property.lastActivity = stat.lastActivity;
       }
 
-      // Host escalation phone lives in the hosts table
+      // Host identity lives in the hosts table. The admin edits the display
+      // name here; the host dashboard reads the same value.
       const { results: hostRows } = await env.DB.prepare(
-        "SELECT phone AS hostPhone, email AS hostEmail FROM hosts WHERE id = ?1"
+        "SELECT name AS hostName, phone AS hostPhone, email AS hostEmail FROM hosts WHERE id = ?1"
       ).bind(property.hostId).all();
       if (hostRows && hostRows.length > 0) {
+        property.hostName = hostRows[0].hostName;
         property.hostPhone = hostRows[0].hostPhone;
         property.hostEmail = hostRows[0].hostEmail;
       }
@@ -2598,7 +3146,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       // body.id too so API callers can pass it either way.
       const id = url.searchParams.get("id") || data.id;
       const {
-        name, address, twilioNumber, hostPhone, hostEmail, rateLimitReply, unknownReply,
+        name, address, twilioNumber, hostName, hostPhone, hostEmail, rateLimitReply, unknownReply,
         secrets, answers, active, checkinTime, checkoutTime, wifiSsid, accessInstructions,
         emergencyContacts, policies, escalationRules,
       } = data;
@@ -2642,6 +3190,9 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
       }
       if (hostEmail !== undefined && (typeof hostEmail !== "string" || (hostEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail.trim())))) {
         return adminJson({ error: "Host email must be valid." }, 400);
+      }
+      if (hostName !== undefined && (typeof hostName !== "string" || hostName.trim().length > 80)) {
+        return adminJson({ error: "Host name must be 80 characters or fewer." }, 400);
       }
       if (twilioNumber !== undefined && (typeof twilioNumber !== "string" || (twilioNumber.trim() && !/^\+[1-9]\d{1,14}$/.test(twilioNumber.trim())))) {
         return adminJson({ error: "Text line number must be a valid E.164 number." }, 400);
@@ -2784,6 +3335,12 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         ).bind(hostEmail.trim() || null, id).run();
       }
 
+      if (typeof hostName === "string") {
+        await env.DB.prepare(
+          "UPDATE hosts SET name = ?1 WHERE id = (SELECT host_id FROM properties WHERE id = ?2)"
+        ).bind(hostName.trim(), id).run();
+      }
+
       await env.PROPERTIES.put(`prop:${id}`, JSON.stringify({
         secrets: liveSecrets,
         answers: liveAnswers,
@@ -2835,7 +3392,7 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
 
       const changedFields = [
         ["name", name], ["address", address], ["twilioNumber", twilioNumber],
-        ["hostPhone", hostPhone], ["hostEmail", hostEmail], ["active", active],
+        ["hostName", hostName], ["hostPhone", hostPhone], ["hostEmail", hostEmail], ["active", active],
         ["checkinTime", checkinTime], ["checkoutTime", checkoutTime], ["wifiSsid", wifiSsid],
         ["accessInstructions", accessInstructions], ["emergencyContacts", emergencyContacts],
         ["policies", policies], ["escalationRules", escalationRules], ["secrets", secrets], ["answers", answers],
@@ -3361,27 +3918,31 @@ const ADMIN_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0908">
 <title>StayXI — Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b1226; --card:#141d3a; --surface:rgba(255,255,255,.045);
-          --border:rgba(255,255,255,.075); --text:#eaf0ff; --muted:#8a97b8;
-          --sun:#f59e0b; --pool:#3b82f6; --pink:#ff5b2e; --gold:#ffb020;
-          --cyan:#3fd8c5; --purple:#a269d8; --green:#4ade80;
-          --glow-cyan:0 0 24px rgba(63,216,197,.18);
-          --glow-blue:0 0 24px rgba(59,130,246,.18);
-          --sunset:linear-gradient(96deg,#60a5fa,#2563eb); }
+  :root { --bg:#0b0908; --card:#121010; --surface-2:#191514; --raised:#211b19;
+          --surface:rgba(255,236,224,.035); --border:rgba(255,236,224,.08);
+          --text:#f3ede8; --muted:#a89e97; --faint:#746a64;
+          --sun:#ffb547; --pool:#ff7a45; --pink:#ff5b2e; --gold:#ffb547;
+          --cyan:#ffb547; --purple:#ff9a6b; --green:#8fc7a4;
+          --glow-cyan:0 0 24px rgba(255,181,71,.16);
+          --glow-blue:0 0 24px rgba(255,122,69,.18);
+          --sunset:linear-gradient(96deg,#ff7a45,#ffb547); }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
-         font:14.5px/1.6 "Inter",ui-sans-serif,system-ui,"Segoe UI",sans-serif; }
+         -moz-osx-font-smoothing:grayscale; font-optical-sizing:auto;
+         font:14.5px/1.6 "DM Sans",ui-sans-serif,system-ui,"Segoe UI",sans-serif; }
   /* The old design washed the page in a pink glow; this one is flat, so the glow
      only muddied the card edges. */
   body::before { content:none; }
   /* Geometric headings and numerals over a neutral UI face, like the reference. */
   h1, h2, h3, .brand, .dash-hero, .pc-stat b, .op-stat b, .donut-center strong {
-         font-family:"Poppins","Inter",ui-sans-serif,system-ui,sans-serif; }
+         font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif; }
   .badge { display:inline-flex; align-items:center; gap:.5rem; padding:.3rem .8rem; margin-bottom:1rem;
          border:1px solid var(--border); border-radius:999px; background:var(--surface);
          font-size:.75rem; color:var(--muted); }
@@ -3397,7 +3958,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
          padding:1.5rem; margin-top:1.1rem; box-shadow:0 18px 40px -32px #000; }
   .card h2 { font-size:1.05rem; font-weight:700; }
   .hint { font-size:.78rem; color:var(--muted); margin:.3rem 0 .2rem; }
-  .secret { border-color:rgba(245,158,11,.4); }
+  .secret { border-color:rgba(255,181,71,.4); }
   .secret h2 { color:var(--sun); }
   .row { display:flex; gap:.75rem; align-items:flex-end; }
   .row > * { flex:1; }
@@ -3411,21 +3972,21 @@ const ADMIN_HTML = `<!DOCTYPE html>
          cursor:pointer; }
   .remove:hover { color:var(--pink); border-color:var(--pink); }
   .add { width:100%; margin-top:.9rem; padding:.7rem; border-radius:12px; border:1px dashed var(--pool);
-         background:rgba(59,130,246,.05); color:var(--pool); font:inherit; font-weight:700; cursor:pointer; }
-  .add:hover { background:rgba(59,130,246,.12); }
+         background:rgba(255,122,69,.05); color:var(--pool); font:inherit; font-weight:700; cursor:pointer; }
+  .add:hover { background:rgba(255,122,69,.12); }
   button.primary { margin-top:1.5rem; padding:.75rem 1.4rem; border-radius:12px; border:0;
-         background:#2f6bff; color:#ffffff; font:inherit; font-weight:600; cursor:pointer; }
-  button.primary:hover { background:#4b81ff; }
+         background:#ff7a45; color:#ffffff; font:inherit; font-weight:600; cursor:pointer; }
+  button.primary:hover { background:#ff9a6b; }
   button.primary.live { background:var(--pool); }
   button.ghost { margin-top:1.5rem; padding:.75rem 1.3rem; border-radius:12px; border:1px solid var(--border);
          background:transparent; color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
   a.lead-action { display:inline-block; margin-top:.75rem; padding:.65rem 1rem; border-radius:10px;
-         background:#2f6bff; color:#ffffff; font-weight:600; text-decoration:none; }
+         background:#ff7a45; color:#ffffff; font-weight:600; text-decoration:none; }
   a.lead-action-secondary { display:inline-block; margin-top:.75rem; padding:.6rem 1rem; border-radius:10px;
          border:1px solid var(--border); color:var(--text); font-weight:600; text-decoration:none; }
   .status { margin-top:1rem; font-size:.85rem; color:var(--muted); min-height:1.2em; }
   .savebar { position:fixed; bottom:0; left:0; right:0; border-top:1px solid var(--border);
-         background:rgba(11,18,38,.96); backdrop-filter:blur(8px); padding:.9rem 1.5rem; }
+         background:rgba(11,9,8,.94); backdrop-filter:blur(8px); padding:.9rem 1.5rem; }
   .savebar .inner { max-width:46rem; margin:0 auto; display:flex; gap:.75rem; align-items:center; }
   .savebar button { margin-top:0; flex:none; }
   .savebar .status { margin-top:0; flex:1; text-align:right; }
@@ -3440,8 +4001,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
          background:var(--card);
          box-shadow:0 18px 40px -32px #000;
          transition:border-color .15s ease, box-shadow .15s ease; }
-  .propcard:hover { border-color:rgba(59,130,246,.55);
-         box-shadow:0 0 0 1px rgba(59,130,246,.2), 0 22px 44px -30px #000; }
+  .propcard:hover { border-color:rgba(255,122,69,.55);
+         box-shadow:0 0 0 1px rgba(255,122,69,.2), 0 22px 44px -30px #000; }
   .pc-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding-right:2.4rem; }
   .pc-head .name { font-weight:600; font-size:1.05rem; letter-spacing:-.01em; }
   .propcard .meta { color:var(--muted); font-size:.75rem; margin-top:.2rem; }
@@ -3463,7 +4024,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .detail-stats .pc-last { grid-column:1 / -1; margin-top:0; padding-top:.15rem; }
   @media (max-width:560px) { .detail-stats { grid-template-columns:1fr; max-width:none; } }
   .pill { display:inline-block; padding:.15rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; }
-  .pill.live { background:rgba(59,130,246,.16); color:#9dbcff; border:1px solid rgba(59,130,246,.45); }
+  .pill.live { background:rgba(255,122,69,.16); color:#ffd08a; border:1px solid rgba(255,122,69,.45); }
   .pill.pending { background:rgba(255,176,32,.12); color:var(--gold); border:1px solid rgba(255,176,32,.35); }
   .pill.paused { background:var(--surface); color:var(--muted); border:1px solid var(--border); }
   .pill.open-esc { background:rgba(255,91,46,.12); color:var(--pink); border:1px solid rgba(255,91,46,.4); }
@@ -3478,7 +4039,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .chip { padding:.4rem .95rem; border-radius:999px; border:1px solid var(--border);
          background:transparent; color:var(--muted); font:inherit; font-size:.8rem;
          font-weight:600; cursor:pointer; }
-  .chip.on { background:rgba(59,130,246,.14); border-color:var(--pool); color:#9dbcff; }
+  .chip.on { background:rgba(255,122,69,.14); border-color:var(--pool); color:#ffd08a; }
   .back { margin-top:1.5rem; padding:.45rem 1rem; font-size:.85rem; }
   .prop-head { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-top:.5rem; }
   .prop-head h2 { font-size:1.4rem; font-weight:800; letter-spacing:-.01em; margin:0; }
@@ -3501,7 +4062,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .shell { display:flex; align-items:flex-start; min-height:100vh; }
   .sidebar { flex:0 0 15.5rem; position:sticky; top:0; height:100vh; display:flex; flex-direction:column;
          padding:1.2rem 1rem 1.4rem; border-right:1px solid var(--border);
-         background:#0d1630; }
+         background:rgba(11,9,8,.82); }
   .sidebar.hidden { display:none; }
   .brand { display:flex; align-items:center; gap:.55rem; padding:.3rem .55rem 1.1rem;
          font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
@@ -3513,8 +4074,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
          font:inherit; font-weight:600; font-size:.88rem; text-align:left; cursor:pointer; }
   .nav-item svg { width:1.05rem; height:1.05rem; flex:none; opacity:.8; }
   .nav-item:hover { color:var(--text); background:var(--surface); }
-  .nav-item.active { color:#9dbcff; background:rgba(59,130,246,.14);
-         border-color:rgba(59,130,246,.32); }
+  .nav-item.active { color:#ffd08a; background:rgba(255,122,69,.14);
+         border-color:rgba(255,122,69,.32); }
   .nav-item.active svg { opacity:1; }
   .sidebar .sign-out { margin-top:auto; }
   .main { flex:1 1 auto; min-width:0; width:100%; max-width:80rem; margin:0 auto;
@@ -3537,6 +4098,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .lead-actions { display:flex; gap:.75rem; flex-wrap:wrap; }
   .lead-actions button { margin-top:0; }
   .lead-actions .primary { background:var(--pool); }
+  .guide-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-top:.9rem; }
+  .guide-actions .add { width:auto; flex:1; margin-top:0; }
+  .guide-actions button { margin-top:0; }
   button.danger { border-color:rgba(255,91,46,.45); color:var(--pink); }
   button.danger:hover { background:rgba(255,91,46,.1); }
   #addForm .check { margin:1rem 0; }
@@ -3547,15 +4111,15 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .leads-header button { margin-top:0; flex:none; }
   .leads-filter { display:flex; align-items:center; gap:.4rem; color:var(--muted); font-size:.8rem; white-space:nowrap; cursor:pointer; }
   .leads-filter input { width:auto; margin:0; }
-  .lead-email.verified { color:#9dbcff; font-weight:600; }
+  .lead-email.verified { color:#ffd08a; font-weight:600; }
   .lead-email.missing { opacity:.55; }
   .lead-row { display:grid; grid-template-columns:1.9fr 1fr 1fr 1.3fr auto; gap:.7rem; padding:.85rem 1.1rem;
          border:1px solid var(--border); cursor:pointer; align-items:center; border-radius:14px; margin-top:.6rem;
          background:var(--card);
          box-shadow:0 18px 40px -34px #000;
          transition:border-color .15s ease, box-shadow .15s ease; }
-  .lead-row:hover { border-color:rgba(59,130,246,.55);
-         box-shadow:0 0 0 1px rgba(59,130,246,.18); }
+  .lead-row:hover { border-color:rgba(255,122,69,.55);
+         box-shadow:0 0 0 1px rgba(255,122,69,.18); }
   .lead-name { font-size:.95rem; font-weight:800; letter-spacing:-.01em; cursor:pointer; }
   .lead-city, .lead-phone, .lead-email { color:var(--muted); font-size:.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .lead-email { white-space:nowrap; }
@@ -3572,7 +4136,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .analytics-id { color:var(--muted); font-size:.75rem; }
   .analytics-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin-top:.9rem; }
   .analytics-metric { padding:.7rem .8rem; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
-  .analytics-metric strong { display:block; color:#9dbcff; font-size:1.35rem; line-height:1.2; }
+  .analytics-metric strong { display:block; color:#ffd08a; font-size:1.35rem; line-height:1.2; }
   .analytics-metric span { color:var(--muted); font-size:.75rem; }
   .analytics-last { color:var(--muted); font-size:.75rem; margin-top:.8rem; }
   @media (max-width:560px) { .analytics-metrics { grid-template-columns:1fr; } }
@@ -3593,26 +4157,26 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .dash-col { display:flex; flex-direction:column; gap:1rem; min-width:0; }
   .dash-stack { display:grid; gap:1rem; }
   .dash-card { position:relative; border:1px solid var(--border); border-radius:14px; padding:1rem 1.1rem;
-         background:linear-gradient(145deg, rgba(20,29,58,.92), rgba(26,40,70,.88));
+         background:linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
          box-shadow:0 18px 40px -32px #000, inset 0 1px 0 rgba(255,255,255,.04);
          transition:border-color .2s ease, box-shadow .2s ease; }
-  .dash-card:hover { border-color:rgba(63,216,197,.4); box-shadow:var(--glow-cyan), 0 18px 40px -32px #000; }
+  .dash-card:hover { border-color:rgba(255,181,71,.4); box-shadow:var(--glow-cyan), 0 18px 40px -32px #000; }
   .dash-card::before { content:''; position:absolute; inset:0; border-radius:14px; pointer-events:none;
-         background:radial-gradient(circle at 20% 0%, rgba(63,216,197,.06), transparent 50%); }
+         background:radial-gradient(circle at 20% 0%, rgba(255,181,71,.06), transparent 50%); }
   .dash-label { font-size:.64rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); font-weight:700; }
   .dash-label-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; }
   .dash-hero { font-size:2.6rem; font-weight:600; letter-spacing:-.03em; line-height:1.05; margin:.3rem 0 .1rem; }
   .dash-hero.small { font-size:1.85rem; }
   .dash-sub { color:var(--muted); font-size:.74rem; }
   .dash-delta { display:inline-flex; align-items:center; gap:.3rem; margin-top:.3rem; font-size:.72rem;
-         font-weight:600; color:#34d399; }
+         font-weight:600; color:#8fc7a4; }
   .dash-delta.down { color:var(--pink); }
   .dash-delta.flat { color:var(--muted); font-weight:600; }
   .dash-legend { display:inline-flex; align-items:center; gap:.35rem; color:var(--muted); font-size:.68rem; }
   .dash-legend i { width:8px; height:8px; border-radius:50%; display:inline-block; }
   .dash-legend i.k-in { background:var(--pool); }
   .dash-legend i.k-q { background:var(--cyan); }
-  .dash-legend i.k-out { background:#818cf8; margin-left:.55rem; }
+  .dash-legend i.k-out { background:#ff9a6b; margin-left:.55rem; }
   .chart { width:100%; height:auto; display:block; margin-top:.7rem; }
   .spark { width:100%; height:auto; display:block; margin-top:.55rem; }
   .donut-wrap { position:relative; display:flex; align-items:center; justify-content:center; margin:.65rem 0 .3rem; }
@@ -3630,13 +4194,13 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .cap-top span { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .cap-top b { font-weight:700; font-variant-numeric:tabular-nums; }
   .cap-track { height:7px; border-radius:99px; background:rgba(255,255,255,.09); overflow:hidden; }
-  .cap-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#3fd8c5,#60a5fa); box-shadow:0 0 8px rgba(63,216,197,.35); }
+  .cap-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#ffb547,#ffb547); box-shadow:0 0 8px rgba(255,181,71,.35); }
   .events { list-style:none; display:grid; gap:.72rem; margin-top:.8rem; }
   .events li { display:flex; gap:.55rem; align-items:flex-start; font-size:.76rem; }
   .ev-dot { width:9px; height:9px; border-radius:50%; margin-top:.32rem; flex:none; }
   .ev-dot.open { background:var(--pink); }
   .ev-dot.answered { background:var(--pool); }
-  .ev-dot.message { background:#60a5fa; }
+  .ev-dot.message { background:#ffb547; }
   .ev-body { min-width:0; }
   .ev-text { color:var(--text); overflow-wrap:anywhere; }
   .ev-meta { color:var(--muted); font-size:.67rem; margin-top:.12rem; }
@@ -3681,10 +4245,10 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .op-health { list-style:none; display:grid; gap:.62rem; margin-top:.9rem; }
   .op-health li { display:flex; align-items:center; gap:.55rem; font-size:.78rem; }
   .op-dot { width:9px; height:9px; border-radius:50%; flex:none; }
-  .op-dot.ok { background:#34d399; }
+  .op-dot.ok { background:#8fc7a4; }
   .op-dot.warn { background:var(--sun); }
   .op-health b { margin-left:auto; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; }
-  .op-health b.ok { color:#34d399; }
+  .op-health b.ok { color:#8fc7a4; }
   .op-health b.warn { color:var(--sun); }
   .op-hint { color:var(--muted); font-size:.76rem; margin-top:.4rem; }
   .op-form { display:grid; gap:.15rem; margin:.6rem 0 1rem; }
@@ -3697,7 +4261,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .insight-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .insight-trend { font-size:.7rem; font-weight:700; text-align:right; color:var(--muted);
          font-variant-numeric:tabular-nums; }
-  .insight-trend.up { color:#818cf8; }
+  .insight-trend.up { color:#ff9a6b; }
   .cap-fill.warn { background:linear-gradient(90deg,#f59e0b,#ff5b2e); }
   @media (max-width:720px) {
     .insight-row { grid-template-columns:minmax(0,1fr) auto 3.6rem; }
@@ -3709,7 +4273,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .pilot-content .card { margin-top:0; }
   .pilot-content h2 { font-size:1.1rem; }
   .pilot-content h3 { font-size:.95rem; margin-top:1rem; }
-  .pilot-content p, .pilot-content li { color:#c7d2ea; font-size:.86rem; }
+  .pilot-content p, .pilot-content li { color:#c9beb6; font-size:.86rem; }
   .pilot-content ul, .pilot-content ol { padding-left:1.25rem; margin-top:.55rem; }
   .pilot-content li + li { margin-top:.35rem; }
   .pilot-callout { border-left:3px solid var(--gold); padding:.75rem 1rem; margin-top:.8rem; background:rgba(255,176,32,.06); border-radius:0 10px 10px 0; }
@@ -3729,6 +4293,29 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .pilot-scorecard-actions { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-top:1rem; }
   .pilot-scorecard-actions button { margin-top:0; }
   .pilot-scorecard-status { color:var(--muted); font-size:.8rem; }
+  .session-list { display:grid; gap:.6rem; margin-top:.9rem; }
+  .session-row { display:flex; align-items:center; gap:.9rem; flex-wrap:wrap; border:1px solid var(--border); border-radius:14px; padding:.85rem 1rem; }
+  .session-row .who { flex:1; min-width:12rem; }
+  .session-row .who strong { display:block; font-size:.86rem; }
+  .session-row .who span { color:var(--muted); font-size:.75rem; }
+  .session-row button { margin-top:0; }
+  .host-list { display:grid; gap:.7rem; margin-top:.9rem; }
+  .host-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; border:1px solid var(--border); border-radius:14px; padding:.9rem 1rem; background:rgba(255,255,255,.02); }
+  .host-row .host-main { flex:1; min-width:12rem; }
+  .host-row .host-main strong { display:block; font-size:.92rem; }
+  .host-row .host-main span { display:block; margin-top:.2rem; color:var(--muted); font-size:.76rem; overflow-wrap:anywhere; }
+  .host-row .host-guide { color:var(--muted); font-size:.76rem; white-space:nowrap; }
+  .host-row .host-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .host-row .host-actions button,
+  .host-row .host-actions a { margin:0; }
+  .host-row .host-actions a { display:inline-flex; align-items:center; min-height:2.2rem; padding:.45rem .8rem; border:1px solid var(--border); border-radius:12px; color:var(--muted); font-size:.78rem; font-weight:500; text-decoration:none; }
+  .host-row .host-actions a:hover { color:var(--text); background:rgba(255,255,255,.04); }
+  /* Fixed columns keep the portal status and guide count aligned from row to row;
+     as flex they shifted with the width of each row's action buttons. */
+  @media (min-width:761px) {
+    .host-row { display:grid; grid-template-columns:minmax(10rem,1fr) 6.5rem 8rem auto; }
+  }
+  @media (max-width:560px) { .host-row { align-items:flex-start; } .host-row .host-guide { width:100%; } }
   .pilot-record-list { display:grid; gap:.75rem; margin-top:.8rem; }
   .pilot-record { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.8rem; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
   .pilot-record strong, .pilot-record small { display:block; }
@@ -3752,31 +4339,136 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .login-wrap { display:grid; place-items:center; min-height:min(72vh,40rem); padding:.5rem 0 2rem; }
   .login-panel { width:min(100%,26rem); }
   .login-brand { display:flex; align-items:center; justify-content:center; gap:.5rem; margin-bottom:1.1rem;
-         font-family:"Poppins","Inter",sans-serif; font-weight:600; font-size:1rem; letter-spacing:-.01em; }
+         font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif; font-weight:600; font-size:1rem; letter-spacing:-.01em; }
   .login-card { margin-top:0; padding:1.7rem 1.6rem; }
   .login-card h2 { font-size:1.3rem; font-weight:600; letter-spacing:-.02em; }
   .login-sub { margin:.25rem 0 .2rem; color:var(--muted); font-size:.85rem; }
   .login-card .row { margin-top:.1rem; }
   .login-card .row .primary { margin-top:0; white-space:nowrap; }
   .login-card .status { min-height:1.2em; margin-top:.7rem; }
+  .login-card .remember { display:flex; align-items:center; gap:.5rem; margin-top:.85rem; color:var(--muted); font-size:.8rem; font-weight:500; }
+  .login-card .remember input { width:auto; margin:0; }
   .login-foot { margin-top:1rem; text-align:center; color:var(--muted); font-size:.72rem; }
-  .login-foot code { color:#9dbcff; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; }
+  .login-foot code { color:#ffd08a; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; }
   /* Done in CSS because the page script only ever toggles #login's class: the
      panel heading would otherwise sit above the sign-in card, and the card's
      wrapper would leave a screen of empty navy behind the dashboard. */
   body:has(#login:not(.hidden)) .page-head { display:none; }
   body:has(#login.hidden) .login-wrap { display:none; }
   @media (max-width:560px) { .login-wrap { min-height:auto; padding-top:1.2rem; } }
+
+  /* --- Host dashboard theme: same warm tokens, with a softer UI face --- */
+  ::selection { background:rgba(255,122,69,.35); color:#fff; }
+  html { color-scheme:dark; }
+  body {
+    background:
+      radial-gradient(760px 440px at 88% -8%, rgba(255,122,69,.085), transparent 62%),
+      radial-gradient(640px 380px at -8% 16%, rgba(255,181,71,.03), transparent 62%),
+      var(--bg);
+    background-attachment:fixed;
+    font:14px/1.5 "DM Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-optical-sizing:auto; letter-spacing:-.011em; text-rendering:optimizeLegibility;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+  h1, h2, h3, .brand, .login-brand, .dash-hero, .pc-stat b, .op-stat b, .donut-center strong {
+    font-family:"DM Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  h1 { font-size:1.55rem; font-weight:600; letter-spacing:-.025em; }
+  .sub { max-width:46rem; font-size:.9rem; }
+  .card, .analytics-card, .propcard, .lead-row, .dash-card {
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.018));
+    border-color:var(--border);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 24px 50px -42px #000;
+  }
+  .card { border-radius:16px; }
+  .card h2 { font-size:1.02rem; font-weight:600; letter-spacing:-.015em; }
+  .propcard, .lead-row, .analytics-card, .dash-card { border-radius:16px; }
+  input, select, textarea { background:rgba(11,9,8,.7); border-color:var(--border); }
+  input:focus, select:focus, textarea:focus { outline-color:rgba(255,122,69,.7); }
+  input[type="checkbox"] { display:inline-grid; width:17px; height:17px; flex:none; place-content:center;
+    appearance:none; -webkit-appearance:none; padding:0; border:1px solid rgba(255,255,255,.34); border-radius:5px;
+    background:rgba(255,255,255,.07); cursor:pointer; }
+  input[type="checkbox"]:hover { border-color:rgba(255,255,255,.5); }
+  input[type="checkbox"]:focus-visible { outline:2px solid rgba(255,122,69,.8); outline-offset:2px; }
+  input[type="checkbox"]::before { content:""; width:8px; height:8px; border-radius:2px; background:var(--pool);
+    transform:scale(0); transition:transform .12s ease; }
+  input[type="checkbox"]:checked::before { transform:scale(1); }
+  .hint, .pc-last, .dash-stamp { color:var(--faint); }
+  .secret { border-color:rgba(255,181,71,.4); }
+  .secret h2 { color:var(--accent-2, #ffb547); }
+  .add { border-color:rgba(255,122,69,.45); background:rgba(255,122,69,.05); color:var(--accent, #ff7a45); }
+  .add:hover { background:rgba(255,122,69,.1); }
+  button.primary { border-radius:14px; background:var(--text); color:var(--bg);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 8px 24px -12px rgba(255,255,255,.35); }
+  button.primary:hover { background:#fff; }
+  button.primary.live { background:var(--pool); color:#1b0d07; }
+  button.ghost { border-radius:14px; }
+  a.lead-action { border-radius:12px; background:var(--text); color:var(--bg); }
+  a.lead-action-secondary { border-radius:12px; background:rgba(255,255,255,.02); }
+  .savebar { background:rgba(11,9,8,.94); }
+  .propcard:hover { border-color:rgba(255,122,69,.45);
+    box-shadow:0 0 0 1px rgba(255,122,69,.14),0 22px 44px -30px #000; }
+  .pc-stat { border-radius:12px; background:rgba(255,255,255,.02); }
+  .pc-stat b { font-size:1.45rem; font-weight:600; }
+  .pc-stat span { font-size:.7rem; font-weight:500; letter-spacing:0; text-transform:none; color:var(--muted); }
+  .pill { border-radius:7px; padding:.16rem .5rem; font-size:.65rem; font-weight:600; }
+  .pill.live { background:rgba(255,181,71,.13); color:var(--accent-2, #ffb547); border-color:rgba(255,181,71,.3); }
+  .chip.on { background:rgba(255,122,69,.13); border-color:rgba(255,122,69,.42); color:#ffb18d; }
+  .lead-row:hover { border-color:rgba(255,122,69,.42); box-shadow:0 0 0 1px rgba(255,122,69,.12); }
+  .lead-email.verified { color:var(--accent-2, #ffb547); }
+  .analytics-head h2 { font-size:1.2rem; font-weight:600; letter-spacing:-.02em; }
+  .prop-head h2 { font-size:1.35rem; font-weight:600; }
+  .analytics-metric { background:rgba(255,255,255,.02); }
+  .analytics-metric strong { color:var(--accent-2, #ffb547); }
+  .dash-card:hover { border-color:rgba(255,122,69,.36); box-shadow:var(--glow-blue),0 18px 40px -32px #000; }
+  .dash-card::before { background:radial-gradient(circle at 20% 0%, rgba(255,122,69,.045), transparent 50%); }
+  .dash-label { font-size:.72rem; font-weight:500; letter-spacing:0; text-transform:none; }
+  .dash-hero { font-size:2.2rem; }
+  .dash-legend i.k-out { background:#ff9a6b; }
+  .cap-fill { background:linear-gradient(90deg,#ff7a45,#ffb547); box-shadow:0 0 8px rgba(255,122,69,.3); }
+  .cap-fill.warn { background:linear-gradient(90deg,#ffb547,#ff4d6d); }
+  .ev-dot.message { background:var(--accent-2, #ffb547); }
+  .dash-delta, .op-health b.ok { color:#8fc7a4; }
+  .op-dot.ok { background:#8fc7a4; }
+  .insight-trend.up { color:var(--accent-2, #ffb547); }
+  .pilot-content p, .pilot-content li { color:var(--muted); }
+  .pilot-table th { color:var(--accent-2, #ffb547); }
+  .session-row, .pilot-record { background:rgba(255,255,255,.02); }
+  .login-brand { font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif; font-weight:600; font-size:1rem; }
+  .login-card { border-radius:18px; padding:1.8rem 1.7rem;
+    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02)); }
+  .login-card h2 { font-size:1.35rem; font-weight:600; }
+  .login-foot code { color:var(--accent-2, #ffb547); }
+  .logo-mark { display:grid; width:28px; height:28px; flex:none; place-items:center;
+    border-radius:9px; background:linear-gradient(135deg,var(--surface-2),var(--raised));
+    box-shadow:inset 0 0 0 1px var(--border),inset 0 1px 0 rgba(255,255,255,.08); }
+  .logo-mark svg { width:14px; height:14px; }
+  .brand { gap:.6rem; padding:.2rem .5rem 1.15rem; font-size:.95rem; font-weight:600; letter-spacing:-.015em; }
+  .nav { gap:.25rem; }
+  .nav-group { color:var(--faint); font-size:.65rem; letter-spacing:.13em; font-weight:600; }
+  .nav-item { border-radius:12px; padding:.62rem .72rem; font-size:.86rem; font-weight:500; border-color:transparent; }
+  .nav-item:hover { color:var(--text); background:rgba(255,255,255,.035); }
+  .nav-item.active { color:var(--text); background:rgba(255,255,255,.07); border-color:transparent;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+  .sidebar { background:rgba(11,9,8,.82); backdrop-filter:blur(20px); }
+  .main { padding-top:2.25rem; }
+  @media (max-width:560px) {
+    h1 { font-size:1.45rem; }
+    .card { border-radius:14px; }
+  }
 </style>
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar hidden" id="tabBar">
-    <div class="brand"><span class="dot"></span><span>StayXI admin</span></div>
+    <div class="brand"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span><span>StayXI admin</span></div>
     <nav class="nav">
       <p class="nav-group">Manage</p>
       <button class="nav-item active" data-tab="properties" onclick="showTab('properties')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Properties
+      </button>
+      <button class="nav-item" data-tab="hosts" onclick="showTab('hosts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 14.5c2.3.5 4 2.5 4 5.5"/></svg>Hosts
       </button>
       <button class="nav-item" data-tab="leads" onclick="showTab('leads')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5.2a3.2 3.2 0 0 1 0 5.6"/></svg>Leads
@@ -3795,6 +4487,10 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <button class="nav-item" data-tab="pilot" onclick="showTab('pilot')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-1.5 4L16 12H5z"/></svg>Pilot Program
       </button>
+      <p class="nav-group">Account</p>
+      <button class="nav-item" data-tab="account" onclick="showTab('account')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8"/><path d="m17 6 2 2"/><path d="m19 4 2 2"/></svg>Account
+      </button>
     </nav>
     <button class="nav-item sign-out" onclick="signOut()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/><path d="M15 8l4 4-4 4"/><path d="M9 12h10"/></svg>Sign out
@@ -3809,7 +4505,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
   <section class="login-wrap">
     <div class="login-panel">
-      <div class="login-brand"><span class="dot"></span><span>StayXI admin</span></div>
+      <div class="login-brand"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span><span>StayXI admin</span></div>
       <div id="login" class="card login-card">
         <h2>Sign in</h2>
         <p class="login-sub">Enter the admin password to manage properties, guest questions and outreach.</p>
@@ -3818,9 +4514,10 @@ const ADMIN_HTML = `<!DOCTYPE html>
           <input id="pw" type="password" autocomplete="current-password" placeholder="••••••••••">
           <button class="primary" onclick="unlock()">Unlock</button>
         </div>
+        <label class="remember"><input id="remember" type="checkbox"> Keep me signed in on this browser</label>
         <p class="status" id="loginStatus"></p>
       </div>
-      <p class="login-foot">The password is the <code>ADMIN_PASSWORD</code> secret set with <code>wrangler secret put</code>.</p>
+      <p class="login-foot">First sign-in uses the <code>ADMIN_PASSWORD</code> secret. Once signed in, change it under <code>Account</code>.</p>
     </div>
   </section>
 
@@ -3894,6 +4591,30 @@ const ADMIN_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <div class="card" id="hostDashboardCard">
+      <h2>Host dashboard</h2>
+      <p class="hint" id="hostPortalStatus">Checking…</p>
+      <label for="hostName">Host name (shown in the dashboard)</label>
+      <input id="hostName" placeholder="Dana" autocomplete="name">
+      <p class="hint" id="hostGuideSummary">Guide: checking…</p>
+      <div class="lead-actions" style="margin-top:.4rem">
+        <button class="ghost" type="button" onclick="editHostGuide()">Edit guide answers</button>
+        <a class="ghost" id="hostDashboardLink" href="/host" target="_blank" rel="noopener">Open host sign-in</a>
+      </div>
+      <label for="hostPortalPasscode">New host passcode</label>
+      <div class="row">
+        <input id="hostPortalPasscode" autocomplete="new-password" placeholder="At least 8 characters">
+        <button class="ghost" type="button" onclick="generateHostPasscode()">Generate</button>
+      </div>
+      <div class="lead-actions" style="margin-top:.9rem">
+        <button class="primary" type="button" onclick="saveHostPortal()">Save passcode</button>
+        <button class="ghost hidden" id="hostPortalClear" type="button" onclick="clearHostPortal()">Turn off portal</button>
+        <button class="ghost hidden" id="hostPortalSignOut" type="button" onclick="signOutHostPortal()">Sign out host</button>
+      </div>
+      <p class="hint" style="margin-top:.8rem">Hosts sign in at <code id="hostPortalUrl">/host</code> with the house code <code id="hostPortalCode"></code> and this passcode. Saving a new passcode signs out every host session.</p>
+      <p class="status" id="hostPortalMsg"></p>
+    </div>
+
     <div class="card">
       <h2>Property details &amp; policies</h2>
       <p class="hint">Keep these details accurate and host-approved. Critical access and emergency instructions are staged for review before they go live.</p>
@@ -3926,11 +4647,15 @@ const ADMIN_HTML = `<!DOCTYPE html>
       <button class="add" onclick="addSecret()">+ Add a code</button>
     </div>
 
-    <div class="card">
-      <h2>Answers</h2>
-      <p class="hint">Canned replies matched by keyword — instant, and free. One row per topic. Empty rows are skipped on save.</p>
+    <div class="card" id="answersCard">
+      <h2>Host guide</h2>
+      <p class="hint">Questions and answers guests get instantly. One row per topic. Empty replies are skipped on save. Hosts edit these same answers from their Guide tab.</p>
+      <div class="guide-actions">
+        <button class="add" onclick="addAnswer()">+ Add a question</button>
+        <button class="ghost" type="button" onclick="prefillAnswers()">Pre-fill common questions</button>
+      </div>
+      <p class="status" id="answersStatus"></p>
       <div id="answersList"></div>
-      <button class="add" onclick="addAnswer()">+ Add an answer</button>
     </div>
 
     <div class="card">
@@ -3955,6 +4680,21 @@ const ADMIN_HTML = `<!DOCTYPE html>
         <p class="status" id="saveStatus"></p>
       </div>
     </div>
+  </div>
+
+  <div id="hostsView" class="hidden">
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Host dashboards</h2>
+        <p>Who can sign in, what each dashboard shows, and the guide behind it.</p>
+      </div>
+      <div class="dash-controls">
+        <span class="dash-stamp" id="hostsSummary"></span>
+        <button class="ghost dash-toggle" type="button" onclick="openHostPortal()">Open host portal</button>
+      </div>
+    </div>
+    <div id="hostsList"></div>
+    <p class="status" id="hostsStatus"></p>
   </div>
 
   <div id="leadsView" class="hidden">
@@ -4472,6 +5212,39 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="accountView" class="hidden">
+    <div class="analytics-head dash-head">
+      <div>
+        <h2>Account</h2>
+        <p>Manage the password and the browsers that can sign in to this panel.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Change password</h2>
+      <label for="currentPw">Current password</label>
+      <input id="currentPw" type="password" autocomplete="current-password">
+      <label for="newPw">New password</label>
+      <input id="newPw" type="password" autocomplete="new-password">
+      <label for="confirmPw">Confirm new password</label>
+      <input id="confirmPw" type="password" autocomplete="new-password">
+      <p class="hint">At least 12 characters. Changing it signs out every other browser; this one stays signed in.</p>
+      <button class="primary" onclick="changePassword()">Change password</button>
+      <p class="status" id="passwordStatus" role="status" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <h2>Signed-in sessions</h2>
+      <p class="hint">Browsers with an active admin session. Revoke one you do not recognize; changing the password ends all of them.</p>
+      <div id="sessionList" class="session-list" aria-live="polite"></div>
+      <p class="status" id="sessionStatus" role="status" aria-live="polite"></p>
+    </div>
+    <div class="card">
+      <h2>Recent admin activity</h2>
+      <p class="hint">Password changes, revoked sessions, and property or pilot changes recorded in the audit log. Newest first.</p>
+      <div id="auditList" class="session-list" aria-live="polite"></div>
+      <p class="status" id="auditStatus" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
   <div id="leadDetailView" class="hidden">
     <button class="ghost back" onclick="closeLeadDetail()">← Back to leads</button>
     <div class="lead-detail" id="leadDetailContent"></div>
@@ -4601,6 +5374,21 @@ function addSecret(keywords, reply) {
   $("secretsList").append(row);
 }
 
+const COMMON_GUIDE_QUESTIONS = [
+  { topic: "Wi-Fi", keywords: "wifi, wi-fi, wireless, internet, network" },
+  { topic: "Check-in & arrival", keywords: "check in, check-in, arrival, early check-in, late arrival" },
+  { topic: "Check-out & departure", keywords: "check out, check-out, checkout, departure, leave" },
+  { topic: "Parking", keywords: "parking, park, driveway, garage, street parking" },
+  { topic: "Trash & recycling", keywords: "trash, garbage, bins, recycling, trash pickup" },
+  { topic: "Pool & hot tub", keywords: "pool, hot tub, spa, pool heater, pool temperature" },
+  { topic: "Pets", keywords: "pet, pets, dog, cat, service animal" },
+  { topic: "House rules & quiet hours", keywords: "quiet hours, quiet time, noise, smoking, visitors" },
+  { topic: "Thermostat & AC", keywords: "thermostat, air conditioning, ac, heat, temperature" },
+  { topic: "Appliances & TV", keywords: "coffee maker, washer, dryer, dishwasher, tv, remote" },
+  { topic: "Local recommendations", keywords: "restaurant, restaurants, groceries, beach, attractions" },
+  { topic: "Hurricane prep", keywords: "hurricane, storm, shutters, storm prep" },
+];
+
 function addAnswer(topic, keywords, reply) {
   const row = document.createElement("div");
   row.className = "entry";
@@ -4608,7 +5396,7 @@ function addAnswer(topic, keywords, reply) {
   top.className = "top";
   const tp = document.createElement("input");
   tp.className = "tp";
-  tp.placeholder = "Topic — Trash day";
+  tp.placeholder = "Question or topic — Trash day";
   tp.value = topic || "";
   const kw = document.createElement("input");
   kw.className = "kw";
@@ -4621,6 +5409,46 @@ function addAnswer(topic, keywords, reply) {
   rp.value = reply || "";
   row.append(top, rp);
   $("answersList").append(row);
+}
+
+function prefillAnswers() {
+  const list = $("answersList");
+  if (!list) return;
+  const existingTopics = new Set(
+    Array.from(list.querySelectorAll(".entry .tp"))
+      .map((input) => input.value.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const existingKeywords = new Set();
+  list.querySelectorAll(".entry .kw").forEach((input) => {
+    input.value.split(",")
+      .map((keyword) => keyword.trim().toLowerCase())
+      .filter(Boolean)
+      .forEach((keyword) => existingKeywords.add(keyword));
+  });
+  let added = 0;
+  COMMON_GUIDE_QUESTIONS.forEach((question) => {
+    const topic = question.topic.toLowerCase();
+    const keywords = question.keywords.split(",").map((keyword) => keyword.trim()).filter(Boolean);
+    if (existingTopics.has(topic) || keywords.some((keyword) => existingKeywords.has(keyword.toLowerCase()))) return;
+    addAnswer(question.topic, question.keywords, "");
+    existingTopics.add(topic);
+    keywords.forEach((keyword) => existingKeywords.add(keyword.toLowerCase()));
+    added += 1;
+  });
+  const status = $("answersStatus");
+  if (!added) {
+    if (status) status.textContent = "All common questions are already in the host guide.";
+    return;
+  }
+  if (status) status.textContent = added + " common question" + (added === 1 ? "" : "s") + " added. Add a reply to each, then save.";
+  const rows = list.querySelectorAll(".entry");
+  const firstNew = rows[rows.length - added];
+  const reply = firstNew && firstNew.querySelector(".rp");
+  if (reply) {
+    reply.focus();
+    reply.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 async function api(path, options = {}) {
@@ -4648,7 +5476,11 @@ async function unlock() {
     // The Worker verifies the password and sets a random HttpOnly session
     // cookie. This is the only request that carries the password; the input is
     // cleared straight after and every later call uses the cookie.
-    await api("/admin/api/login", { method: "POST", body: "{}", headers: { "x-admin-password": pw } });
+    await api("/admin/api/login", {
+      method: "POST",
+      body: JSON.stringify({ remember: Boolean($("remember").checked) }),
+      headers: { "x-admin-password": pw },
+    });
     $("pw").value = "";
     $("loginStatus").textContent = "";
     $("login").classList.add("hidden");
@@ -4667,6 +5499,156 @@ async function signOut() {
     // The cookie is cleared on the server; reload either way.
   }
   window.location.reload();
+}
+
+async function changePassword() {
+  const status = $('passwordStatus');
+  const next = $('newPw').value;
+  if (next !== $('confirmPw').value) {
+    status.textContent = 'The new passwords do not match.';
+    return;
+  }
+  if ([...next].length < 12) {
+    status.textContent = 'Use at least 12 characters.';
+    return;
+  }
+  status.textContent = 'Saving…';
+  try {
+    await api('/admin/api/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword: $('currentPw').value, newPassword: next }),
+    });
+    $('currentPw').value = '';
+    $('newPw').value = '';
+    $('confirmPw').value = '';
+    await Promise.all([loadSessions(), loadAuditEvents()]);
+    status.textContent = 'Password changed. Other sessions were signed out.';
+  } catch (err) {
+    status.textContent = err.message;
+  }
+}
+
+function deviceLabel(ua) {
+  if (!ua || ua === 'unknown') return 'Unknown device';
+  const browser = ua.includes('Edg/') ? 'Edge'
+    : ua.includes('OPR/') ? 'Opera'
+    : ua.includes('Chrome/') ? 'Chrome'
+    : ua.includes('Firefox/') ? 'Firefox'
+    : ua.includes('Safari/') ? 'Safari'
+    : 'Browser';
+  const os = /Windows/.test(ua) ? 'Windows'
+    : /Android/.test(ua) ? 'Android'
+    : /iPhone|iPad/.test(ua) ? 'iOS'
+    : /Mac OS X|Macintosh/.test(ua) ? 'macOS'
+    : /Linux/.test(ua) ? 'Linux'
+    : '';
+  return os ? browser + ' on ' + os : browser;
+}
+
+function sessionWhen(createdAt) {
+  if (!createdAt) return 'sign-in time unknown';
+  const when = new Date(createdAt);
+  if (Number.isNaN(when.getTime())) return 'sign-in time unknown';
+  return 'signed in ' + when.toLocaleString();
+}
+
+async function loadSessions() {
+  const list = $('sessionList');
+  const status = $('sessionStatus');
+  list.textContent = '';
+  status.textContent = 'Loading sessions…';
+  try {
+    const data = await api('/admin/api/sessions');
+    const sessions = data.sessions || [];
+    status.textContent = sessions.length ? '' : 'No active sessions.';
+    sessions.forEach((session) => {
+      const row = document.createElement('div');
+      row.className = 'session-row';
+      const who = document.createElement('div');
+      who.className = 'who';
+      const title = document.createElement('strong');
+      title.textContent = deviceLabel(session.userAgent) + (session.current ? ' · this device' : '');
+      const detail = document.createElement('span');
+      detail.textContent = (session.ip ? session.ip + ' · ' : '') + sessionWhen(session.createdAt);
+      who.append(title, detail);
+      row.append(who);
+      if (session.current) {
+        const pill = document.createElement('span');
+        pill.className = 'pill live';
+        pill.textContent = 'This device';
+        row.append(pill);
+      } else {
+        const button = document.createElement('button');
+        button.className = 'ghost';
+        button.type = 'button';
+        button.textContent = 'Revoke';
+        button.onclick = () => revokeSession(session.id);
+        row.append(button);
+      }
+      list.append(row);
+    });
+  } catch (err) {
+    status.textContent = 'Could not load sessions: ' + err.message;
+  }
+}
+
+const AUDIT_ACTION_LABELS = {
+  admin_password_changed: 'Admin password changed',
+  admin_session_revoked: 'Admin session revoked',
+  property_updated: 'Property updated',
+  pilot_launched: 'Pilot launched',
+  pilot_completed: 'Pilot completed',
+  pilot_scorecard_saved: 'Pilot scorecard saved',
+  critical_changes_approved: 'Critical changes approved',
+  critical_changes_rejected: 'Critical changes rejected',
+};
+
+function auditActionLabel(action) {
+  const key = String(action || '');
+  if (AUDIT_ACTION_LABELS[key]) return AUDIT_ACTION_LABELS[key];
+  return key
+    ? key.split('_').filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Unknown action';
+}
+
+async function loadAuditEvents() {
+  const list = $('auditList');
+  const status = $('auditStatus');
+  list.textContent = '';
+  status.textContent = 'Loading activity…';
+  try {
+    const data = await api('/admin/api/audit');
+    const events = data.events || [];
+    status.textContent = events.length ? '' : 'No admin activity recorded yet.';
+    events.forEach((event) => {
+      const row = document.createElement('div');
+      row.className = 'session-row';
+      const who = document.createElement('div');
+      who.className = 'who';
+      const title = document.createElement('strong');
+      title.textContent = auditActionLabel(event.action);
+      const detail = document.createElement('span');
+      detail.textContent = [event.createdAt, event.propertyName || event.propertyId || 'Admin account']
+        .filter(Boolean).join(' · ');
+      who.append(title, detail);
+      row.append(who);
+      list.append(row);
+    });
+  } catch (err) {
+    status.textContent = 'Could not load activity: ' + err.message;
+  }
+}
+
+async function revokeSession(id) {
+  if (!confirm('Revoke this session? That browser will have to sign in again.')) return;
+  $('sessionStatus').textContent = 'Revoking…';
+  try {
+    await api('/admin/api/sessions?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    await Promise.all([loadSessions(), loadAuditEvents()]);
+    $('sessionStatus').textContent = 'Session revoked.';
+  } catch (err) {
+    $('sessionStatus').textContent = err.message;
+  }
 }
 
 function pillFor(p) {
@@ -4734,9 +5716,9 @@ function renderList() {
     const tiles = document.createElement("div");
     tiles.className = "pc-stats";
     [
-      [p.asked, "guest questions"],
-      [p.escalated, "escalated to you"],
-      [p.answerCount, "answers saved"],
+      [p.asked, "Guest questions"],
+      [p.escalated, "Escalated to you"],
+      [p.answerCount, "Answers saved"],
     ].forEach(([value, label]) => {
       const tile = document.createElement("div");
       tile.className = "pc-stat";
@@ -4892,6 +5874,185 @@ async function deleteProperty(id, name) {
   }
 }
 
+async function loadHostPortal(id) {
+  const status = $("hostPortalStatus");
+  $("hostPortalUrl").textContent = window.location.origin + "/host";
+  $("hostPortalCode").textContent = id;
+  $("hostDashboardLink").href = window.location.origin + "/host";
+  const guideCount = current && Array.isArray(current.answers) ? current.answers.length : 0;
+  $("hostGuideSummary").textContent = guideCount
+    ? guideCount + " guide section" + (guideCount === 1 ? "" : "s") + " shared with the host. Critical access and safety answers stay operator-managed."
+    : "No guide sections yet. Add answers below so the host has something to edit.";
+  status.textContent = "Checking…";
+  try {
+    const data = await api("/admin/api/host-portal?propertyId=" + encodeURIComponent(id));
+    status.textContent = data.configured
+      ? "On. The host can sign in with the house code and their passcode."
+      : "Off. Set a passcode to turn on the portal for this property.";
+    $("hostPortalClear").classList.toggle("hidden", !data.configured);
+    $("hostPortalSignOut").classList.toggle("hidden", !data.configured);
+    $("hostPortalPasscode").value = "";
+  } catch (err) {
+    status.textContent = "Could not read host portal status: " + err.message;
+  }
+}
+
+function generateHostPasscode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = new Uint8Array(14);
+  crypto.getRandomValues(bytes);
+  $("hostPortalPasscode").value = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  $("hostPortalPasscode").focus();
+}
+
+async function saveHostPortal() {
+  if (!current || !current.id) return;
+  const passcode = $("hostPortalPasscode").value;
+  $("hostPortalMsg").textContent = "";
+  try {
+    await api("/admin/api/host-portal", {
+      method: "POST",
+      body: JSON.stringify({ propertyId: current.id, passcode }),
+    });
+    await loadHostPortal(current.id);
+    $("hostPortalMsg").textContent = "Passcode saved. Copy it now — it cannot be shown again.";
+  } catch (err) {
+    $("hostPortalMsg").textContent = err.message;
+  }
+}
+
+async function clearHostPortal() {
+  if (!current || !current.id) return;
+  if (!confirm("Turn off the host portal for this property? The host will be signed out.")) return;
+  try {
+    await api("/admin/api/host-portal?propertyId=" + encodeURIComponent(current.id), { method: "DELETE" });
+    await loadHostPortal(current.id);
+    $("hostPortalMsg").textContent = "Host portal turned off.";
+  } catch (err) {
+    $("hostPortalMsg").textContent = err.message;
+  }
+}
+
+function editHostGuide() {
+  const card = $("answersCard");
+  if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  const first = document.querySelector("#answersList .entry .tp");
+  if (first) first.focus({ preventScroll: true });
+}
+
+async function signOutHostPortal() {
+  if (!current || !current.id) return;
+  if (!confirm("Sign out every browser using this property's host portal?")) return;
+  try {
+    await api("/admin/api/host-portal/sessions?propertyId=" + encodeURIComponent(current.id), { method: "DELETE" });
+    $("hostPortalMsg").textContent = "Host signed out on every browser.";
+  } catch (err) {
+    $("hostPortalMsg").textContent = err.message;
+  }
+}
+
+function openHostPortal() {
+  window.open("/host", "_blank");
+}
+
+async function loadHosts() {
+  const list = $("hostsList");
+  list.textContent = "";
+  $("hostsSummary").textContent = "";
+  $("hostsStatus").textContent = "Loading host dashboards…";
+  try {
+    const data = await api("/admin/api/hosts");
+    const hosts = data.hosts || [];
+    const on = hosts.filter((host) => host.hostPortal && host.hostPortal.configured).length;
+    $("hostsSummary").textContent = hosts.length ? on + " of " + hosts.length + " portals on" : "";
+    $("hostsStatus").textContent = hosts.length ? "" : "No properties yet. Create one first.";
+    hosts.forEach((host) => list.appendChild(renderHostRow(host)));
+  } catch (err) {
+    $("hostsStatus").textContent = err.message;
+  }
+}
+
+function renderHostRow(host) {
+  const row = document.createElement("div");
+  row.className = "host-row";
+
+  const main = document.createElement("div");
+  main.className = "host-main";
+  const name = document.createElement("strong");
+  name.textContent = host.name || host.id;
+  const meta = document.createElement("span");
+  meta.textContent = host.id + " · " + (host.hostName || "Host name not set") + (host.hostEmail ? " · " + host.hostEmail : "");
+  main.append(name, meta);
+
+  const on = Boolean(host.hostPortal && host.hostPortal.configured);
+  const status = document.createElement("span");
+  status.className = "pill" + (on ? " live" : " paused");
+  status.textContent = on ? "Portal on" : "Portal off";
+
+  const guide = document.createElement("span");
+  guide.className = "host-guide";
+  guide.textContent = (host.guideSections || 0) + " guide sections";
+
+  const actions = document.createElement("div");
+  actions.className = "host-actions";
+  const manage = document.createElement("button");
+  manage.type = "button";
+  manage.className = "ghost";
+  manage.textContent = "Manage";
+  manage.onclick = () => manageHost(host.id);
+  actions.append(manage);
+  if (on) {
+    const signOut = document.createElement("button");
+    signOut.type = "button";
+    signOut.className = "ghost";
+    signOut.textContent = "Sign out host";
+    signOut.onclick = () => signOutHostFromList(host.id, host.name || host.id);
+    actions.append(signOut);
+  }
+  const open = document.createElement("a");
+  open.href = "/host";
+  open.target = "_blank";
+  open.rel = "noopener";
+  open.textContent = "Host sign-in";
+  actions.append(open);
+
+  row.append(main, status, guide, actions);
+  return row;
+}
+
+async function manageHost(id) {
+  document.querySelectorAll("[data-tab]").forEach((tab) => {
+    tab.classList.toggle("active", tab.getAttribute("data-tab") === "properties");
+  });
+  document.querySelectorAll(".sub").forEach((sub) => sub.classList.remove("hidden"));
+  $("pageTitle").classList.remove("hidden");
+  $("hostsView").classList.add("hidden");
+  $("listView").classList.add("hidden");
+  $("leadsView").classList.add("hidden");
+  $("analyticsView").classList.add("hidden");
+  $("insightsView").classList.add("hidden");
+  $("operationsView").classList.add("hidden");
+  $("pilotView").classList.add("hidden");
+  $("accountView").classList.add("hidden");
+  $("leadDetailView").classList.add("hidden");
+  await openProperty(id);
+  const passcode = $("hostPortalPasscode");
+  if (passcode) {
+    passcode.scrollIntoView({ block: "center" });
+    passcode.focus();
+  }
+}
+
+async function signOutHostFromList(id, name) {
+  if (!confirm("Sign out every browser using the host portal for " + name + "?")) return;
+  try {
+    await api("/admin/api/host-portal/sessions?propertyId=" + encodeURIComponent(id), { method: "DELETE" });
+    $("hostsStatus").textContent = "Signed out every host browser for " + name + ".";
+  } catch (err) {
+    $("hostsStatus").textContent = err.message;
+  }
+}
+
 async function openProperty(id) {
   try {
     current = await api("/admin/api/property?id=" + encodeURIComponent(id));
@@ -4915,9 +6076,9 @@ async function openProperty(id) {
     // The same tiles the property cards use: label above the value, so a number
     // looks and reads the same in the list and in the editor.
     [
-      [current.asked || 0, "questions asked"],
-      [current.escalated || 0, "escalated"],
-      [current.answerCount || 0, "answers saved"],
+      [current.asked || 0, "Questions asked"],
+      [current.escalated || 0, "Escalated"],
+      [current.answerCount || 0, "Answers saved"],
     ].forEach(([value, label]) => {
       const el = document.createElement("div");
       el.className = "pc-stat";
@@ -4941,6 +6102,7 @@ async function openProperty(id) {
     $("twilioNumber").value = current.twilioNumber || "";
     $("hostPhone").value = current.hostPhone || "";
     $("hostEmail").value = current.hostEmail || "";
+    $("hostName").value = current.hostName || "";
     $("rateLimitReply").value = current.rateLimitReply || "";
     $("unknownReply").value = current.unknownReply || "";
     $("checkinTime").value = current.checkinTime || "";
@@ -4955,11 +6117,13 @@ async function openProperty(id) {
     $("highEscalationNote").value = escalationNote("high");
     $("emergencyEscalationNote").value = escalationNote("emergency");
     await loadCriticalChangeRequests(current.id);
+    await loadHostPortal(current.id);
 
     $("secretsList").textContent = "";
     (current.secrets || []).forEach((s) => addSecret((s.keywords || []).join(", "), s.reply || ""));
     if (!(current.secrets || []).length) addSecret();
 
+    $("answersStatus").textContent = "";
     $("answersList").textContent = "";
     (current.answers || []).forEach((a) => addAnswer(a.topic || "", (a.keywords || []).join(", "), a.reply || ""));
     if (!(current.answers || []).length) addAnswer();
@@ -5045,6 +6209,19 @@ async function loadCriticalChangeRequests(propertyId) {
 
 async function save() {
   if (!current || !current.id) return;
+  const unansweredAnswer = Array.from(document.querySelectorAll("#answersList .entry")).find((row) => {
+    const topic = row.querySelector(".tp").value.trim();
+    const keywords = row.querySelector(".kw").value.trim();
+    const reply = row.querySelector(".rp").value.trim();
+    return Boolean(topic || keywords) && !reply;
+  });
+  if (unansweredAnswer) {
+    $("answersStatus").textContent = "Add a reply for each question before saving. Questions without a reply are not saved.";
+    const reply = unansweredAnswer.querySelector(".rp");
+    reply.focus();
+    reply.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const secrets = collect("#secretsList .entry", (row) => ({
     keywords: parseKeywords(row.querySelector(".kw").value),
     reply: row.querySelector(".rp").value.trim(),
@@ -5084,6 +6261,7 @@ async function save() {
         twilioNumber: $("twilioNumber").value,
         hostPhone: $("hostPhone").value,
         hostEmail: $("hostEmail").value,
+        hostName: $("hostName").value,
         rateLimitReply: $("rateLimitReply").value,
         unknownReply: $("unknownReply").value,
         active: $("active").checked ? 1 : 0,
@@ -5171,18 +6349,20 @@ function showTab(tab) {
   });
   // Only one view is visible at a time
   $('listView').classList.toggle('hidden', tab !== 'properties');
+  $('hostsView').classList.toggle('hidden', tab !== 'hosts');
   $('leadsView').classList.toggle('hidden', tab !== 'leads');
   $('analyticsView').classList.toggle('hidden', tab !== 'analytics');
   $('insightsView').classList.toggle('hidden', tab !== 'insights');
   $('operationsView').classList.toggle('hidden', tab !== 'operations');
   $('pilotView').classList.toggle('hidden', tab !== 'pilot');
+  $('accountView').classList.toggle('hidden', tab !== 'account');
   $('leadDetailView').classList.add('hidden');
   $('propView').classList.add('hidden');
 
   if (tab === 'leads') {
     document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
     $('pageTitle').classList.add('hidden');
-  } else if (tab === 'analytics' || tab === 'insights' || tab === 'operations' || tab === 'pilot') {
+  } else if (tab === 'analytics' || tab === 'insights' || tab === 'operations' || tab === 'pilot' || tab === 'account' || tab === 'hosts') {
     document.querySelectorAll('.sub').forEach((s) => s.classList.add('hidden'));
     $('pageTitle').classList.add('hidden');
   } else {
@@ -5190,11 +6370,16 @@ function showTab(tab) {
     $('pageTitle').classList.remove('hidden');
   }
   if (tab === 'properties') showList();
+  else if (tab === 'hosts') loadHosts();
   else if (tab === 'leads') loadLeads();
   else if (tab === 'analytics') loadAnalytics();
   else if (tab === 'insights') loadInsights();
   else if (tab === 'operations') loadOperations();
   else if (tab === 'pilot') loadPilots();
+  else if (tab === 'account') {
+    loadSessions();
+    loadAuditEvents();
+  }
 }
 
 async function loadPilots() {
@@ -6285,7 +7470,7 @@ function chartNote(svg, text, width, height) {
     x: String(width / 2),
     y: String(height / 2),
     'text-anchor': 'middle',
-    fill: 'rgba(147,165,201,.8)',
+    fill: 'rgba(168,158,151,.8)',
     'font-size': '11',
   });
   note.textContent = text;
@@ -6314,11 +7499,11 @@ function renderThroughput(svg, daily) {
     const y = padTop + plotHeight - (value / peak) * plotHeight;
     svg.appendChild(svgEl('line', {
       x1: String(padLeft), y1: String(y), x2: String(width - padRight), y2: String(y),
-      stroke: 'rgba(148,180,255,.12)', 'stroke-width': '1',
+      stroke: 'rgba(255,236,224,.08)', 'stroke-width': '1',
     }));
     const label = svgEl('text', {
       x: String(padLeft - 8), y: String(y + 3.5), 'text-anchor': 'end',
-      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+      fill: 'rgba(168,158,151,.85)', 'font-size': '9',
     });
     label.textContent = String(Math.round(value));
     svg.appendChild(label);
@@ -6344,8 +7529,8 @@ function renderThroughput(svg, daily) {
   const outboundPoints = series.map(function (day, index) {
     return { x: xAt(index), y: yAt(day.outbound) };
   });
-  drawSeries(svg, defs, outboundPoints, bottom, '#818cf8', 'gradOutbound', 0.24);
-  drawSeries(svg, defs, inboundPoints, bottom, '#3b82f6', 'gradInbound', 0.34);
+  drawSeries(svg, defs, outboundPoints, bottom, '#ff9a6b', 'gradOutbound', 0.24);
+  drawSeries(svg, defs, inboundPoints, bottom, '#ff7a45', 'gradInbound', 0.34);
 
   const marks = [0, Math.floor((series.length - 1) / 2), series.length - 1];
   marks.forEach(function (index, order) {
@@ -6388,11 +7573,11 @@ function renderQuestionArea(svg, daily) {
     const y = padTop + plotHeight - (value / peak) * plotHeight;
     svg.appendChild(svgEl('line', {
       x1: String(padLeft), y1: String(y), x2: String(width - padRight), y2: String(y),
-      stroke: 'rgba(148,180,255,.12)', 'stroke-width': '1',
+      stroke: 'rgba(255,236,224,.08)', 'stroke-width': '1',
     }));
     const label = svgEl('text', {
       x: String(padLeft - 8), y: String(y + 3.5), 'text-anchor': 'end',
-      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+      fill: 'rgba(168,158,151,.85)', 'font-size': '9',
     });
     label.textContent = String(Math.round(value));
     svg.appendChild(label);
@@ -6415,7 +7600,7 @@ function renderQuestionArea(svg, daily) {
   const points = series.map(function (day, index) {
     return { x: xAt(index), y: yAt(day.inbound) };
   });
-  drawSeries(svg, defs, points, bottom, '#3fd8c5', 'gradInsightDaily', 0.34);
+  drawSeries(svg, defs, points, bottom, '#ffb547', 'gradInsightDaily', 0.34);
 
   const marks = [0, Math.floor((series.length - 1) / 2), series.length - 1];
   marks.forEach(function (index, order) {
@@ -6425,7 +7610,7 @@ function renderQuestionArea(svg, daily) {
       x: String(xAt(index)),
       y: String(height - 6),
       'text-anchor': order === 0 ? 'start' : (order === marks.length - 1 ? 'end' : 'middle'),
-      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+      fill: 'rgba(168,158,151,.85)', 'font-size': '9',
     });
     label.textContent = shortDay(point.day);
     svg.appendChild(label);
@@ -6452,8 +7637,8 @@ function renderWeeklyBars(svg, weekly) {
 
   const defs = svgEl('defs', {});
   const gradient = svgEl('linearGradient', { id: 'gradWeekly', x1: '0', y1: '0', x2: '0', y2: '1' });
-  gradient.appendChild(svgEl('stop', { offset: '0', 'stop-color': '#93c5fd' }));
-  gradient.appendChild(svgEl('stop', { offset: '1', 'stop-color': '#2563eb' }));
+  gradient.appendChild(svgEl('stop', { offset: '0', 'stop-color': '#ffd08a' }));
+  gradient.appendChild(svgEl('stop', { offset: '1', 'stop-color': '#ff7a45' }));
   defs.appendChild(gradient);
   svg.appendChild(defs);
 
@@ -6468,11 +7653,11 @@ function renderWeeklyBars(svg, weekly) {
       x: String(x), y: String(y), width: String(barWidth), height: String(barHeight),
       rx: '5', fill: 'url(#gradWeekly)',
     });
-    if (value) glow(rect, 'rgba(59,130,246,.5)');
+    if (value) glow(rect, 'rgba(255,122,69,.45)');
     svg.appendChild(rect);
     const label = svgEl('text', {
       x: String(x + barWidth / 2), y: String(height - 6), 'text-anchor': 'middle',
-      fill: 'rgba(147,165,201,.85)', 'font-size': '9',
+      fill: 'rgba(168,158,151,.85)', 'font-size': '9',
     });
     label.textContent = bar.label;
     svg.appendChild(label);
@@ -6504,11 +7689,11 @@ function renderDonut(svg, mix) {
   const radius = 46;
   const strokeWidth = 13;
   const circumference = 2 * Math.PI * radius;
-  const colors = { fromAnswers: '#3b82f6', byAi: '#818cf8', escalated: '#ff5b2e', other: '#64748b' };
+  const colors = { fromAnswers: '#ff7a45', byAi: '#ffb547', escalated: '#ff4d6d', other: '#8b807a' };
 
   svg.appendChild(svgEl('circle', {
     cx: String(center), cy: String(center), r: String(radius), fill: 'none',
-    stroke: 'rgba(148,180,255,.10)', 'stroke-width': String(strokeWidth),
+    stroke: 'rgba(255,236,224,.08)', 'stroke-width': String(strokeWidth),
   }));
 
   const entries = (mix || []).filter(function (entry) { return Number(entry.n || 0) > 0; });
@@ -6522,7 +7707,7 @@ function renderDonut(svg, mix) {
   entries.forEach(function (entry) {
     const length = (Number(entry.n) / total) * circumference;
     const visible = Math.max(length - 3, 2);
-    const color = colors[entry.key] || '#64748b';
+    const color = colors[entry.key] || '#8b807a';
     const arc = svgEl('circle', {
       cx: String(center), cy: String(center), r: String(radius), fill: 'none',
       stroke: color,
@@ -6540,12 +7725,12 @@ function renderDonut(svg, mix) {
 
 function renderMixLegend(list, mix) {
   clearNode(list);
-  const colors = { fromAnswers: '#3b82f6', byAi: '#818cf8', escalated: '#ff5b2e', other: '#64748b' };
+  const colors = { fromAnswers: '#ff7a45', byAi: '#ffb547', escalated: '#ff4d6d', other: '#8b807a' };
   (mix || []).forEach(function (entry) {
     const item = document.createElement('li');
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
-    swatch.style.background = colors[entry.key] || '#64748b';
+    swatch.style.background = colors[entry.key] || '#8b807a';
     const label = document.createElement('span');
     label.textContent = entry.label;
     const value = document.createElement('b');
@@ -6737,8 +7922,8 @@ function renderAnalytics(data) {
   setDelta($('todayInDelta'), changeSince(inboundToday, Number(yesterday.inbound || 0)), 'vs yesterday');
   setDelta($('todayOutDelta'), changeSince(outboundToday, Number(yesterday.outbound || 0)), 'vs yesterday');
 
-  renderSparkline($('todayInSpark'), daily.map(function (day) { return day.inbound; }), '#3b82f6', 'sparkInbound');
-  renderSparkline($('todayOutSpark'), daily.map(function (day) { return day.outbound; }), '#818cf8', 'sparkOutbound');
+  renderSparkline($('todayInSpark'), daily.map(function (day) { return day.inbound; }), '#ffb547', 'sparkInbound');
+  renderSparkline($('todayOutSpark'), daily.map(function (day) { return day.outbound; }), '#ff9a6b', 'sparkOutbound');
   renderSparkline($('escalationSpark'), daily.map(function (day) { return day.escalated || 0; }), '#ff5b2e', 'sparkEscalated');
 }
 

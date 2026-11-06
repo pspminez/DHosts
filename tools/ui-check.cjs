@@ -145,13 +145,25 @@ async function runPage({ html, script, routes }) {
 
   const calls = [];
   const requests = [];
+  const bodies = [];
   const fetchStub = async (url, init) => {
     calls.push(url);
     requests.push(((init && init.method) || "GET") + " " + url);
-    if (!(url in routes)) {
+    bodies.push(init && init.body);
+    const body = routes[url];
+    if (body === undefined) {
       return { ok: false, status: 404, statusText: "Not Found", json: async () => ({ error: "no route " + url }) };
     }
-    return { ok: true, status: 200, statusText: "OK", json: async () => routes[url] };
+    // A fixture can simulate a failed request, e.g. a login lockout.
+    if (body && body.__error) {
+      return {
+        ok: false,
+        status: body.__status || 400,
+        statusText: "Error",
+        json: async () => ({ error: body.__error, retryAfterSeconds: body.retryAfterSeconds }),
+      };
+    }
+    return { ok: true, status: 200, statusText: "OK", json: async () => body };
   };
   const windowStub = {
     location: { href: "", reload() {} },
@@ -169,8 +181,14 @@ async function runPage({ html, script, routes }) {
     "renderList: renderList",
     "renderLeads: renderLeads",
     "loadPilots: loadPilots",
+    "loadHosts: loadHosts",
     "openPilot: openPilot",
     "showTab: showTab",
+    "unlock: unlock",
+    "changePassword: changePassword",
+    "loadSessions: loadSessions",
+    "loadAuditEvents: loadAuditEvents",
+    "revokeSession: revokeSession",
     "setProperties: (v) => { properties = v; }",
     "setLeads: (v) => { leads = v; }",
     "setCurrent: (v) => { current = v; }",
@@ -197,7 +215,7 @@ async function runPage({ html, script, routes }) {
 
   const helpers = globalThis.__exports;
   delete globalThis.__exports;
-  return { registry, navItems, calls, requests, helpers };
+  return { registry, navItems, calls, requests, bodies, helpers };
 }
 
 const checks = [];
@@ -258,6 +276,10 @@ const PROPERTIES = [
   { id: "sunset", name: "Sunset Villa", active: true, asked: 168, escalated: 14, answerCount: 12, twilioNumber: "+18635550142", openEscalations: 2, lastActivity: "2026-10-26T09:00:00Z" },
   { id: "harbor", name: "Harbor House", active: false, asked: 0, escalated: 0, answerCount: 0, twilioNumber: "", openEscalations: 0, lastActivity: null },
 ];
+const HOSTS = [
+  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana", hostEmail: "host@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T12:00:00Z" }, guideSections: 2 },
+  { id: "HARBOR", name: "Harbor House", active: 0, hostId: "host_mo", hostName: "", hostEmail: "", hostPortal: { configured: false, updatedAt: null }, guideSections: 0 },
+];
 const SUNSET_PROPERTY = {
   id: "SUNSET",
   name: "Sunset Villa",
@@ -291,6 +313,13 @@ const LEADS = [
   { name: "No Email Co", location: "Davenport, FL", phone: "", email: "", website: "https://x.com", leadStatus: "contacted", fit: "C", contactName: "", propertyType: "Vacation rental operator", address: "" },
 ];
 
+const SESSIONS = {
+  sessions: [
+    { id: "SESSION-CURRENT", current: true, createdAt: "2026-11-05T12:00:00Z", ip: "203.0.113.5", userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0", legacy: false },
+    { id: "SESSION-OTHER", current: false, createdAt: "2026-11-04T09:30:00Z", ip: "198.51.100.9", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15", legacy: false },
+  ],
+};
+
 (async () => {
   const { html, script } = extract();
   const failures = wiring(html, script);
@@ -311,7 +340,18 @@ const LEADS = [
     "/admin/api/operations?sample=1": operationsSample,
     "/admin/api/features": { insights: true },
     "/admin/api/health": HEALTH,
+    "/admin/api/password": { success: true },
+    "/admin/api/audit": {
+      events: [
+        { createdAt: "2026-11-05 12:00:00", action: "admin_password_changed", propertyId: null, propertyName: null },
+        { createdAt: "2026-11-04 11:00:00", action: "property_updated", propertyId: "SUNSET", propertyName: "Sunset Villa" },
+        { createdAt: "2026-11-03 10:00:00", action: "admin_session_revoked", propertyId: null, propertyName: null },
+      ],
+    },
+    "/admin/api/sessions": SESSIONS,
+    "/admin/api/sessions?id=SESSION-OTHER": { success: true },
     "/admin/api/properties": { properties: PROPERTIES },
+    "/admin/api/hosts": { hosts: HOSTS },
     "/admin/api/property?id=SUNSET": SUNSET_PROPERTY,
     "/admin/api/pilots": {
       pilots: [{
@@ -340,7 +380,7 @@ const LEADS = [
 
   // ---- shell: every view has a nav item, and showTab marks exactly one -----
   const page = await runPage({ html, script, routes });
-  const views = ["properties", "leads", "analytics", "insights", "operations", "pilot"];
+  const views = ["properties", "hosts", "leads", "analytics", "insights", "operations", "pilot", "account"];
   check("every view has a nav item", views.filter((v) => page.navItems.some((n) => n.getAttribute("data-tab") === v)), views);
   page.helpers.showTab("insights");
   check(
@@ -381,11 +421,112 @@ const LEADS = [
   check("draft editor offers the launch action", page.registry.pilotLaunchButton.textContent, "Launch pilot");
   check("draft editor persists the pilot checklist", page.registry.pilotLaunchChecks.children.length, 7);
   // The properties view keeps its old id, so map it explicitly.
-  const viewIds = { properties: "listView", leads: "leadsView", analytics: "analyticsView", insights: "insightsView", operations: "operationsView", pilot: "pilotView" };
+  const viewIds = { properties: "listView", hosts: "hostsView", leads: "leadsView", analytics: "analyticsView", insights: "insightsView", operations: "operationsView", pilot: "pilotView", account: "accountView" };
   check(
     "only one view is visible at a time",
     views.filter((v) => !page.registry[viewIds[v]].classList.contains("hidden")),
     ["properties"],
+  );
+  page.helpers.showTab("account");
+  check(
+    "the account view is reachable from the nav",
+    views.filter((v) => !page.registry[viewIds[v]].classList.contains("hidden")),
+    ["account"],
+  );
+  await page.helpers.loadHosts();
+  check(
+    "hosts tab lists each property and its portal state",
+    page.registry.hostsList.children.map((row) => [row.children[0].children[0].textContent, row.children[1].textContent]),
+    [["Sunset Villa", "Portal on"], ["Harbor House", "Portal off"]],
+  );
+  page.helpers.showTab("properties");
+
+  // ---- change password ----------------------------------------------------
+  const account = await runPage({ html, script, routes });
+  account.registry.currentPw.value = "old-password-123";
+  account.registry.newPw.value = "new-password-123";
+  account.registry.confirmPw.value = "different-password-123";
+  await account.helpers.changePassword();
+  check("mismatched new passwords are caught before the request", account.registry.passwordStatus.textContent, "The new passwords do not match.");
+  check("a mismatched change sends nothing", account.requests.filter((r) => r === "POST /admin/api/password").length, 0);
+  account.registry.newPw.value = "short";
+  account.registry.confirmPw.value = "short";
+  await account.helpers.changePassword();
+  check("a short new password is caught before the request", account.registry.passwordStatus.textContent, "Use at least 12 characters.");
+  check("a short change sends nothing", account.requests.filter((r) => r === "POST /admin/api/password").length, 0);
+  account.registry.newPw.value = "new-password-123";
+  account.registry.confirmPw.value = "new-password-123";
+  await account.helpers.changePassword();
+  check("change password posts to the authenticated endpoint", account.requests.includes("POST /admin/api/password"), true);
+  check(
+    "change password confirms and says other sessions ended",
+    account.registry.passwordStatus.textContent,
+    "Password changed. Other sessions were signed out.",
+  );
+  check(
+    "change password clears the fields",
+    [account.registry.currentPw.value, account.registry.newPw.value, account.registry.confirmPw.value],
+    ["", "", ""],
+  );
+
+  // ---- signed-in sessions -------------------------------------------------
+  await account.helpers.loadSessions();
+  check("signed-in sessions are listed", account.registry.sessionList.children.length, 2);
+  check(
+    "the current browser is labeled",
+    account.registry.sessionList.children[0].children[0].children[0].textContent.includes("this device"),
+    true,
+  );
+  check("the other browser offers a revoke button", account.registry.sessionList.children[1].children[1].textContent, "Revoke");
+  await account.helpers.revokeSession("SESSION-OTHER");
+  check(
+    "revoking a session posts DELETE",
+    account.requests.includes("DELETE /admin/api/sessions?id=SESSION-OTHER"),
+    true,
+  );
+  check("revoking a session confirms", account.registry.sessionStatus.textContent, "Session revoked.");
+
+  // ---- recent admin activity ---------------------------------------------
+  await account.helpers.loadAuditEvents();
+  check("recent admin activity is listed", account.registry.auditList.children.length, 3);
+  check(
+    "activity actions have readable labels",
+    account.registry.auditList.children.map((row) => row.children[0].children[0].textContent),
+    ["Admin password changed", "Property updated", "Admin session revoked"],
+  );
+  check(
+    "activity shows the time and property or account",
+    account.registry.auditList.children.map((row) => row.children[0].children[1].textContent),
+    [
+      "2026-11-05 12:00:00 · Admin account",
+      "2026-11-04 11:00:00 · Sunset Villa",
+      "2026-11-03 10:00:00 · Admin account",
+    ],
+  );
+
+  // ---- login lockout ------------------------------------------------------
+  const lockedOut = await runPage({
+    html,
+    script,
+    routes: {
+      ...routes,
+      // Keep the sign-in card up, then fail the sign-in with a lockout.
+      "/admin/api/properties": { __status: 403, __error: "unauthorized" },
+      "/admin/api/login": { __status: 429, __error: "Too many failed sign-in attempts. Try again in 15 minutes." },
+    },
+  });
+  lockedOut.registry.pw.value = "wrong-password";
+  lockedOut.registry.remember.checked = true;
+  await lockedOut.helpers.unlock();
+  check(
+    "sign-in sends the remember-me choice",
+    JSON.parse(lockedOut.bodies.filter(Boolean).pop()).remember,
+    true,
+  );
+  check(
+    "a login lockout is shown on the sign-in card",
+    lockedOut.registry.loginStatus.textContent,
+    "Too many failed sign-in attempts. Try again in 15 minutes.",
   );
 
   // ---- properties list ----------------------------------------------------

@@ -4,4 +4,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://davenport-host-co.pages.dev/sitemap.xml
+Sitemap: https://stayxi.com/sitemap.xml

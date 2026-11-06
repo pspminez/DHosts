@@ -37,6 +37,16 @@ function extractPage() {
   return new Function("return `" + src.slice(from, to) + "`;")();
 }
 
+// The host portal is a separate page module, so it gets its own extractor.
+function extractHostPage() {
+  const src = fs.readFileSync("bot/host-portal-page.js", "utf8");
+  const marker = "export const HOST_HTML = `";
+  const from = src.indexOf(marker) + marker.length;
+  const to = src.lastIndexOf("`;");
+  if (from < marker.length || to < 0) throw new Error("could not find HOST_HTML in bot/host-portal-page.js");
+  return new Function("return `" + src.slice(from, to) + "`;")();
+}
+
 const HEALTH = {
   database: "ok",
   propertyStore: "ok",
@@ -54,6 +64,30 @@ const PROPERTIES = [
   { id: "PALM", name: "Palm Court", active: true, asked: 39, escalated: 5, answerCount: 6, twilioNumber: "", openEscalations: 0, lastActivity: "2026-10-24T14:30:00Z" },
   { id: "OAK", name: "Oak Terrace", active: false, asked: 0, escalated: 0, answerCount: 0, twilioNumber: "", openEscalations: 0, lastActivity: null },
 ];
+
+// Hosts tab rows, matching what /admin/api/hosts returns.
+const HOSTS = [
+  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z" }, guideSections: 12 },
+  { id: "HARBOR", name: "Harbor House", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z" }, guideSections: 9 },
+  { id: "LAKEVIEW", name: "Lakeview Lodge", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 7 },
+  { id: "PALM", name: "Palm Court", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 6 },
+  { id: "OAK", name: "Oak Terrace", active: 0, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 0 },
+];
+
+const SESSIONS = {
+  sessions: [
+    { id: "S1", current: true, ip: "203.0.113.24", userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Safari/537.36", createdAt: "2026-11-05T09:12:00Z" },
+    { id: "S2", current: false, ip: "198.51.100.7", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 Version/18.2 Mobile/15E148 Safari/604.1", createdAt: "2026-11-04T21:40:00Z" },
+  ],
+};
+
+const AUDIT = {
+  events: [
+    { action: "admin_password_changed", createdAt: "2026-11-05 09:14", propertyName: "" },
+    { action: "property_updated", createdAt: "2026-11-04 17:02", propertyName: "Sunset Villa" },
+    { action: "admin_session_revoked", createdAt: "2026-11-03 08:31", propertyName: "" },
+  ],
+};
 
 // What the live endpoint returns for the open queue, so a capture taken in live
 // mode does not show the "queue unavailable" fallback instead of the card.
@@ -178,8 +212,14 @@ function connect(url) {
   // "login" is not a tab: it is the state before unlock, so it must NOT be driven
   // past the password card.
   const isLogin = tab === "login";
+  // The host portal is its own page. "host" and "host-guide" render the sample
+  // dashboard; "host-login" stops at the sign-in card.
+  const isHost = tab === "host" || tab === "host-guide" || tab === "host-login";
+  const isHostLogin = tab === "host-login";
+  const hostView = tab === "host-guide" ? "guide" : "activity";
 
   const { sampleAnalytics } = await import("../bot/analytics.js");
+  const { sampleHostOverview } = await import("../bot/host-portal.js");
   const { sampleOperations } = await import("../bot/operations.js");
   const { sampleInsights } = await import("../bot/insights.js");
   const { LEADS } = await import("../bot/leads.js");
@@ -194,6 +234,9 @@ function connect(url) {
     "/admin/api/operations?sample=1": sampleOperations(now),
     "/admin/api/health": HEALTH,
     "/admin/api/features": { insights: true },
+    "/admin/api/hosts": { hosts: HOSTS },
+    "/admin/api/sessions": SESSIONS,
+    "/admin/api/audit": AUDIT,
     "/admin/api/properties": { properties: PROPERTIES },
     "/admin/api/property?id=SUNSET": PROPERTY,
     // The real prospect list: a screenshot of empty rows proves nothing.
@@ -202,6 +245,16 @@ function connect(url) {
   };
 
   // Shim before the page script so its boot-time calls see it.
+  const hostShim = [
+    "<script>",
+    "window.fetch = async function (url) {",
+    isHostLogin
+      ? "  return { ok: false, status: 401, statusText: 'Unauthorized', json: async function () { return { error: 'Sign in to view this dashboard.' }; } };"
+      : "  return { ok: true, status: 200, statusText: 'OK', json: async function () { return " + JSON.stringify(sampleHostOverview("stay")) + "; } };",
+    "};",
+    "</script>",
+  ].join("\n");
+
   const shim = [
     "<script>",
     "window.fetch = async function (url) {",
@@ -235,10 +288,10 @@ function connect(url) {
   // fading nav item would be captured half-applied and look like a state bug.
   const pinTransitions = "<style>*{transition:none!important;animation:none!important}</style>";
 
-  let html = extractPage();
+  let html = isHost ? extractHostPage() : extractPage();
   html = html.replace("</head>", pinTransitions + "</head>");
-  html = html.replace("<script>", shim + "\n<script>");
-  html = html.replace("</body>", drive + "\n</body>");
+  html = html.replace("<script>", (isHost ? hostShim : shim) + "\n<script>");
+  if (!isHost) html = html.replace("</body>", drive + "\n</body>");
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const pageFile = path.join(OUT_DIR, name + ".html");
@@ -271,15 +324,17 @@ function connect(url) {
       screenWidth: width,
       screenHeight: 900,
     });
-    await client.send("Page.navigate", {
-      url: "file:///" + path.resolve(pageFile).replace(/\\/g, "/"),
-    });
+    let pageUrl = "file:///" + path.resolve(pageFile).replace(/\\/g, "/");
+    if (isHost) {
+      pageUrl += isHostLogin ? "?signedout=1" : "?sample=1" + (hostView === "guide" ? "&view=guide" : "");
+    }
+    await client.send("Page.navigate", { url: pageUrl });
     await new Promise((resolve) => setTimeout(resolve, 2600));
 
     // Do not trust the in-page timers: on a narrow, emulated-mobile viewport
     // they sometimes had not run yet and the shot captured the login card.
     // Forcing the same reveal here makes the capture deterministic.
-    if (!isLogin) {
+    if (!isLogin && !isHost) {
       await client.send("Runtime.evaluate", { expression: "reveal(); " + switchCall });
       await new Promise((resolve) => setTimeout(resolve, 400));
     }

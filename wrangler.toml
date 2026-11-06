@@ -20,6 +20,11 @@ database_id = "8dd9944d-411f-408a-bb3e-c039e4f86755"
 # plan. This is the per-deployment entitlement: set it to "false" for an
 # operator who has not bought it and the tab disappears *and* the API refuses.
 INSIGHTS_ENTITLED = "true"
+# Admin session lifetimes. Unchecked "Keep me signed in" uses ADMIN_SESSION_HOURS
+# and a browser-session cookie; checked uses ADMIN_SESSION_REMEMBER_DAYS and a
+# persistent cookie. Invalid values fall back to 12 hours / 30 days.
+ADMIN_SESSION_HOURS = "12"
+ADMIN_SESSION_REMEMBER_DAYS = "30"
 VALIDATE_SIGNATURE = "true"
 PUBLIC_URL = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/sms"
 GMAIL_OAUTH_REDIRECT_URI = "https://davenport-host-co-bot.davenport-host-co-bot.workers.dev/admin/google/oauth/callback"

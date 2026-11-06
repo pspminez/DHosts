@@ -17,6 +17,16 @@ test("answers the sample wifi question with demo-only credentials", () => {
   assert.match(result.reply, /porch-light-42/);
 });
 
+test("answers the natural parking and bin phrasings used by the landing page", () => {
+  const parking = previewDemoMessage("Where do we park?");
+  assert.equal(parking.action, "answer");
+  assert.equal(parking.intentKey, "faq_parking");
+
+  const bins = previewDemoMessage("Which bin goes out tonight?");
+  assert.equal(bins.action, "answer");
+  assert.equal(bins.intentKey, "faq_trash");
+});
+
 test("does not expose access credentials in the public sample", () => {
   const result = previewDemoMessage("What is the gate code?");
   assert.equal(result.action, "answer");
