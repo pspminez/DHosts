@@ -22,7 +22,9 @@ export const HOST_HTML = `<!DOCTYPE html>
   :root {
     --bg:#0b0908; --panel:#0e0c0b; --card:#151211; --card-2:#191514;
     --line:#27211d; --line-soft:#201b18;
-    --text:#f2ede8; --muted:#a69c94; --faint:#7d736b;
+    /* --faint carries real text: stat notes, card meta, the median note. At
+       #7d736b it measured 4.0:1 on a card, under the 4.5:1 AA floor. */
+    --text:#f2ede8; --muted:#a69c94; --faint:#8b8177;
     --accent:#ff8a3d; --amber:#ffc46b; --green:#8fc7a4;
     --answered:#d9d29a; --answered-bg:#2e2b1c;
     --routed:#e6bd90; --routed-bg:#3a2a1d;
@@ -407,7 +409,9 @@ export const HOST_HTML = `<!DOCTYPE html>
   </main>
 </div>
 
-<section class="login-screen" id="loginScreen">
+<!-- The house code and passcode form is the page's only visible landmark until
+     the host signs in, so it is the <main> element in this state. -->
+<main class="login-screen" id="loginScreen">
   <div class="login-panel">
     <div class="login-brand">
       <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span>
@@ -426,7 +430,7 @@ export const HOST_HTML = `<!DOCTYPE html>
     <p class="login-alt">Just looking? <a href="?sample=1">Open the sample dashboard</a></p>
     <p class="login-foot">Your passcode is set by StayXI. Ask us to reset it if you lose it.</p>
   </div>
-</section>
+</main>
 
 <script>
 (function () {
