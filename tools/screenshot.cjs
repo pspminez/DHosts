@@ -69,8 +69,8 @@ const PROPERTIES = [
 
 // Hosts tab rows, matching what /admin/api/hosts returns.
 const HOSTS = [
-  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z" }, guideSections: 12 },
-  { id: "HARBOR", name: "Harbor House", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z" }, guideSections: 9 },
+  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z", defaultPasscode: true }, guideSections: 12 },
+  { id: "HARBOR", name: "Harbor House", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T18:20:00Z", defaultPasscode: true }, guideSections: 9 },
   { id: "LAKEVIEW", name: "Lakeview Lodge", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 7 },
   { id: "PALM", name: "Palm Court", active: 1, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 6 },
   { id: "OAK", name: "Oak Terrace", active: 0, hostId: "host_dana", hostName: "Dana Whitfield", hostEmail: "dana@example.com", hostPortal: { configured: false, updatedAt: null }, guideSections: 0 },

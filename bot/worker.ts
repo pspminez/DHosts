@@ -2858,6 +2858,8 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         hostName: string;
         hostEmail: string;
       }>();
+      // Whether a portal still uses the staging passcode costs a PBKDF2 pass per
+      // configured property, so the properties are read in parallel.
       const hosts: Array<{
         id: string;
         name: string;
@@ -2865,18 +2867,19 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         hostId: string | null;
         hostName: string;
         hostEmail: string;
-        hostPortal: { configured: boolean; updatedAt: string | null };
+        hostPortal: { configured: boolean; updatedAt: string | null; defaultPasscode: boolean };
         guideSections: number;
-      }> = [];
-      for (const property of results || []) {
-        const portal = await hostPortalStatus(env.PROPERTIES, property.id);
-        const kv = (await env.PROPERTIES.get(`prop:${property.id}`, "json")) as { answers?: unknown[] } | null;
-        hosts.push({
-          ...property,
-          hostPortal: portal,
-          guideSections: Array.isArray(kv?.answers) ? kv.answers.length : 0,
-        });
-      }
+      }> = await Promise.all(
+        (results || []).map(async (property) => {
+          const portal = await hostPortalStatus(env.PROPERTIES, property.id);
+          const kv = (await env.PROPERTIES.get(`prop:${property.id}`, "json")) as { answers?: unknown[] } | null;
+          return {
+            ...property,
+            hostPortal: portal,
+            guideSections: Array.isArray(kv?.answers) ? kv.answers.length : 0,
+          };
+        }),
+      );
       return adminJson({ hosts });
     } catch (err) {
       console.error("Could not load host dashboards:", errorMessage(err) || err);
@@ -3985,6 +3988,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   a.lead-action-secondary { display:inline-block; margin-top:.75rem; padding:.6rem 1rem; border-radius:10px;
          border:1px solid var(--border); color:var(--text); font-weight:600; text-decoration:none; }
   .status { margin-top:1rem; font-size:.85rem; color:var(--muted); min-height:1.2em; }
+  .status.warn { color:#ffd08a; }
   .savebar { position:fixed; bottom:0; left:0; right:0; border-top:1px solid var(--border);
          background:rgba(11,9,8,.94); backdrop-filter:blur(8px); padding:.9rem 1.5rem; }
   .savebar .inner { max-width:46rem; margin:0 auto; display:flex; gap:.75rem; align-items:center; }
@@ -4306,6 +4310,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .host-row .host-main { flex:1; min-width:12rem; }
   .host-row .host-main strong { display:block; font-size:.92rem; }
   .host-row .host-main span { display:block; margin-top:.2rem; color:var(--muted); font-size:.76rem; overflow-wrap:anywhere; }
+  /* A portal still on the staging passcode is the one thing on this screen worth
+     stopping for, so it sits in the name block rather than in another column. */
+  .host-row .host-main .host-warn { display:inline-block; margin-top:.45rem; border:1px solid rgba(255,122,69,.38); border-radius:999px; background:rgba(255,122,69,.14); padding:.12rem .6rem; color:#ffd08a; font-size:.7rem; font-weight:600; }
   .host-row .host-guide { color:var(--muted); font-size:.76rem; white-space:nowrap; }
   .host-row .host-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
   .host-row .host-actions button,
@@ -5889,8 +5896,11 @@ async function loadHostPortal(id) {
   try {
     const data = await api("/admin/api/host-portal?propertyId=" + encodeURIComponent(id));
     status.textContent = data.configured
-      ? "On. The host can sign in with the house code and their passcode."
+      ? data.defaultPasscode
+        ? "On, but this property still uses the default passcode. Set a new one before a guest stays here."
+        : "On. The host can sign in with the house code and their passcode."
       : "Off. Set a passcode to turn on the portal for this property.";
+    status.classList.toggle("warn", Boolean(data.configured && data.defaultPasscode));
     $("hostPortalClear").classList.toggle("hidden", !data.configured);
     $("hostPortalSignOut").classList.toggle("hidden", !data.configured);
     $("hostPortalPasscode").value = "";
@@ -5987,6 +5997,12 @@ function renderHostRow(host) {
   main.append(name, meta);
 
   const on = Boolean(host.hostPortal && host.hostPortal.configured);
+  if (on && host.hostPortal.defaultPasscode) {
+    const warn = document.createElement("span");
+    warn.className = "host-warn";
+    warn.textContent = "Default passcode — change it before a guest stays";
+    main.append(warn);
+  }
   const status = document.createElement("span");
   status.className = "pill" + (on ? " live" : " paused");
   status.textContent = on ? "Portal on" : "Portal off";

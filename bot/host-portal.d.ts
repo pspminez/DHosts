@@ -29,10 +29,11 @@ export interface HostCredential {
 export function hashHostPasscode(passcode: string): Promise<HostCredential>;
 export function hostPasscodeProblem(passcode: unknown): string;
 export function loadHostPasscode(kv: KVNamespace, propertyId: string): Promise<HostCredential | null>;
+export const DEFAULT_HOST_PASSCODE: string;
 export function hostPortalStatus(
   kv: KVNamespace,
   propertyId: string,
-): Promise<{ configured: boolean; updatedAt: string | null }>;
+): Promise<{ configured: boolean; updatedAt: string | null; defaultPasscode: boolean }>;
 export function saveHostPasscode(kv: KVNamespace, propertyId: string, passcode: string): Promise<void>;
 export function clearHostPasscode(kv: KVNamespace, propertyId: string): Promise<void>;
 export function verifyHostPasscode(credential: HostCredential | null, passcode: string): Promise<boolean>;

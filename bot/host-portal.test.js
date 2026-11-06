@@ -11,6 +11,7 @@ import {
   getHostSession,
   hostLoginLock,
   hostPasscodeProblem,
+  DEFAULT_HOST_PASSCODE,
   hostPortalStatus,
   hostSessionClearCookie,
   hostSessionCookie,
@@ -62,10 +63,27 @@ test("a host passcode is salted, stored only as a hash, and verifiable", async (
 
   const status = await hostPortalStatus(kv, "CEDAR");
   assert.equal(status.configured, true);
+  assert.equal(status.defaultPasscode, false);
   assert.ok(status.updatedAt);
 
   await clearHostPasscode(kv, "CEDAR");
-  assert.equal((await hostPortalStatus(kv, "CEDAR")).configured, false);
+  const cleared = await hostPortalStatus(kv, "CEDAR");
+  assert.equal(cleared.configured, false);
+  assert.equal(cleared.defaultPasscode, false);
+});
+
+// The admin panel flags portals that still use the staging passcode. That flag
+// is derived from the stored hash, so no plaintext passcode is kept anywhere.
+test("the admin status names the staging passcode without storing it", async () => {
+  const kv = new MemoryKV();
+  await saveHostPasscode(kv, "CEDAR", DEFAULT_HOST_PASSCODE);
+  const flagged = await hostPortalStatus(kv, "CEDAR");
+  assert.equal(flagged.configured, true);
+  assert.equal(flagged.defaultPasscode, true);
+
+  await saveHostPasscode(kv, "CEDAR", "porch-light-42");
+  assert.equal((await hostPortalStatus(kv, "CEDAR")).defaultPasscode, false);
+  assert.ok(!String(await kv.get("host:credential:CEDAR")).includes(DEFAULT_HOST_PASSCODE));
 });
 
 test("host passcodes have a length floor and ceiling", () => {

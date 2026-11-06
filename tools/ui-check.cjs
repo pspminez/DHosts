@@ -279,8 +279,8 @@ const PROPERTIES = [
   { id: "harbor", name: "Harbor House", active: false, asked: 0, escalated: 0, answerCount: 0, twilioNumber: "", openEscalations: 0, lastActivity: null },
 ];
 const HOSTS = [
-  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana", hostEmail: "host@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T12:00:00Z" }, guideSections: 2 },
-  { id: "HARBOR", name: "Harbor House", active: 0, hostId: "host_mo", hostName: "", hostEmail: "", hostPortal: { configured: false, updatedAt: null }, guideSections: 0 },
+  { id: "SUNSET", name: "Sunset Villa", active: 1, hostId: "host_dana", hostName: "Dana", hostEmail: "host@example.com", hostPortal: { configured: true, updatedAt: "2026-11-05T12:00:00Z", defaultPasscode: true }, guideSections: 2 },
+  { id: "HARBOR", name: "Harbor House", active: 0, hostId: "host_mo", hostName: "", hostEmail: "", hostPortal: { configured: false, updatedAt: null, defaultPasscode: false }, guideSections: 0 },
 ];
 const SUNSET_PROPERTY = {
   id: "SUNSET",
@@ -456,6 +456,13 @@ const SESSIONS = {
     "only a live portal offers signing the host out",
     page.registry.hostsList.children.map((row) => row.children[3].children.length),
     [3, 2],
+  );
+  check(
+    "a portal on the staging passcode is called out in the row",
+    page.registry.hostsList.children.map((row) =>
+      row.children[0].children[2] ? row.children[0].children[2].textContent : "none",
+    ),
+    ["Default passcode — change it before a guest stays", "none"],
   );
   // Manage is the path from the Hosts list to the passcode field; it must land
   // on the property editor rather than leaving the list up.

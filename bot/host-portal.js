@@ -128,12 +128,24 @@ export async function loadHostPasscode(kv, propertyId) {
   }
 }
 
+/**
+ * The staging passcode every property was given while the pilot is still being
+ * tested. Sign-in never compares against this constant; it exists only so the
+ * admin panel can flag portals where it is still in use.
+ */
+export const DEFAULT_HOST_PASSCODE = "admin123";
+
 /** Status for the admin panel: configured or off, never the hash itself. */
 export async function hostPortalStatus(kv, propertyId) {
   const credential = await loadHostPasscode(kv, propertyId);
   return {
     configured: Boolean(credential),
     updatedAt: credential && typeof credential.updatedAt === "string" ? credential.updatedAt : null,
+    // Costs one PBKDF2 derivation per configured portal, so callers that walk a
+    // list of properties should run these in parallel rather than in sequence.
+    defaultPasscode: credential
+      ? await verifyHostPasscode(credential, DEFAULT_HOST_PASSCODE)
+      : false,
   };
 }
 
