@@ -1060,7 +1060,10 @@ html.js .dash-wrap {
   padding: 12px;
 }
 
-@media (min-width: 768px) {
+/* The recent-messages column needs room for a message and its status chip.
+   At tablet widths it squeezed the chip out of the card, so it only appears
+   once the mock is wide enough to hold it. */
+@media (min-width: 1024px) {
   .dash-chart-card { grid-column: span 2; }
   .dash-recent {
     grid-column: span 1;
