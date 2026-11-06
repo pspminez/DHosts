@@ -1,4 +1,4 @@
-// StayXI landing page behavior: nav, reveals, counters, sample chat,
+// StayXI landing page behavior: nav, reveals, sample chat,
 // product-view tabs, FAQ accordion and the trial lead form.
 (function () {
   "use strict";
@@ -91,44 +91,6 @@
       });
     }, { rootMargin: "0px 0px -10% 0px" });
     revealEls.forEach(function (el) { revealObserver.observe(el); });
-  }
-
-  /* ---------- Metric counters ---------- */
-
-  function runCounter(el) {
-    var target = Number(el.getAttribute("data-count") || 0);
-    var prefix = el.getAttribute("data-prefix") || "";
-    var suffix = el.getAttribute("data-suffix") || "";
-    var duration = 1600;
-    var started = null;
-
-    function frame(now) {
-      if (started === null) started = now;
-      var t = Math.min(1, (now - started) / duration);
-      var eased = 1 - Math.pow(1 - t, 4);
-      el.textContent = prefix + Math.round(target * eased).toLocaleString("en-US") + suffix;
-      if (t < 1) window.requestAnimationFrame(frame);
-    }
-    window.requestAnimationFrame(frame);
-  }
-
-  var counters = Array.prototype.slice.call(document.querySelectorAll("[data-count]"));
-  if (reduceMotion || !("IntersectionObserver" in window)) {
-    counters.forEach(function (el) {
-      el.textContent = (el.getAttribute("data-prefix") || "") +
-        Number(el.getAttribute("data-count") || 0).toLocaleString("en-US") +
-        (el.getAttribute("data-suffix") || "");
-    });
-  } else {
-    var counterObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          runCounter(entry.target);
-          counterObserver.unobserve(entry.target);
-        }
-      });
-    }, { rootMargin: "-10% 0px" });
-    counters.forEach(function (el) { counterObserver.observe(el); });
   }
 
   /* ---------- Sample conversation ---------- */

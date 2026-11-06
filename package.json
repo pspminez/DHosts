@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs",
+    "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs && node tools/check-landing.cjs",
     "test:unit": "node --test bot/*.test.js",
     "typecheck": "tsc --noEmit",
     "check:ui": "node tools/ui-check.cjs && node tools/host-ui-check.cjs",
     "check:setup": "node tools/check-setup-docs.cjs",
+    "check:landing": "node tools/check-landing.cjs",
     "check:production": "node tools/production-smoke.cjs",
     "shot": "node tools/screenshot.cjs",
     "seed:demo": "node tools/seed-demo.cjs"
