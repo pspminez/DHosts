@@ -2764,3 +2764,17 @@ h3 {
 }
 
 .photo-credit a:hover { color: var(--accent); }
+
+/* Equal-height photo cards: the image absorbs the extra height instead of
+   leaving a white gap under the caption on the shorter card. */
+.photo-card { display: flex; flex-direction: column; }
+
+.photo-card img {
+  flex: 1 1 auto;
+  min-height: 240px;
+  object-fit: cover;
+}
+
+@media (max-width: 767px) {
+  .photo-card img { flex: none; aspect-ratio: 4 / 3; }
+}
