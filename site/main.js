@@ -99,7 +99,7 @@
   // /api/chat endpoint, so the page demonstrates the real demo routing instead
   // of a local script pretending to be one.
   var samplePrompts = [
-    "What is the wifi password?",
+    "What is the Wi-Fi password?",
     "What time is check-in?",
     "Where do we park?",
     "Which bin goes out tonight?",
@@ -107,8 +107,8 @@
   ];
 
   var SAMPLE_SECTIONS = {
-    faq_wi_fi: "Wifi & parking",
-    faq_parking: "Wifi & parking",
+    faq_wi_fi: "Wi-Fi & parking",
+    faq_parking: "Wi-Fi & parking",
     faq_check_in: "Check-in & arrival",
     faq_checkout: "Departure",
     faq_trash: "Departure",

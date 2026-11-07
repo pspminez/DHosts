@@ -372,7 +372,7 @@ export const HOST_HTML = `<!DOCTYPE html>
         <div class="view-head">
           <div>
             <h2>Questions</h2>
-            <p>What guests asked, and whether the guide answered.</p>
+            <p>What guests asked and whether the guide answered.</p>
           </div>
         </div>
         <div class="card table-card">
@@ -419,7 +419,7 @@ export const HOST_HTML = `<!DOCTYPE html>
     </div>
     <form class="login-card" id="loginForm" novalidate>
       <h1>Sign in</h1>
-      <p class="login-sub">See what guests asked, what the guide answered, and what needs you.</p>
+      <p class="login-sub">See what guests asked, what the guide answered and what needs you.</p>
       <label for="loginCode">House code</label>
       <input id="loginCode" name="houseCode" autocomplete="organization" autocapitalize="characters" spellcheck="false" placeholder="CEDAR" required>
       <label for="loginPasscode">Host passcode</label>

@@ -4678,7 +4678,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
     <div class="card hidden" id="criticalReviewCard">
       <h2>Critical changes awaiting review</h2>
-      <p class="hint">Review staged access codes, safety answers, and instructions before publishing. This is an explicit review step, not independent dual approval: the shared admin login does not identify individual staff.</p>
+      <p class="hint">Review staged access codes, safety answers and instructions before publishing. This is an explicit review step, not independent dual approval: the shared admin login does not identify individual staff.</p>
       <div id="criticalReviewList"></div>
     </div>
 
@@ -4695,7 +4695,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <div class="analytics-head dash-head">
       <div>
         <h2>Host dashboards</h2>
-        <p>Who can sign in, what each dashboard shows, and the guide behind it.</p>
+        <p>Who can sign in, what each dashboard shows and the guide behind it.</p>
       </div>
       <div class="dash-controls">
         <span class="dash-stamp" id="hostsSummary"></span>
@@ -4993,9 +4993,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <div class="pilot-content">
       <section class="card">
         <h2>StayXI Property Pilot Program</h2>
-        <p>Validate whether StayXI can reliably reduce routine after-hours guest questions for independent vacation-rental operators—and whether operators will pay to continue.</p>
+        <p>Validate whether StayXI can reliably reduce routine after-hours guest questions for independent vacation-rental operators — and whether operators will pay to continue.</p>
         <p><strong>Format:</strong> 30 days, 3–5 properties, one property per operator to start. Use the pilot records below to set up, launch, measure, and close out each property.</p>
-        <div class="pilot-callout"><p>This pilot covers current automated property-specific text support only. Confirm the working contact information, SMS setup, and written pilot terms before onboarding an operator.</p></div>
+        <div class="pilot-callout"><p>This pilot covers current automated property-specific text support only. Confirm the working contact information, SMS setup and written pilot terms before onboarding an operator.</p></div>
         <p class="op-hint"><strong>Test data only:</strong> all current property records are test/demo properties; there are no real operator properties yet. Do not treat their activity as pilot results. Do not launch a test property on a guest-facing number or share its number with guests; activate a real operator property only after they approve the configuration and the launch checklist is complete.</p>
       </section>
 
@@ -5077,22 +5077,22 @@ const ADMIN_HTML = `<!DOCTYPE html>
         </ul>
         <h3>Not included unless separately agreed in writing</h3>
         <ul>
-          <li>Human StayXI coverage 24/7, emergency dispatch, or guaranteed host response times.</li>
+          <li>Human StayXI coverage 24/7, emergency dispatch or guaranteed host response times.</li>
           <li>Live weather/hurricane alerts; reservations or tickets; grocery delivery or pre-stocking.</li>
-          <li>PMS, booking-channel, smart-lock, or payment integrations; a guarantee that every answer or message will succeed.</li>
+          <li>PMS, booking-channel, smart-lock or payment integrations; a guarantee that every answer or message will succeed.</li>
         </ul>
-        <p class="pilot-callout">The operator remains responsible for the property, guest safety, emergency instructions, accurate supplied information, and responding to escalations.</p>
+        <p class="pilot-callout">The operator remains responsible for the property, guest safety, emergency instructions, accurate supplied information and responding to escalations.</p>
         <h3>After launch: learn from real needs</h3>
-        <p>During weekly reviews, manually look at recorded questions and escalations alongside host feedback. Track recurring themes, approximate frequency, whether the current service answered or escalated them, and the operator's view of their value. Keep guest names, phone numbers, access codes, and full transcripts out of the internal needs backlog.</p>
-        <p>This discovery will help prioritize possible paid add-ons, such as a grouped guest-question insights report, optional answer-library tune-ups, or portfolio-level trends. These are ideas only—not included, available for purchase, or promised. Build and test an add-on, validate its cost to serve, and disclose its price before offering it.</p>
+        <p>During weekly reviews, manually look at recorded questions and escalations alongside host feedback. Track recurring themes, approximate frequency, whether the current service answered or escalated them, and the operator's view of their value. Keep guest names, phone numbers, access codes and full transcripts out of the internal needs backlog.</p>
+        <p>This discovery will help prioritize possible paid add-ons, such as a grouped guest-question insights report, optional answer-library tune-ups or portfolio-level trends. These are ideas only — not included, available for purchase, or promised. Build and test an add-on, validate its cost to serve, and disclose its price before offering it.</p>
       </section>
 
       <section class="card">
         <h2>Recruit operators</h2>
-        <p>Start with independent hosts and small vacation-rental managers in Davenport, Kissimmee, and greater Orlando. Look for operators who receive after-hours guest texts, can approve the property information, have a reachable escalation contact, and will give weekly feedback.</p>
+        <p>Start with independent hosts and small vacation-rental managers in Davenport, Kissimmee and greater Orlando. Look for operators who receive after-hours guest texts, can approve the property information, have a reachable escalation contact, and will give weekly feedback.</p>
         <h3>First outreach</h3>
         <div class="pilot-script">Hi [Name], I’m testing StayXI, a guest text line for vacation rentals. It answers routine questions using property information the host approves and escalates questions it can’t answer confidently. I’m inviting a few Central Florida operators to try it on one property for 30 days. Could I ask how you currently handle guest questions after hours in a 15-minute conversation?</div>
-        <p>Verify the business and contact details through its official public channels; personalize outreach, respect contact preferences, and stop if they decline. Do not send unsolicited marketing texts. Confirm hello@stayxi.com works before using it as the reply address.</p>
+        <p>Verify the business and contact details through its official public channels; personalize outreach, respect contact preferences and stop if they decline. Do not send unsolicited marketing texts. Confirm hello@stayxi.com works before using it as the reply address.</p>
         <h3>Discovery questions</h3>
         <ol>
           <li>What guest questions did you receive most recently after hours?</li>
@@ -5106,21 +5106,21 @@ const ADMIN_HTML = `<!DOCTYPE html>
 
       <section class="card">
         <h2>Before launch</h2>
-        <p>Document the property, dates, fee/payment, escalation expectations, data/contact responsibilities, and cancellation terms in a written pilot agreement. This dashboard guide is an operating plan, not legal advice or a substitute for that agreement.</p>
+        <p>Document the property, dates, fee/payment, escalation expectations, data/contact responsibilities and cancellation terms in a written pilot agreement. This dashboard guide is an operating plan, not legal advice or a substitute for that agreement.</p>
         <ul class="pilot-checklist">
-          <li>Confirm operator, property, pilot dates, fee, payment, and written terms.</li>
+          <li>Confirm operator, property, pilot dates, fee, payment and written terms.</li>
           <li>Confirm working contact addresses and phone numbers for the operator and StayXI.</li>
-          <li>Verify deployed SMS endpoint, Twilio number, signature validation, and outbound replies.</li>
+          <li>Verify deployed SMS endpoint, Twilio number, signature validation and outbound replies.</li>
           <li>Review HELP/STOP behavior and applicable SMS terms and privacy notice.</li>
-          <li>Explain that pilot questions, escalations, and host feedback are manually reviewed for service improvement and possible future feature planning.</li>
+          <li>Explain that pilot questions, escalations and host feedback are manually reviewed for service improvement and possible future feature planning.</li>
           <li>Configure the property; mark it live only after tests pass.</li>
           <li>Collect only facts needed to answer routine guest questions; operator approves all answers.</li>
           <li>Keep entry codes in protected configuration; test exact matching and ensure codes are not exposed to AI.</li>
-          <li>Test common, unsupported, and high-risk questions, escalation delivery, and opt-out.</li>
+          <li>Test common, unsupported and high-risk questions, escalation delivery and opt-out.</li>
           <li>Provide a way to report incorrect answers and promptly pause the text line.</li>
           <li>Remove demo phone numbers and sample codes from anything guests could mistake for real property information.</li>
         </ul>
-        <p class="pilot-callout">If an access-code, safety, privacy, or material-answering error occurs, pause that property's automation, notify the operator, investigate, and agree on a safe restart. Never count an uncertain answer as a successful one.</p>
+        <p class="pilot-callout">If an access-code, safety, privacy or material-answering error occurs, pause that property's automation, notify the operator, investigate, and agree on a safe restart. Never count an uncertain answer as a successful one.</p>
       </section>
 
       <section class="card">
@@ -5133,11 +5133,11 @@ const ADMIN_HTML = `<!DOCTYPE html>
               <tr><td>Guest message volume</td><td>Incoming guest messages for the property.</td></tr>
               <tr><td>Automated answers</td><td>Incoming questions answered from approved property information or AI.</td></tr>
               <tr><td>Escalations</td><td>Questions routed to the operator.</td></tr>
-              <tr><td>Answer quality</td><td>Operator-reviewed sample rated correct, incomplete, or incorrect.</td></tr>
+              <tr><td>Answer quality</td><td>Operator-reviewed sample rated correct, incomplete or incorrect.</td></tr>
               <tr><td>Host effort</td><td>Operator estimate of time spent on questions before and during pilot.</td></tr>
               <tr><td>Safety/privacy</td><td>Every incorrect access, safety, privacy, or policy answer and its resolution.</td></tr>
               <tr><td>Adoption / continuation</td><td>Whether the line was shared with guests and whether the operator would continue under a separately agreed offer.</td></tr>
-              <tr><td>Cost to serve</td><td>SMS, AI, onboarding, support, and other direct per-property costs.</td></tr>
+              <tr><td>Cost to serve</td><td>SMS, AI, onboarding, support and other direct per-property costs.</td></tr>
             </tbody>
           </table>
         </div>
@@ -5158,9 +5158,9 @@ const ADMIN_HTML = `<!DOCTYPE html>
           <table class="pilot-table">
             <thead><tr><th>When</th><th>Activity</th></tr></thead>
             <tbody>
-              <tr><td>Before day 1</td><td>Interview, agree terms, record baseline, configure/test, obtain approval, collect pilot fee.</td></tr>
+              <tr><td>Before day 1</td><td>Interview, agree terms, record baseline, configure/test, obtain approval and collect pilot fee.</td></tr>
               <tr><td>Days 1–7</td><td>Start with one property; verify message delivery and escalation flow.</td></tr>
-              <tr><td>Weekly</td><td>Review counts, answer samples, host effort, issues, and configuration changes.</td></tr>
+              <tr><td>Weekly</td><td>Review counts, answer samples, host effort, issues and configuration changes.</td></tr>
               <tr><td>Days 28–30</td><td>Review results and costs; ask whether the operator would consider a separately priced continuation.</td></tr>
               <tr><td>After day 30</td><td>Stop or continue only by explicit agreement at a separately disclosed price; document learnings before recruiting more.</td></tr>
             </tbody>
@@ -5216,7 +5216,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
           <button type="button" class="primary" onclick="saveLegacyPilotScorecard()">Save local scorecard</button>
           <span class="pilot-scorecard-status" id="pilotScorecardStatus" role="status" aria-live="polite"></span>
         </div>
-        <p>Expand beyond the first 3–5 properties only if safety passes, operators choose to continue for specific value, and delivery costs are understood. Otherwise, refine the segment, reliability, onboarding, or offer before adding features or scaling outreach.</p>
+        <p>Expand beyond the first 3–5 properties only if safety passes, operators choose to continue for specific value and delivery costs are understood. Otherwise, refine the segment, reliability, onboarding, or offer before adding features or scaling outreach.</p>
       </section>
     </div>
   </div>
@@ -5248,7 +5248,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </div>
     <div class="card">
       <h2>Recent admin activity</h2>
-      <p class="hint">Password changes, revoked sessions, and property or pilot changes recorded in the audit log. Newest first.</p>
+      <p class="hint">Password changes, revoked sessions and property or pilot changes recorded in the audit log. Newest first.</p>
       <div id="auditList" class="session-list" aria-live="polite"></div>
       <p class="status" id="auditStatus" role="status" aria-live="polite"></p>
     </div>

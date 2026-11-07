@@ -526,7 +526,7 @@ const SAMPLE_ANSWERS = [
     reply: "Check-in starts at 4 PM. The door code is sent the morning of arrival.",
   },
   {
-    topic: "Wifi & parking",
+    topic: "Wi-Fi & parking",
     keywords: ["wifi", "wi-fi", "password", "parking", "park"],
     reply: "The network is CedarGuest. Park anywhere in the driveway, two cars maximum.",
   },
@@ -546,7 +546,7 @@ const SAMPLE_DAILY = [3, 6, 4, 8, 12, 9, 14];
 
 const SAMPLE_RECENT = [
   { text: "Can we check in a little early?", resolution: "escalated", intentKey: "early_checkin", minutesAgo: 12 },
-  { text: "Wifi password?", resolution: "keyword", intentKey: "wifi", minutesAgo: 45 },
+  { text: "Wi-Fi password?", resolution: "keyword", intentKey: "wifi", minutesAgo: 45 },
   { text: "Where do we park the second car?", resolution: "keyword", intentKey: "parking", minutesAgo: 96 },
   { text: "Trash and recycling?", resolution: "ai", intentKey: "trash", minutesAgo: 240 },
   { text: "Is the hot tub open?", resolution: "escalated", intentKey: "pool", minutesAgo: 430 },
