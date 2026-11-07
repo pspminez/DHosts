@@ -35,6 +35,7 @@ import {
 import { previewDemoMessage } from "./demo-routing.js";
 import { redactForAudit, validateGroundedAnswer } from "./grounding.js";
 import { parseHostReply } from "./host-replies.js";
+import { buildTwilioSendParams } from "./twilio-sender.js";
 import {
   adminSessionClearCookie,
   adminSessionSetCookie,
@@ -1287,7 +1288,9 @@ async function handleHostReply(env: Env, from: string, body: string): Promise<Re
     if (!escalation) {
       return twiml("That escalation was not found, is already answered, or is not assigned to your number.");
     }
-    if (!escalation.twilioNumber) {
+    // A shared Messaging Service can carry the reply even when the property has
+    // no line of its own; only refuse when there is no sender at all.
+    if (!escalation.twilioNumber && !env.TWILIO_MESSAGING_SERVICE_SID) {
       return twiml("The property's guest text line is not configured. Your reply was not sent.");
     }
     try {
@@ -1337,26 +1340,17 @@ async function handleHostReply(env: Env, from: string, body: string): Promise<Re
   }
 }
 
-async function sendSms(env: Env, to: string, body: string, from: string): Promise<boolean> {
+async function sendSms(env: Env, to: string, body: string, from: string | null): Promise<boolean> {
   const sid = env.TWILIO_ACCOUNT_SID;
   const token = env.TWILIO_AUTH_TOKEN;
-  const messagingServiceSid = env.TWILIO_MESSAGING_SERVICE_SID;
-  if (!sid || !token || !to) {
-    console.error("Twilio send skipped: account credentials and recipient are required.");
+  if (!sid || !token) {
+    console.error("Twilio send skipped: account credentials are required.");
     return false;
   }
 
-  // Twilio accepts a sender or a Messaging Service, never both. A property's own
-  // number is the precise route, so it wins; the service is the shared sender
-  // pool for properties that have no line of their own, and a service SID in a
-  // property's number field could never be a sender anyway.
-  const params = new URLSearchParams({ To: to, Body: body });
-  if (/^\+[1-9]\d{6,14}$/.test(from)) {
-    params.set("From", from);
-  } else if (messagingServiceSid) {
-    params.set("MessagingServiceSid", messagingServiceSid);
-  } else {
-    console.error("Twilio send skipped: no Messaging Service configured and the sender is not an E.164 number.");
+  const params = buildTwilioSendParams(to, body, from, env.TWILIO_MESSAGING_SERVICE_SID);
+  if (!params) {
+    console.error("Twilio send skipped: no usable sender (no Messaging Service configured and From is not an E.164 number).");
     return false;
   }
 
@@ -3916,9 +3910,10 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         env.DB.prepare(
           `SELECT
              SUM(CASE WHEN p.active = 1 AND (h.phone IS NULL OR h.phone = '') THEN 1 ELSE 0 END) AS missingHostPhone,
-             SUM(CASE WHEN p.active = 1 AND (p.twilio_number IS NULL OR p.twilio_number = '') THEN 1 ELSE 0 END) AS missingTextNumber
+             SUM(CASE WHEN p.active = 1 AND (p.twilio_number IS NULL OR p.twilio_number = '') THEN 1 ELSE 0 END) AS missingTextNumber,
+             GROUP_CONCAT(CASE WHEN p.active = 1 AND (p.twilio_number IS NULL OR p.twilio_number = '') THEN p.id END) AS missingTextNumberIds
            FROM properties p LEFT JOIN hosts h ON h.id = p.host_id`
-        ).first<{ missingHostPhone: number; missingTextNumber: number }>(),
+        ).first<{ missingHostPhone: number; missingTextNumber: number; missingTextNumberIds: string | null }>(),
       ]);
       return adminJson({
         database: "ok",
@@ -3930,6 +3925,8 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         // A Messaging Service owns the sender pool, so no property needs its own
         // number for text to work; only count the gap when there is no service.
         missingTextNumber: env.TWILIO_MESSAGING_SERVICE_SID ? 0 : propertyConfig?.missingTextNumber || 0,
+        messagingServiceConfigured: !!env.TWILIO_MESSAGING_SERVICE_SID,
+        propertiesWithoutTextLine: String(propertyConfig?.missingTextNumberIds || "").split(",").filter(Boolean),
       });
     } catch (err) {
       console.error("Admin health check failed:", errorMessage(err) || err);
@@ -8244,14 +8241,18 @@ async function loadOperations() {
 
     const healthContainer = $('operationHealth');
     healthContainer.textContent = '';
+    const textLineGaps = (health.propertiesWithoutTextLine || []).length
+      ? ' · ' + health.propertiesWithoutTextLine.join(', ')
+      : '';
     [
       ['D1 database', health.database === 'ok'],
       ['Property store', health.propertyStore === 'ok'],
       ['Twilio credentials', health.twilioConfigured],
+      ['Messaging Service sender', health.messagingServiceConfigured],
       ['AI provider key', health.aiConfigured],
       ['Signature validation', health.signatureValidationEnabled],
       ['Active properties missing host phone', !health.missingHostPhone],
-      ['Active properties missing text number', !health.missingTextNumber],
+      ['Properties without their own text line' + textLineGaps, !health.missingTextNumber],
     ].forEach(([label, healthy]) => {
       const item = document.createElement('li');
       const dot = document.createElement('span');

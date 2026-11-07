@@ -28,10 +28,12 @@ const LIVE_HEALTH_FIELDS = [
   "database",
   "propertyStore",
   "twilioConfigured",
+  "messagingServiceConfigured",
   "aiConfigured",
   "signatureValidationEnabled",
   "missingHostPhone",
   "missingTextNumber",
+  "propertiesWithoutTextLine",
 ];
 
 test("demo metrics expose exactly the fields the live query returns", () => {
@@ -49,10 +51,12 @@ test("demo health reports every check as healthy", () => {
   assert.equal(health.database, "ok");
   assert.equal(health.propertyStore, "ok");
   assert.equal(health.twilioConfigured, true);
+  assert.equal(health.messagingServiceConfigured, true);
   assert.equal(health.aiConfigured, true);
   assert.equal(health.signatureValidationEnabled, true);
   assert.equal(health.missingHostPhone, 0);
   assert.equal(health.missingTextNumber, 0);
+  assert.deepEqual(health.propertiesWithoutTextLine, []);
 });
 
 test("is flagged as sample data so the panel can label it", () => {

@@ -259,7 +259,7 @@ function wiring(html, script) {
   return failures;
 }
 
-const HEALTH = { database: "ok", propertyStore: "ok", twilioConfigured: true, aiConfigured: true, signatureValidationEnabled: true, missingHostPhone: 0, missingTextNumber: 0 };
+const HEALTH = { database: "ok", propertyStore: "ok", twilioConfigured: true, messagingServiceConfigured: true, aiConfigured: true, signatureValidationEnabled: true, missingHostPhone: 0, missingTextNumber: 0, propertiesWithoutTextLine: [] };
 // Mirrors the demo shape: one property past the four-hour stale threshold and
 // one inside it, so both the warn and ok styling are exercised.
 const AWAITING = {
@@ -696,7 +696,7 @@ const SESSIONS = {
   const second = ops.helpers.loadOperations();
   await Promise.all([first, second]);
   check("overlapping loads leave six stat tiles, not twelve", ops.registry.operationMetrics.children.length, 6);
-  check("overlapping loads leave seven health rows", ops.registry.operationHealth.children.length, 7);
+  check("overlapping loads leave eight health rows", ops.registry.operationHealth.children.length, 8);
   check("operations stamp", ops.registry.operationsStatus.textContent, "Updated 2026-10-26 11:22:33.");
 
   // ---- when guests text (day parts) ---------------------------------------

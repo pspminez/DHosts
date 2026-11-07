@@ -187,10 +187,12 @@ export function sampleOperations(now = new Date()) {
       database: "ok",
       propertyStore: "ok",
       twilioConfigured: true,
+      messagingServiceConfigured: true,
       aiConfigured: true,
       signatureValidationEnabled: true,
       missingHostPhone: 0,
       missingTextNumber: 0,
+      propertiesWithoutTextLine: [],
     },
   };
 }

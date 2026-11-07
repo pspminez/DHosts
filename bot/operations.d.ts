@@ -17,10 +17,12 @@ export interface OperationsHealth {
   database: string;
   propertyStore: string;
   twilioConfigured: boolean;
+  messagingServiceConfigured: boolean;
   aiConfigured: boolean;
   signatureValidationEnabled: boolean;
   missingHostPhone: number;
   missingTextNumber: number;
+  propertiesWithoutTextLine: string[];
 }
 
 export interface AwaitingProperty {
