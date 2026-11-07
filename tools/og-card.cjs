@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/og-card.cjs — render site/og.png from the real light-theme palette.
+// tools/og-card.cjs — render site/og.png from the site's dark theme.
 //
 //   node tools/og-card.cjs
 //
@@ -24,46 +24,58 @@ const HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <style>
-  @font-face { font-family: "Fraunces"; src: url("fonts/fraunces-600-latin.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+  @font-face { font-family: "Space Grotesk"; src: url("fonts/space-grotesk-latin.woff2") format("woff2"); font-weight: 300 700; font-display: block; }
   @font-face { font-family: "Instrument Sans"; src: url("fonts/instrument-sans-latin.woff2") format("woff2"); font-weight: 400 700; font-display: block; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: ${WIDTH}px; height: ${HEIGHT}px; }
   body {
     position: relative; overflow: hidden;
-    background: #faf5ec; color: #1a1410;
+    background: #0b0908; color: #f3ede8;
     font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   .wash {
     position: absolute; inset: 0;
     background:
-      radial-gradient(680px 420px at 88% -12%, rgba(194,65,12,.16), transparent 62%),
-      radial-gradient(520px 360px at 4% 104%, rgba(180,83,9,.13), transparent 60%),
-      linear-gradient(160deg, #fffdf8 0%, #f8f1e5 52%, #faf5ec 100%);
+      radial-gradient(760px 460px at 92% -18%, rgba(255,122,69,.22), transparent 64%),
+      radial-gradient(620px 420px at -8% 108%, rgba(255,181,71,.14), transparent 62%),
+      radial-gradient(520px 320px at 46% 122%, rgba(255,77,109,.10), transparent 64%);
   }
-  .frame { position: absolute; inset: 34px; border: 1px solid rgba(26,20,16,.14); border-radius: 26px; }
+  .grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,236,224,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,236,224,.055) 1px, transparent 1px);
+    background-size: 72px 72px;
+    -webkit-mask-image: radial-gradient(90% 80% at 50% 30%, #000 20%, transparent 78%);
+    mask-image: radial-gradient(90% 80% at 50% 30%, #000 20%, transparent 78%);
+  }
+  .frame { position: absolute; inset: 34px; border: 1px solid rgba(255,236,224,.13); border-radius: 26px; }
   .inner { position: relative; height: 100%; padding: 66px 72px 62px; display: flex; flex-direction: column; }
-  .brand { display: flex; align-items: center; gap: 13px; font-size: 27px; font-weight: 600; letter-spacing: -.02em; }
-  .mark { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 14px; background: #fffdf8; box-shadow: inset 0 0 0 1px rgba(26,20,16,.14), 0 10px 24px -18px #1a1410; }
+  .brand { display: flex; align-items: center; gap: 13px; font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+  .mark { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 14px;
+    background: linear-gradient(135deg, #241c18, #191412); box-shadow: inset 0 0 0 1px rgba(255,236,224,.14); }
   .mark svg { width: 25px; height: 25px; }
-  h1 { margin-top: 40px; font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 76px; line-height: 1.02; letter-spacing: -.028em; max-width: 900px; }
-  .grad { background: linear-gradient(96deg, #7a2a08, #a63c15 46%, #7a4c00); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  p.lede { margin-top: 26px; max-width: 760px; color: #544a40; font-size: 26px; line-height: 1.38; letter-spacing: -.012em; }
-  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; font-size: 21px; color: #6a5f54; }
-  .foot strong { font-weight: 600; color: #1a1410; }
-  .pill { display: inline-flex; align-items: center; gap: 9px; padding: 9px 17px; border-radius: 999px; background: #fffdf8; box-shadow: inset 0 0 0 1px rgba(26,20,16,.14); font-size: 19px; color: #544a40; }
-  .dot { width: 9px; height: 9px; border-radius: 999px; background: #a63c15; }
+  h1 { margin-top: 38px; font-family: "Space Grotesk", ui-sans-serif, sans-serif; font-weight: 700;
+    font-size: 78px; line-height: 1.02; letter-spacing: -.035em; max-width: 940px; }
+  .grad { background: linear-gradient(96deg, #ff9a6b, #ff7a45 48%, #ffb547); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p.lede { margin-top: 24px; max-width: 780px; color: #a89e97; font-size: 25px; line-height: 1.4; letter-spacing: -.008em; }
+  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; font-size: 20px; color: #8b807a; }
+  .foot strong { font-weight: 600; color: #f3ede8; }
+  .pill { display: inline-flex; align-items: center; gap: 9px; padding: 9px 17px; border-radius: 999px;
+    background: rgba(255,255,255,.045); box-shadow: inset 0 0 0 1px rgba(255,236,224,.14); font-size: 18px; color: #d7cec7; }
+  .dot { width: 9px; height: 9px; border-radius: 999px; background: #ff7a45; box-shadow: 0 0 12px 1px rgba(255,122,69,.6); }
 </style>
 </head>
 <body>
   <div class="wash"></div>
+  <div class="grid"></div>
   <div class="frame"></div>
   <div class="inner">
     <div class="brand">
       <span class="mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#a63c15" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 16 12 6l6 10"></path>
-          <circle cx="12" cy="18.5" r="1.2" fill="#7a4c00" stroke="none"></circle>
+          <circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle>
         </svg>
       </span>
       StayXI
@@ -144,7 +156,7 @@ function connect(url) {
     });
     await client.send("Page.navigate", { url: "file:///" + path.resolve(TMP_HTML).replace(/\\/g, "/") });
     await new Promise((resolve) => setTimeout(resolve, 600));
-    // Screenshot before the fonts land would silently fall back to Georgia.
+    // Screenshot before the fonts land would silently fall back to a system face.
     await client.send("Runtime.evaluate", { expression: "document.fonts.ready.then(() => true)", awaitPromise: true });
     await new Promise((resolve) => setTimeout(resolve, 400));
     const shot = await client.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
