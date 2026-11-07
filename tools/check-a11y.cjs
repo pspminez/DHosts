@@ -14,17 +14,62 @@
 // heading reads sensibly, so the few structural rules that matter most (one h1,
 // a language, a title, a skip link) are asserted here as well.
 //
-// Needs Chrome; no network. Exits non-zero on any violation.
+// Needs Chrome (CHROME_PATH, or a browser in a standard location); no network.
+// Exits non-zero on any violation.
 
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 
-const CHROME = process.env.CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+// Chrome lives somewhere different on every platform, and a CI runner has it in
+// none of the places a desktop does. CHROME_PATH wins (CI exports it from
+// setup-chrome); otherwise look where each platform usually installs it.
+function findChrome() {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  const windows = [
+    process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, "Google\\Chrome\\Application\\chrome.exe"),
+    process.env["PROGRAMFILES(X86)"] && path.join(process.env["PROGRAMFILES(X86)"], "Google\\Chrome\\Application\\chrome.exe"),
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google\\Chrome\\Application\\chrome.exe"),
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  ];
+  const mac = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  ];
+  const linux = [
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/snap/bin/chromium",
+  ];
+  const candidates = process.platform === "win32" ? windows : process.platform === "darwin" ? mac : linux;
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+  for (const name of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+    const found = spawnSync(process.platform === "win32" ? "where" : "which", [name], { encoding: "utf8" });
+    const first = found.status === 0 && String(found.stdout || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)[0];
+    if (first) return first;
+  }
+  return "";
+}
+
+const CHROME = findChrome();
 const PORT = Number(process.env.A11Y_PORT || 9455);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "stayxi-a11y-"));
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"];
+
+// Failing loudly beats reporting an accessibility pass without having looked at
+// the page at all.
+if (!CHROME) {
+  console.log("A11Y CHECK: FAIL · no Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.");
+  process.exit(1);
+}
 
 function extract(marker, file) {
   const src = fs.readFileSync(file, "utf8");

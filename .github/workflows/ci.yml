@@ -28,12 +28,21 @@ jobs:
 
       - run: npm ci
 
+      # The a11y gate drives a real Chrome over DevTools, and the runner image
+      # does not install one where a desktop would keep it.
+      - id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Typecheck
         run: npm run typecheck
 
       # Unit suite plus the landing-page and setup-docs checks.
       - name: Tests
         run: npm test
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
 
       # Staging the site is what produces the minified stylesheet, so a minifier
       # that drops a declaration the page needs fails here instead of at deploy.

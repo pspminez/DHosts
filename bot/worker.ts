@@ -1606,8 +1606,11 @@ function escapeXml(s: string): string {
  * key+value, HMAC-SHA1 with the auth token, base64.
  */
 async function verifyTwilioSignature(request: Request, form: FormData, env: Env): Promise<boolean> {
-  // Bypass signature validation if the secret is not set or explicitly false
-  if (!env.VALIDATE_SIGNATURE || env.VALIDATE_SIGNATURE === "false") return true;
+  // Only an explicit opt-out disables the check (local `wrangler dev`, where
+  // there is no Twilio to sign the request). An unset variable used to mean
+  // "trust every caller", so one forgotten var turned this endpoint into an open
+  // SMS relay that bills the account for whatever anyone asks it to send. Fail closed.
+  if (env.VALIDATE_SIGNATURE === "false") return true;
 
   if (!env.TWILIO_AUTH_TOKEN) return false;
 
