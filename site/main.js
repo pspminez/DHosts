@@ -290,17 +290,39 @@
   var tabs = Array.prototype.slice.call(document.querySelectorAll("[data-showcase-tab]"));
   var panels = Array.prototype.slice.call(document.querySelectorAll("[data-showcase-panel]"));
 
-  tabs.forEach(function (tab) {
-    tab.addEventListener("click", function () {
-      var key = tab.getAttribute("data-showcase-tab");
-      tabs.forEach(function (other) {
-        var active = other === tab;
-        other.classList.toggle("active", active);
-        other.setAttribute("aria-selected", active ? "true" : "false");
-      });
-      panels.forEach(function (panel) {
-        panel.hidden = panel.getAttribute("data-showcase-panel") !== key;
-      });
+  // A tablist is one stop in the tab order and the arrow keys move between
+  // tabs, so the page does not put three extra stops between the reader and the
+  // panel. aria-selected alone is not enough: tabindex has to follow it.
+  function selectTab(tab, moveFocus) {
+    var key = tab.getAttribute("data-showcase-tab");
+    tabs.forEach(function (other) {
+      var active = other === tab;
+      other.classList.toggle("active", active);
+      other.setAttribute("aria-selected", active ? "true" : "false");
+      other.tabIndex = active ? 0 : -1;
+    });
+    panels.forEach(function (panel) {
+      panel.hidden = panel.getAttribute("data-showcase-panel") !== key;
+    });
+    if (moveFocus) tab.focus();
+  }
+
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener("click", function () { selectTab(tab, false); });
+    tab.addEventListener("keydown", function (event) {
+      var next = null;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        next = tabs[(index + 1) % tabs.length];
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        next = tabs[(index - 1 + tabs.length) % tabs.length];
+      } else if (event.key === "Home") {
+        next = tabs[0];
+      } else if (event.key === "End") {
+        next = tabs[tabs.length - 1];
+      }
+      if (!next) return;
+      event.preventDefault();
+      selectTab(next, true);
     });
   });
 

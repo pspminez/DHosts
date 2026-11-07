@@ -2792,3 +2792,21 @@ h3 {
   min-height: 0;
   height: auto;
 }
+
+/* First stop for the Tab key: WCAG 2.4.1, bypass the repeated navigation. */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus { transform: none; }

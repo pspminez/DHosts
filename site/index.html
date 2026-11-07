@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body id="top">
+  <a class="skip-link" href="#main">Skip to main content</a>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <defs>
       <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
@@ -90,7 +91,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section class="hero">
       <div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
       <div class="grid-lines" aria-hidden="true"></div>
@@ -405,7 +406,7 @@
                 </button>
               </div>
 
-              <div class="sample-messages" id="sampleMessages" aria-live="polite" aria-label="Sample text conversation">
+              <div class="sample-messages" id="sampleMessages" role="log" aria-live="polite" aria-label="Sample text conversation">
                 <div class="msg bot">
                   <span class="msg-label">StayXI</span>
                   <p class="msg-text">Hi! This is the Cedar House assistant. Ask me anything about your stay.</p>
@@ -442,15 +443,15 @@
         <div class="showcase-grid">
           <div class="reveal">
             <div class="tabs" role="tablist" aria-label="Product views">
-              <button class="tab-btn active" type="button" role="tab" aria-selected="true" data-showcase-tab="log">
+              <button class="tab-btn active" type="button" role="tab" id="tab-log" aria-controls="panel-log" aria-selected="true" tabindex="0" data-showcase-tab="log">
                 <span class="tab-title">Activity digest</span>
                 <span class="tab-desc">Every conversation, what was auto-answered and the handful that needed a human.</span>
               </button>
-              <button class="tab-btn" type="button" role="tab" aria-selected="false" data-showcase-tab="questions">
+              <button class="tab-btn" type="button" role="tab" id="tab-questions" aria-controls="panel-questions" aria-selected="false" tabindex="-1" data-showcase-tab="questions">
                 <span class="tab-title">What guests ask</span>
                 <span class="tab-desc">The same six questions, ranked. Fix the welcome book and the next guest asks fewer questions.</span>
               </button>
-              <button class="tab-btn" type="button" role="tab" aria-selected="false" data-showcase-tab="coverage">
+              <button class="tab-btn" type="button" role="tab" id="tab-coverage" aria-controls="panel-coverage" aria-selected="false" tabindex="-1" data-showcase-tab="coverage">
                 <span class="tab-title">How much it handles</span>
                 <span class="tab-desc">The share answered without you, by guide section. Flat sections are where to add an answer.</span>
               </button>
@@ -459,7 +460,7 @@
 
           <div class="reveal" style="--delay:.1s">
             <div class="showcase-panel depth">
-              <div class="panel" data-showcase-panel="log">
+              <div class="panel" id="panel-log" role="tabpanel" aria-labelledby="tab-log" tabindex="0" data-showcase-panel="log">
                 <ul class="msg-list">
                   <li class="msg-row first"><span class="monogram" style="background:linear-gradient(135deg,hsl(210 70% 62%),hsl(250 70% 48%))">DM</span><div class="msg-body"><p class="msg-q">“Can we check in early?”</p><p class="msg-status routed">Routed to you · 12s ago</p></div><span class="msg-time">2m</span></li>
                   <li class="msg-row"><span class="monogram" style="background:linear-gradient(135deg,hsl(20 70% 62%),hsl(60 70% 48%))">MK</span><div class="msg-body"><p class="msg-q">“What is the Wi-Fi password?”</p><p class="msg-status">Answered from Guide · Wi-Fi</p></div><span class="msg-time">18m</span></li>
@@ -471,7 +472,7 @@
                 </ul>
               </div>
 
-              <div class="panel" data-showcase-panel="questions" hidden>
+              <div class="panel" id="panel-questions" role="tabpanel" aria-labelledby="tab-questions" tabindex="0" data-showcase-panel="questions" hidden>
                 <div class="panel-head"><p class="panel-title">Most asked this stay</p><span class="panel-meta">38 messages</span></div>
                 <ul class="q-list">
                   <li class="q-row"><span class="q-rank">1</span><span class="q-main"><span class="q-text">Where is the Wi-Fi password?</span><span class="bar"><span class="bar-fill" style="width:100%"></span></span></span><span class="q-count">14×</span></li>
@@ -483,7 +484,7 @@
                 </ul>
               </div>
 
-              <div class="panel" data-showcase-panel="coverage" hidden>
+              <div class="panel" id="panel-coverage" role="tabpanel" aria-labelledby="tab-coverage" tabindex="0" data-showcase-panel="coverage" hidden>
                 <div class="panel-head"><p class="panel-title">Answered without you</p><span class="panel-meta">By guide section</span></div>
                 <ul class="cov-list">
                   <li class="cov-row"><span class="cov-name">Check-in &amp; arrival</span><span class="cov-bar"><span class="cov-fill" style="width:98%;background:hsl(20 75% 62%)"></span></span><span class="cov-pct">98%</span></li>
@@ -504,20 +505,20 @@
       <div class="container">
                 <dl class="metrics">
           <div class="metric reveal">
-            <dd class="metric-value"><span>$39</span></dd>
             <dt class="metric-label">Per property, per month</dt>
+            <dd class="metric-value"><span>$39</span></dd>
           </div>
           <div class="metric reveal" style="--delay:.08s">
-            <dd class="metric-value"><span>10 min</span></dd>
             <dt class="metric-label">To set up a property</dt>
+            <dd class="metric-value"><span>10 min</span></dd>
           </div>
           <div class="metric reveal" style="--delay:.16s">
-            <dd class="metric-value"><span>24/7</span></dd>
             <dt class="metric-label">Answers, including 2am</dt>
+            <dd class="metric-value"><span>24/7</span></dd>
           </div>
           <div class="metric reveal" style="--delay:.24s">
-            <dd class="metric-value"><span>0</span></dd>
             <dt class="metric-label">Apps for guests to install</dt>
+            <dd class="metric-value"><span>0</span></dd>
           </div>
         </dl>
       </div>
@@ -718,6 +719,7 @@
           <ul class="footer-links">
             <li><a href="./privacy.html">Privacy</a></li>
             <li><a href="./terms.html">Terms</a></li>
+            <li><a href="./accessibility.html">Accessibility</a></li>
           </ul>
         </div>
       </div>

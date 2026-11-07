@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility — StayXI</title>
+  <meta name="description" content="How StayXI meets WCAG 2.1 Level AA on this site, how that was tested, the known gaps, and how to report a barrier.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#faf5ec">
+  <link rel="canonical" href="https://stayxi.com/accessibility">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23121010'/%3E%3Cpath d='M18 44 32 18l14 26' fill='none' stroke='%23ff9a6b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='49' r='3' fill='%23ffc46b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./legal.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-head">
+    <a class="brand" href="./" aria-label="StayXI home">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff9a6b"></stop>
+            <stop offset="1" stop-color="#ffc46b"></stop>
+          </linearGradient>
+        </defs>
+        <path d="M6 16 12 6l6 10" stroke="url(#logo-grad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+        <circle cx="12" cy="18.5" r="1.2" fill="url(#logo-grad)"></circle>
+      </svg>
+      StayXI
+    </a>
+    <a class="back" href="./">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+      Back to site
+    </a>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <p class="eyebrow">Accessibility</p>
+    <h1>Accessibility Statement</h1>
+
+    <div class="meta">
+      <p><strong>Effective:</strong> November 2026</p>
+      <p><strong>Standard:</strong> WCAG 2.1 Level AA</p>
+      <p><strong>Contact:</strong> <a href="mailto:hello@stayxi.com">hello@stayxi.com</a> | +1 863&#8209;400&#8209;0424</p>
+    </div>
+
+    <h2>Our Commitment</h2>
+    <p>StayXI is a website for a business that serves the public, and we treat it the way the Americans with Disabilities Act asks places of public accommodation to be treated: usable by people with and without disabilities. The technical benchmark we hold ourselves to is the Web Content Accessibility Guidelines (WCAG) 2.1, Level AA. This statement covers the public marketing site — the landing page, the privacy policy, the terms and this page.</p>
+
+    <h2>What That Means in Practice</h2>
+    <ul>
+      <li><strong>Text contrast.</strong> Body text is at least 7:1 against its background and the lightest text on the page is 5.7:1, both above the 4.5:1 AA floor. White on the rust buttons is 6.4:1.</li>
+      <li><strong>Keyboard only.</strong> Every link, button, tab, accordion and form field can be reached and operated with the keyboard alone, in a visible order, with a 3px focus ring on whatever has focus.</li>
+      <li><strong>Skip link.</strong> The first thing the Tab key reaches on every page is a "Skip to main content" link, so the navigation can be bypassed.</li>
+      <li><strong>Structure.</strong> One level-one heading per page, headings in order, one main landmark, labelled navigation and labelled form controls, and a document language of English.</li>
+      <li><strong>Not colour alone.</strong> Status in the sample conversation is written out ("Routed to you", "Answered from Guide") rather than shown only as a coloured dot.</li>
+      <li><strong>Motion.</strong> If your system asks for reduced motion, the entrance animations, the chart draw-in and the background drift are switched off.</li>
+      <li><strong>Text size.</strong> Layout holds up when text is zoomed to 200% or the page is reflowed to a 320px viewport.</li>
+      <li><strong>Announcements.</strong> The sample conversation is a live region, so a reply is announced when it arrives instead of silently appearing.</li>
+      <li><strong>Photographs.</strong> Both Florida photographs carry descriptive alternative text; decorative dashboard artwork is hidden from screen readers.</li>
+    </ul>
+
+    <h2>How This Was Checked</h2>
+    <ul>
+      <li>Automated testing with axe-core 4.10.2 against the WCAG 2.1 A, AA and best-practice rule sets on each public page: no violations.</li>
+      <li>Google Lighthouse on the deployed site, mobile emulation: accessibility 100.</li>
+      <li>Contrast ratios computed from the shipped colour values rather than read off a screenshot.</li>
+      <li>A manual pass with the keyboard and a screen reader: focus order, focus visibility, the FAQ accordion, the product-view tabs, the sample form and the trial form.</li>
+    </ul>
+
+    <h2>Known Limitations</h2>
+    <ul>
+      <li>These checks are our own. They are not a third-party audit, and this page is a statement of conformance, not a certification.</li>
+      <li>The host portal and the admin panel sit behind sign-in and are outside this statement. They are built from the same accessible components but have not had the same review.</li>
+      <li>The SMS service itself is a text channel operated by phone carriers; carrier-level accessibility (for example text-to-speech on a handset) is outside our control.</li>
+      <li>The sample conversation depends on a live AI endpoint. If a reply is unavailable, the error message is announced like any other reply.</li>
+    </ul>
+
+    <h2>Tell Us About a Barrier</h2>
+    <div class="callout">
+      <p>If any part of this site stops you from getting what you need, email <a href="mailto:hello@stayxi.com">hello@stayxi.com</a> or call +1 863&#8209;400&#8209;0424 and tell us what you were trying to do. We will fix the page where we can, and offer another way to do the same thing — including arranging a trial by phone — in the meantime.</p>
+    </div>
+  </main>
+
+  <footer class="page-foot">
+    <p>© 2026 Davenport Host Co.</p>
+    <nav aria-label="Legal and contact">
+      <a href="./privacy.html">Privacy</a>
+      <a href="./terms.html">Terms</a>
+      <a href="./accessibility.html">Accessibility</a>
+      <a href="mailto:hello@stayxi.com">Contact</a>
+    </nav>
+  </footer>
+</body>
+</html>
