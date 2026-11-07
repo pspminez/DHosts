@@ -87,6 +87,9 @@ interface Env {
   OPENROUTER_API_KEY: string;
   TWILIO_ACCOUNT_SID: string;
   TWILIO_AUTH_TOKEN: string;
+  // Optional. When set, sends go through the service's sender pool instead of a
+  // per-property From number, which is also what the A2P registration is attached to.
+  TWILIO_MESSAGING_SERVICE_SID?: string;
   ADMIN_PASSWORD: string;
   ADMIN_SESSION_HOURS?: string;
   ADMIN_SESSION_REMEMBER_DAYS?: string;
@@ -1337,12 +1340,25 @@ async function handleHostReply(env: Env, from: string, body: string): Promise<Re
 async function sendSms(env: Env, to: string, body: string, from: string): Promise<boolean> {
   const sid = env.TWILIO_ACCOUNT_SID;
   const token = env.TWILIO_AUTH_TOKEN;
-  if (!sid || !token || !to || !from) {
-    console.error("Twilio send skipped: account credentials, recipient, and sender are required.");
+  const messagingServiceSid = env.TWILIO_MESSAGING_SERVICE_SID;
+  if (!sid || !token || !to) {
+    console.error("Twilio send skipped: account credentials and recipient are required.");
     return false;
   }
 
-  const params = new URLSearchParams({ To: to, From: from, Body: body });
+  // Twilio accepts a sender or a Messaging Service, never both. A property's own
+  // number is the precise route, so it wins; the service is the shared sender
+  // pool for properties that have no line of their own, and a service SID in a
+  // property's number field could never be a sender anyway.
+  const params = new URLSearchParams({ To: to, Body: body });
+  if (/^\+[1-9]\d{6,14}$/.test(from)) {
+    params.set("From", from);
+  } else if (messagingServiceSid) {
+    params.set("MessagingServiceSid", messagingServiceSid);
+  } else {
+    console.error("Twilio send skipped: no Messaging Service configured and the sender is not an E.164 number.");
+    return false;
+  }
 
   try {
     const response = await fetchWithRateLimitRetry(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
@@ -1460,6 +1476,13 @@ async function loadProperty(env: Env, twilioNumber: string) {
     )
       .bind(twilioNumber)
         .all<Property>();
+    // A line belongs to one property. If several houses share one, the webhook
+    // cannot tell which house the guest means, and picking a row would answer one
+    // property's guest with another property's details. Treat it as unrouted.
+    if (results && results.length > 1) {
+      console.error("Inbound routing refused: " + results.length + " active properties share one text line.");
+      return null;
+    }
     if (results && results.length > 0) {
       const property = results[0];
       // Also load host details for escalation
@@ -3904,7 +3927,9 @@ async function handleAdmin(request: Request, env: Env, url: URL) {
         aiConfigured: !!env.OPENROUTER_API_KEY,
         signatureValidationEnabled: env.VALIDATE_SIGNATURE === "true",
         missingHostPhone: propertyConfig?.missingHostPhone || 0,
-        missingTextNumber: propertyConfig?.missingTextNumber || 0,
+        // A Messaging Service owns the sender pool, so no property needs its own
+        // number for text to work; only count the gap when there is no service.
+        missingTextNumber: env.TWILIO_MESSAGING_SERVICE_SID ? 0 : propertyConfig?.missingTextNumber || 0,
       });
     } catch (err) {
       console.error("Admin health check failed:", errorMessage(err) || err);
