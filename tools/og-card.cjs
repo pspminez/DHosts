@@ -68,7 +68,7 @@ const HTML = `<!DOCTYPE html>
       </span>
       StayXI
     </div>
-    <h1>Your guests text.<br>Your property <span class="grad">answers</span>.</h1>
+    <h1>Your guests text.<br>Your house <span class="grad">texts back</span>.</h1>
     <p class="lede">Each property gets its own text number. Guests get an answer in seconds, from the guide you approved — at 3pm or 3am.</p>
     <div class="foot">
       <span><strong>stayxi.com</strong> · built for Florida rentals</span>
