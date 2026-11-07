@@ -38,15 +38,21 @@ if (!env.CHROME_PATH && fs.existsSync(windowsChrome)) env.CHROME_PATH = windowsC
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
-// One flag per token: --chrome-flags splits on spaces, and a shell is needed to
-// launch npx on Windows, so a multi-flag value would be split twice.
+// A CI image or container gives Chrome no usable sandbox, so it has to be turned
+// off or chrome-launcher waits for a debugging port that never opens. A shell is
+// needed to launch npx on Windows, and that shell would split a space-separated
+// value into separate arguments, so the value is quoted on Windows only.
+const chromeFlags = "--headless=new --no-sandbox --disable-dev-shm-usage";
+const chromeFlagsArg =
+  "--chrome-flags=" + (process.platform === "win32" ? '"' + chromeFlags + '"' : chromeFlags);
+
 const args = [
   "--yes",
   "lighthouse@13",
   url,
   "--output=json",
   "--output-path=" + outFile,
-  "--chrome-flags=--headless=new",
+  chromeFlagsArg,
   "--only-categories=performance,accessibility,best-practices,seo",
   "--quiet",
 ];
