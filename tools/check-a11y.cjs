@@ -71,6 +71,15 @@ if (!CHROME) {
   process.exit(1);
 }
 
+// Chromium's own complaints are the only useful diagnostic when it refuses to
+// start on a runner, so keep the tail of them for the error message.
+const chromeLog = [];
+function chromeLogTail() {
+  const text = chromeLog.join("").trim();
+  if (!text) return "";
+  return "\nChrome said:\n" + text.split(/\r?\n/).slice(-10).join("\n");
+}
+
 function extract(marker, file) {
   const src = fs.readFileSync(file, "utf8");
   const from = src.indexOf(marker) + marker.length;
@@ -101,8 +110,12 @@ function fixture(name, html, mode) {
   return fileUrl(file);
 }
 
-async function waitForDevtools() {
+async function waitForDevtools(isDead) {
   for (let i = 0; i < 90; i++) {
+    // Waiting the full 27 seconds for a browser that already exited only turns a
+    // clear crash into a timeout.
+    const dead = isDead();
+    if (dead) throw new Error("Chrome exited before DevTools opened (" + dead + ")." + chromeLogTail());
     try {
       const list = await (await fetch("http://127.0.0.1:" + PORT + "/json/list")).json();
       const page = list.find((target) => target.type === "page" && target.webSocketDebuggerUrl);
@@ -112,7 +125,7 @@ async function waitForDevtools() {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  throw new Error("Chrome devtools never came up on port " + PORT);
+  throw new Error("Chrome devtools never came up on port " + PORT + "." + chromeLogTail());
 }
 
 function connect(url) {
@@ -168,14 +181,34 @@ async function main() {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "stayxi-a11y-profile-"));
   const chrome = spawn(
     CHROME,
-    ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--remote-debugging-port=" + PORT, "--user-data-dir=" + profile, "about:blank"],
-    { stdio: "ignore" },
+    [
+      "--headless=new",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--no-first-run",
+      // A runner image or container has no usable sandbox for Chromium; without
+      // this the browser exits before it ever opens its DevTools endpoint.
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--remote-debugging-port=" + PORT,
+      "--user-data-dir=" + profile,
+      "about:blank",
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
   );
+  let exitReason = null;
+  chrome.on("exit", (code, signal) => {
+    exitReason = signal ? "signal " + signal : "exit code " + code;
+  });
+  chrome.stderr.on("data", (chunk) => {
+    chromeLog.push(String(chunk));
+    if (chromeLog.length > 60) chromeLog.shift();
+  });
 
   let failed = 0;
   let client;
   try {
-    client = await connect(await waitForDevtools());
+    client = await connect(await waitForDevtools(() => exitReason));
     await client.send("Page.enable");
     await client.send("Runtime.enable");
     await client.send("Emulation.setDeviceMetricsOverride", {
