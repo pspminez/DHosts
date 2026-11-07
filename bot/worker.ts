@@ -4350,7 +4350,13 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .login-brand { display:flex; align-items:center; justify-content:center; gap:.5rem; margin-bottom:1.1rem;
          font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif; font-weight:600; font-size:1rem; letter-spacing:-.01em; }
   .login-card { margin-top:0; padding:1.7rem 1.6rem; }
-  .login-card h2 { font-size:1.3rem; font-weight:600; letter-spacing:-.02em; }
+  .login-card h1, .login-card h2 { font-size:1.3rem; font-weight:600; letter-spacing:-.02em; margin:0 0 .4rem; }
+  /* The admin shell has eight nav buttons before the content, so the first Tab
+     stop skips them. Fixed, so it does not disturb the two-column grid. */
+  .skip-link { position:fixed; top:.75rem; left:.75rem; z-index:80; padding:.65rem 1rem;
+    border-radius:999px; background:var(--text); color:var(--bg); font-size:.82rem; font-weight:600;
+    text-decoration:none; transform:translateY(-260%); transition:transform .14s ease; }
+  .skip-link:focus { transform:none; }
   .login-sub { margin:.25rem 0 .2rem; color:var(--muted); font-size:.85rem; }
   .login-card .row { margin-top:.1rem; }
   .login-card .row .primary { margin-top:0; white-space:nowrap; }
@@ -4446,7 +4452,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
   .login-brand { font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif; font-weight:600; font-size:1rem; }
   .login-card { border-radius:18px; padding:1.8rem 1.7rem;
     background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02)); }
-  .login-card h2 { font-size:1.35rem; font-weight:600; }
+  .login-card h1, .login-card h2 { font-size:1.35rem; font-weight:600; }
   .login-foot code { color:var(--accent-2, #ffb547); }
   .logo-mark { display:grid; width:28px; height:28px; flex:none; place-items:center;
     border-radius:9px; background:linear-gradient(135deg,var(--surface-2),var(--raised));
@@ -4468,6 +4474,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to admin content</a>
 <div class="shell">
   <aside class="sidebar hidden" id="tabBar">
     <div class="brand"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span><span>StayXI admin</span></div>
@@ -4506,7 +4513,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     </button>
   </aside>
 
-  <main class="main">
+  <main class="main" id="main" tabindex="-1">
   <div class="page-head">
     <h1 id="pageTitle">Admin panel</h1>
     <p class="sub">Our take on AI for your guests during their stay. Pick a property to open its dashboard. Changes go live immediately — no redeploy, no code.</p>
@@ -4516,7 +4523,7 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <div class="login-panel">
       <div class="login-brand"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span><span>StayXI admin</span></div>
       <div id="login" class="card login-card">
-        <h2>Sign in</h2>
+        <h1>Sign in</h1>
         <p class="login-sub">Enter the admin password to manage properties, guest questions and outreach.</p>
         <label for="pw">Admin password</label>
         <div class="row">

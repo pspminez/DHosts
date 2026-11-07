@@ -46,6 +46,12 @@ export const HOST_HTML = `<!DOCTYPE html>
   .faint { color:var(--faint); }
   code { font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--amber); font-size:.9em; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:8px; }
+  /* First stop for the Tab key, so the four nav buttons and the section list
+     are skippable. Fixed, so it does not take a cell in the grid. */
+  .skip-link { position:fixed; top:12px; left:12px; z-index:60; padding:10px 16px;
+    border-radius:999px; background:var(--text); color:var(--bg); font-size:13px; font-weight:600;
+    text-decoration:none; transform:translateY(-220%); transition:transform .14s ease; }
+  .skip-link:focus { transform:none; }
   ::selection { background:rgba(255,122,69,.35); color:#fff; }
 
   /* ---------- shell ---------- */
@@ -258,6 +264,7 @@ export const HOST_HTML = `<!DOCTYPE html>
 <noscript><p class="noscript">The StayXI host portal needs JavaScript enabled.</p></noscript>
 
 <div class="app hidden" id="app">
+  <a class="skip-link" href="#main">Skip to dashboard</a>
   <aside class="sidebar">
     <div class="brand">
       <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ff9a6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16 12 6l6 10"></path><circle cx="12" cy="18.5" r="1.2" fill="#ffc46b" stroke="none"></circle></svg></span>
@@ -294,7 +301,7 @@ export const HOST_HTML = `<!DOCTYPE html>
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="main" tabindex="-1">
     <header class="topbar">
       <div>
         <p class="property-name" id="propertyName">Your property</p>

@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs && node tools/check-landing.cjs",
+    "test": "node --test bot/*.test.js && node tools/check-setup-docs.cjs && node tools/check-landing.cjs && node tools/check-a11y.cjs",
     "test:unit": "node --test bot/*.test.js",
     "typecheck": "tsc --noEmit",
     "check:ui": "node tools/ui-check.cjs && node tools/host-ui-check.cjs",
     "check:setup": "node tools/check-setup-docs.cjs",
     "check:landing": "node tools/check-landing.cjs",
+    "check:a11y": "node tools/check-a11y.cjs",
     "check:lighthouse": "node tools/lighthouse.cjs",
     "check:predeploy": "npm run check:production && npm run check:lighthouse",
     "build:site": "node tools/build-site.cjs",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261012.1",
+    "axe-core": "^4.10.2",
     "typescript": "^7.0.2",
     "wrangler": "^4.147.0"
   },
